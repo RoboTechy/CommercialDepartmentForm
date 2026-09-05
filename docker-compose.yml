@@ -1,16 +1,17 @@
 services:
   openldap:
-    image: bitnami/openldap:2.6
+    image: osixia/openldap:1.5.0
     environment:
-      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ORGANISATION=Ghadir Commercial
+      - LDAP_DOMAIN=example.com
       - LDAP_ADMIN_PASSWORD=adminpassword
-      - LDAP_ROOT=dc=example,dc=com
-      - LDAP_CUSTOM_LDIF_DIR=/ldifs
+      - LDAP_TLS=false
     volumes:
-      - ./ldap:/ldifs:ro
-      - openldap_data:/bitnami/openldap
+      - ./ldap/bootstrap.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/bootstrap.ldif:ro
+      - openldap_data:/var/lib/ldap
+      - openldap_config:/etc/ldap/slapd.d
     ports:
-      - "1389:1389"
+      - "1389:389"
     networks: [appnet]
 
   # پنل مدیریت وب برای مشاهده/مدیریت کاربران و گروه‌های LDAP تستی (اختیاری)
@@ -30,7 +31,7 @@ services:
     environment:
       - PORT=3000
       - SESSION_SECRET=change-me-to-a-random-secret
-      - LDAP_URL=ldap://openldap:1389
+      - LDAP_URL=ldap://openldap:389
       - LDAP_BIND_DN=cn=admin,dc=example,dc=com
       - LDAP_BIND_PASSWORD=adminpassword
       - LDAP_USER_BASE=ou=people,dc=example,dc=com
@@ -51,6 +52,7 @@ services:
 
 volumes:
   openldap_data:
+  openldap_config:
   form_data:
 
 networks:
