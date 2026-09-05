@@ -1,0 +1,12 @@
+<header class="topbar">
+  <div class="brand">فرم مشترک فنی / بهره‌بردار / انبار / بازرگانی غدیر</div>
+  <% if (typeof user !== 'undefined' && user) { %>
+  <div class="user-box">
+    <span>خوش آمدید، <strong><%= user.displayName %></strong></span>
+    <span class="groups"><%= user.groups && user.groups.length ? user.groups.join('، ') : 'بدون گروه' %></span>
+    <form method="post" action="/logout" style="display:inline">
+      <button type="submit" class="link-btn">خروج</button>
+    </form>
+  </div>
+  <% } %>
+</header>

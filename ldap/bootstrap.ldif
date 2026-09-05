@@ -1,0 +1,83 @@
+# ساختار سازمانی پایه
+dn: ou=people,dc=example,dc=com
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,dc=example,dc=com
+objectClass: organizationalUnit
+ou: groups
+
+# --- کاربران تستی (یک کاربر برای هر بخش + یک مدیر سیستم) ---
+# رمز عبور همه‌ی کاربران تستی: با الگوی <username>Pass1
+
+dn: uid=tech1,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+uid: tech1
+cn: Technical Expert
+sn: Expert
+givenName: Technical
+mail: tech1@example.com
+userPassword: tech1Pass1
+
+dn: uid=oper1,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+uid: oper1
+cn: Plant Operator
+sn: Operator
+givenName: Plant
+mail: oper1@example.com
+userPassword: oper1Pass1
+
+dn: uid=wh1,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+uid: wh1
+cn: Employer Warehouse Keeper
+sn: Keeper
+givenName: Warehouse
+mail: wh1@example.com
+userPassword: wh1Pass1
+
+dn: uid=com1,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+uid: com1
+cn: Ghadir Commercial Officer
+sn: Officer
+givenName: Commercial
+mail: com1@example.com
+userPassword: com1Pass1
+
+dn: uid=admin1,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+uid: admin1
+cn: Form Administrator
+sn: Administrator
+givenName: Form
+mail: admin1@example.com
+userPassword: admin1Pass1
+
+# --- گروه‌ها (نگاشت هر بخش فرم به یک گروه LDAP) ---
+
+dn: cn=technical,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: technical
+member: uid=tech1,ou=people,dc=example,dc=com
+
+dn: cn=operator,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: operator
+member: uid=oper1,ou=people,dc=example,dc=com
+
+dn: cn=warehouse,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: warehouse
+member: uid=wh1,ou=people,dc=example,dc=com
+
+dn: cn=commercial,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: commercial
+member: uid=com1,ou=people,dc=example,dc=com
+
+dn: cn=formadmin,ou=groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: formadmin
+member: uid=admin1,ou=people,dc=example,dc=com

@@ -1,0 +1,45 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+  <main class="container">
+    <div class="page-header">
+      <h1>فهرست فرم‌ها</h1>
+      <a href="/forms/new" class="btn btn-primary">+ ایجاد فرم جدید</a>
+    </div>
+
+    <% if (!forms.length) { %>
+      <p class="muted">هنوز فرمی ثبت نشده است.</p>
+    <% } else { %>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>عنوان</th>
+            <th>درخواست‌کننده</th>
+            <th>ایجادکننده</th>
+            <th>تاریخ ایجاد</th>
+            <th>وضعیت بخش‌ها</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% forms.forEach(function(form) { %>
+            <tr>
+              <td><%= form.title %></td>
+              <td><%= form.requesterName || '-' %></td>
+              <td><%= form.createdBy %></td>
+              <td><%= new Date(form.createdAt).toLocaleString('fa-IR') %></td>
+              <td>
+                <% Object.keys(form.sections).forEach(function(key) { %>
+                  <span class="badge <%= form.sections[key].status === 'تکمیل شده' ? 'badge-done' : 'badge-pending' %>">
+                    <%= key %>
+                  </span>
+                <% }) %>
+              </td>
+              <td><a href="/forms/<%= form.id %>" class="btn btn-sm">مشاهده / تکمیل</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </main>
+</body>
+</html>

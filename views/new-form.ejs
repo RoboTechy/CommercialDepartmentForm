@@ -1,0 +1,20 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+  <main class="container">
+    <h1>ایجاد فرم جدید</h1>
+    <% if (error && error.length) { %>
+      <div class="alert alert-error"><%= error[0] %></div>
+    <% } %>
+    <form method="post" action="/forms" class="card">
+      <label>عنوان کالا / پروژه
+        <input type="text" name="title" required autofocus />
+      </label>
+      <label>نام درخواست‌کننده
+        <input type="text" name="requesterName" />
+      </label>
+      <button type="submit" class="btn btn-primary">ایجاد فرم</button>
+      <a href="/" class="btn">انصراف</a>
+    </form>
+  </main>
+</body>
+</html>

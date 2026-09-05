@@ -1,0 +1,57 @@
+services:
+  openldap:
+    image: bitnami/openldap:2.6
+    environment:
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=adminpassword
+      - LDAP_ROOT=dc=example,dc=com
+      - LDAP_CUSTOM_LDIF_DIR=/ldifs
+    volumes:
+      - ./ldap:/ldifs:ro
+      - openldap_data:/bitnami/openldap
+    ports:
+      - "1389:1389"
+    networks: [appnet]
+
+  # پنل مدیریت وب برای مشاهده/مدیریت کاربران و گروه‌های LDAP تستی (اختیاری)
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.9.0
+    environment:
+      - PHPLDAPADMIN_LDAP_HOSTS=openldap
+      - PHPLDAPADMIN_HTTPS=false
+    ports:
+      - "8081:80"
+    depends_on:
+      - openldap
+    networks: [appnet]
+
+  web:
+    build: .
+    environment:
+      - PORT=3000
+      - SESSION_SECRET=change-me-to-a-random-secret
+      - LDAP_URL=ldap://openldap:1389
+      - LDAP_BIND_DN=cn=admin,dc=example,dc=com
+      - LDAP_BIND_PASSWORD=adminpassword
+      - LDAP_USER_BASE=ou=people,dc=example,dc=com
+      - LDAP_GROUP_BASE=ou=groups,dc=example,dc=com
+      - LDAP_USERNAME_ATTRIBUTE=uid
+      - LDAP_GROUP_TECHNICAL=technical
+      - LDAP_GROUP_OPERATOR=operator
+      - LDAP_GROUP_WAREHOUSE=warehouse
+      - LDAP_GROUP_COMMERCIAL=commercial
+      - LDAP_GROUP_ADMIN=formadmin
+    ports:
+      - "3000:3000"
+    volumes:
+      - form_data:/app/data
+    depends_on:
+      - openldap
+    networks: [appnet]
+
+volumes:
+  openldap_data:
+  form_data:
+
+networks:
+  appnet:

@@ -1,0 +1,19 @@
+<%- include('partials/head') %>
+  <div class="center-page">
+    <form method="post" action="/login" class="card login-card">
+      <h1>ورود به سامانه</h1>
+      <p class="muted">ورود از طریق حساب کاربری سازمانی (LDAP)</p>
+      <% if (error && error.length) { %>
+        <div class="alert alert-error"><%= error[0] %></div>
+      <% } %>
+      <label>نام کاربری
+        <input type="text" name="username" autocomplete="username" required autofocus />
+      </label>
+      <label>رمز عبور
+        <input type="password" name="password" autocomplete="current-password" required />
+      </label>
+      <button type="submit" class="btn btn-primary">ورود</button>
+    </form>
+  </div>
+</body>
+</html>
