@@ -4,6 +4,7 @@ const flash = require('connect-flash');
 const morgan = require('morgan');
 const path = require('path');
 const config = require('./src/config');
+const db = require('./src/db');
 const authRoutes = require('./src/routes/auth');
 const rowRoutes = require('./src/routes/rows');
 
@@ -33,6 +34,13 @@ app.use((req, res) => {
   res.status(404).render('not-found');
 });
 
-app.listen(config.port, () => {
-  console.log(`سرویس فرم بازرگانی روی پورت ${config.port} در حال اجراست`);
-});
+db.ready
+  .then(() => {
+    app.listen(config.port, () => {
+      console.log(`سرویس فرم بازرگانی روی پورت ${config.port} در حال اجراست`);
+    });
+  })
+  .catch((err) => {
+    console.error('راه‌اندازی دیتابیس با خطا مواجه شد:', err);
+    process.exit(1);
+  });
