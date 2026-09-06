@@ -25,8 +25,16 @@ services:
           echo "در انتظار آماده شدن OpenLDAP..."
           sleep 2
         done
-        ldapadd -x -H ldap://openldap:389 -D "cn=admin,dc=example,dc=com" -w adminpassword -f /bootstrap/bootstrap.ldif || true
-        echo "بارگذاری کاربران/گروه‌های تستی LDAP انجام شد (یا از قبل وجود داشتند)."
+        if ldapsearch -x -H ldap://openldap:389 -D "cn=admin,dc=example,dc=com" -w adminpassword -b "ou=people,dc=example,dc=com" -s base >/dev/null 2>&1; then
+          echo "داده‌های تستی از قبل در LDAP موجودند، بارگذاری دوباره رد شد."
+          exit 0
+        fi
+        if [ ! -f /bootstrap/bootstrap.ldif ] || [ ! -s /bootstrap/bootstrap.ldif ]; then
+          echo "خطا: /bootstrap/bootstrap.ldif یافت نشد یا خالی است (mount درست انجام نشده است)." >&2
+          exit 1
+        fi
+        ldapadd -x -H ldap://openldap:389 -D "cn=admin,dc=example,dc=com" -w adminpassword -f /bootstrap/bootstrap.ldif
+        echo "بارگذاری کاربران/گروه‌های تستی LDAP با موفقیت انجام شد."
     volumes:
       - ./ldap/bootstrap.ldif:/bootstrap/bootstrap.ldif:ro
     depends_on:
