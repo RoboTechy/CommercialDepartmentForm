@@ -1,8 +1,11 @@
 <%- include('partials/head') %>
   <main class="container center-page">
     <div class="card">
-      <h1>۴۰۴ - یافت نشد</h1>
-      <a href="/" class="btn">بازگشت به فهرست فرم‌ها</a>
+      <h1><%= typeof message !== 'undefined' && message ? 'عدم دسترسی' : '۴۰۴ - یافت نشد' %></h1>
+      <% if (typeof message !== 'undefined' && message) { %>
+        <p class="alert alert-error"><%= message %></p>
+      <% } %>
+      <a href="/" class="btn">بازگشت به فهرست</a>
     </div>
   </main>
 </body>

@@ -1,5 +1,5 @@
 const config = require('./config');
-const { findSection } = require('./sections');
+const { sections, findSection } = require('./sections');
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -19,4 +19,9 @@ function canEditSection(user, sectionKey) {
   return user.groups.includes(section.group);
 }
 
-module.exports = { requireLogin, isAdmin, canEditSection };
+function canCreateRows(user) {
+  if (isAdmin(user)) return true;
+  return sections.some((s) => s.canCreateRows && user.groups.includes(s.group));
+}
+
+module.exports = { requireLogin, isAdmin, canEditSection, canCreateRows };

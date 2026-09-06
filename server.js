@@ -5,7 +5,7 @@ const morgan = require('morgan');
 const path = require('path');
 const config = require('./src/config');
 const authRoutes = require('./src/routes/auth');
-const formRoutes = require('./src/routes/forms');
+const rowRoutes = require('./src/routes/rows');
 
 const app = express();
 
@@ -27,7 +27,7 @@ app.use(
 app.use(flash());
 
 app.use('/', authRoutes);
-app.use('/', formRoutes);
+app.use('/', rowRoutes);
 
 app.use((req, res) => {
   res.status(404).render('not-found');

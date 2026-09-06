@@ -9,7 +9,7 @@ function need(name, fallback) {
 module.exports = {
   port: parseInt(need('PORT', '3000'), 10),
   sessionSecret: need('SESSION_SECRET', 'dev-secret-change-me'),
-  dataFile: need('DATA_FILE', require('path').join(__dirname, '..', 'data', 'forms.json')),
+  dbFile: need('DB_FILE', require('path').join(__dirname, '..', 'data', 'app.db')),
   ldap: {
     url: need('LDAP_URL', 'ldap://localhost:1389'),
     bindDN: need('LDAP_BIND_DN', ''),
@@ -18,8 +18,7 @@ module.exports = {
     groupBase: need('LDAP_GROUP_BASE', ''),
     usernameAttribute: need('LDAP_USERNAME_ATTRIBUTE', 'uid'),
     groups: {
-      technical: need('LDAP_GROUP_TECHNICAL', 'technical'),
-      operator: need('LDAP_GROUP_OPERATOR', 'operator'),
+      techOperator: need('LDAP_GROUP_TECH_OPERATOR', 'tech_operator'),
       warehouse: need('LDAP_GROUP_WAREHOUSE', 'warehouse'),
       commercial: need('LDAP_GROUP_COMMERCIAL', 'commercial'),
       admin: need('LDAP_GROUP_ADMIN', 'formadmin'),

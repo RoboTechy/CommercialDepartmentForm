@@ -7,7 +7,8 @@ dn: ou=groups,dc=example,dc=com
 objectClass: organizationalUnit
 ou: groups
 
-# --- کاربران تستی (یک کاربر برای هر بخش + یک مدیر سیستم) ---
+# --- کاربران تستی: دو کاربر برای دفتر فنی بهره‌بردار (هر دو عضو یک گروه)،
+# یک کاربر برای انبار کارفرما، یک کاربر برای بازرگانی غدیر، یک مدیر سیستم ---
 # رمز عبور همه‌ی کاربران تستی: با الگوی <username>Pass1
 
 dn: uid=tech1,ou=people,dc=example,dc=com
@@ -57,14 +58,10 @@ userPassword: admin1Pass1
 
 # --- گروه‌ها (نگاشت هر بخش فرم به یک گروه LDAP) ---
 
-dn: cn=technical,ou=groups,dc=example,dc=com
+dn: cn=tech_operator,ou=groups,dc=example,dc=com
 objectClass: groupOfNames
-cn: technical
+cn: tech_operator
 member: uid=tech1,ou=people,dc=example,dc=com
-
-dn: cn=operator,ou=groups,dc=example,dc=com
-objectClass: groupOfNames
-cn: operator
 member: uid=oper1,ou=people,dc=example,dc=com
 
 dn: cn=warehouse,ou=groups,dc=example,dc=com

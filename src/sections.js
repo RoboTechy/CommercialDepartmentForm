@@ -1,58 +1,53 @@
 const config = require('./config');
 
-// تعریف بخش‌های فرم. هر بخش به یک گروه LDAP نگاشت می‌شود؛
-// فقط اعضای همان گروه (یا گروه مدیر) اجازه‌ی تکمیل آن بخش را دارند.
+// تعریف بخش‌ها و ستون‌های هر بخش روی ردیف مشترک.
+// فقط دفتر فنی بهره‌بردار اجازه‌ی ایجاد ردیف جدید دارد (canCreateRows).
+// هر بخش فقط می‌تواند فیلدهای خودش را روی یک ردیف (که قبلاً ایجاد شده) تکمیل/ویرایش کند.
 const sections = [
   {
-    key: 'technical',
-    title: 'بخش فنی',
-    group: config.ldap.groups.technical,
+    key: 'tech_operator',
+    title: 'دفتر فنی بهره‌بردار',
+    group: config.ldap.groups.techOperator,
+    canCreateRows: true,
     fields: [
-      { name: 'item_name', label: 'نام کالا / تجهیز', type: 'text', required: true },
-      { name: 'technical_specs', label: 'مشخصات فنی', type: 'textarea' },
-      { name: 'required_standard', label: 'استاندارد مورد نیاز', type: 'text' },
-      { name: 'expert_opinion', label: 'نظر کارشناس فنی', type: 'textarea' },
-      { name: 'expert_name', label: 'نام کارشناس فنی', type: 'text' },
-      { name: 'expert_date', label: 'تاریخ بررسی', type: 'date' },
-    ],
-  },
-  {
-    key: 'operator',
-    title: 'بخش بهره‌بردار',
-    group: config.ldap.groups.operator,
-    fields: [
-      { name: 'request_reason', label: 'علت درخواست', type: 'textarea', required: true },
-      { name: 'consumption_rate', label: 'میزان مصرف / نیاز', type: 'text' },
-      { name: 'priority', label: 'اولویت', type: 'select', options: ['عادی', 'فوری', 'بحرانی'] },
-      { name: 'needed_by_date', label: 'تاریخ نیاز', type: 'date' },
-      { name: 'operator_name', label: 'نام بهره‌بردار', type: 'text' },
-      { name: 'operator_date', label: 'تاریخ ثبت', type: 'date' },
+      { name: 'request_no', label: 'شماره درخواست کالا', type: 'text', required: true },
+      { name: 'item_description', label: 'شرح کالا', type: 'textarea', required: true },
+      { name: 'priority', label: 'اولویت', type: 'select', options: ['A++', 'A+', 'A', 'B', 'C', 'D'] },
+      { name: 'total_qty', label: 'تعداد کل', type: 'text' },
+      { name: 'unit', label: 'واحد', type: 'text' },
+      { name: 'usage_location', label: 'محل مصرف', type: 'text' },
+      { name: 'delivery_to_warehouse_date', label: 'تاریخ تحویل درخواست به انبار', type: 'jalali-date' },
+      { name: 'item_type', label: 'نوع کالا', type: 'select', options: ['استاندارد', 'ساخت'] },
     ],
   },
   {
     key: 'warehouse',
-    title: 'بخش انبار کارفرما',
+    title: 'انبار کارفرما',
     group: config.ldap.groups.warehouse,
+    canCreateRows: false,
     fields: [
-      { name: 'current_stock', label: 'موجودی فعلی در انبار', type: 'text', required: true },
-      { name: 'storage_location', label: 'محل نگهداری', type: 'text' },
-      { name: 'last_movement_date', label: 'تاریخ آخرین ورود/خروج', type: 'date' },
-      { name: 'stock_confirmation', label: 'وضعیت موجودی', type: 'select', options: ['موجود است', 'موجود نیست', 'ناقص است'] },
-      { name: 'warehouse_keeper_name', label: 'نام انباردار', type: 'text' },
-      { name: 'warehouse_date', label: 'تاریخ ثبت', type: 'date' },
+      { name: 'purchase_request_no', label: 'شماره درخواست خرید', type: 'text' },
+      {
+        name: 'purchase_executor',
+        label: 'مجری خرید',
+        type: 'select',
+        options: ['بازرگانی غدیر بهاباد', 'بازرگانی غدیر تهران', 'بازرگانی غدیر برنا'],
+      },
+      { name: 'letter_no', label: 'شماره نامه ارسالی به تهران', type: 'text' },
+      { name: 'letter_date', label: 'تاریخ ارسال نامه', type: 'jalali-date' },
+      { name: 'status', label: 'وضعیت', type: 'select', options: ['تامین شده', 'تامین نشده', 'باطل شده'] },
+      { name: 'site_arrival_date', label: 'تاریخ ورود به سایت', type: 'jalali-date' },
     ],
   },
   {
     key: 'commercial',
-    title: 'بخش بازرگانی غدیر',
+    title: 'بازرگانی غدیر',
     group: config.ldap.groups.commercial,
+    canCreateRows: false,
     fields: [
-      { name: 'suggested_supplier', label: 'تامین‌کننده پیشنهادی', type: 'text', required: true },
-      { name: 'estimated_price', label: 'قیمت برآوردی (ریال)', type: 'text' },
-      { name: 'delivery_time', label: 'زمان تحویل برآوردی', type: 'text' },
-      { name: 'purchase_request_no', label: 'شماره درخواست خرید', type: 'text' },
-      { name: 'commercial_expert_name', label: 'نام کارشناس بازرگانی', type: 'text' },
-      { name: 'commercial_date', label: 'تاریخ ثبت', type: 'date' },
+      { name: 'referred_to_expert_date', label: 'تاریخ ارجاع به کارشناس خرید', type: 'jalali-date' },
+      { name: 'payment_auth_date', label: 'تاریخ مجوز پرداخت', type: 'jalali-date' },
+      { name: 'description', label: 'توضیحات', type: 'textarea' },
     ],
   },
 ];
@@ -61,4 +56,16 @@ function findSection(key) {
   return sections.find((s) => s.key === key);
 }
 
-module.exports = { sections, findSection };
+function findField(fieldKey) {
+  for (const section of sections) {
+    const field = section.fields.find((f) => f.name === fieldKey);
+    if (field) return { section, field };
+  }
+  return null;
+}
+
+function allFields() {
+  return sections.flatMap((s) => s.fields.map((f) => ({ ...f, sectionKey: s.key })));
+}
+
+module.exports = { sections, findSection, findField, allFields };

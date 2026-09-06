@@ -1,83 +1,165 @@
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
-const config = require('./config');
-const { sections } = require('./sections');
+const db = require('./db');
+const { sections, findSection, allFields } = require('./sections');
+const { nowJalaliDateTime } = require('./jalaali');
 
-let writeChain = Promise.resolve();
+const ALL_FIELDS = allFields();
+const FIELD_BY_NAME = new Map(ALL_FIELDS.map((f) => [f.name, f]));
 
-function ensureDataFile() {
-  const dir = path.dirname(config.dataFile);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(config.dataFile)) {
-    fs.writeFileSync(config.dataFile, JSON.stringify({ forms: [] }, null, 2));
+function listRows(filters = {}) {
+  const clauses = [];
+  const params = {};
+
+  for (const field of ALL_FIELDS) {
+    const value = filters[field.name];
+    if (field.type === 'jalali-date') {
+      const from = filters[`${field.name}_from`];
+      const to = filters[`${field.name}_to`];
+      if (from) {
+        clauses.push(`${field.name} >= @${field.name}_from`);
+        params[`${field.name}_from`] = from;
+      }
+      if (to) {
+        clauses.push(`${field.name} <= @${field.name}_to`);
+        params[`${field.name}_to`] = to;
+      }
+    } else if (value) {
+      if (field.type === 'select') {
+        clauses.push(`${field.name} = @${field.name}`);
+        params[field.name] = value;
+      } else {
+        clauses.push(`${field.name} LIKE @${field.name}`);
+        params[field.name] = `%${value}%`;
+      }
+    }
   }
+
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  return db.prepare(`SELECT * FROM rows ${where} ORDER BY id DESC`).all(params);
 }
 
-function readAll() {
-  ensureDataFile();
-  const raw = fs.readFileSync(config.dataFile, 'utf8');
-  try {
-    return JSON.parse(raw);
-  } catch (e) {
-    return { forms: [] };
-  }
+function getRow(id) {
+  return db.prepare('SELECT * FROM rows WHERE id = ?').get(id);
 }
 
-// نوشتن فایل را صف‌بندی می‌کند تا از رقابت (race condition) بین درخواست‌های همزمان جلوگیری شود
-function writeAll(data) {
-  writeChain = writeChain.then(
-    () =>
-      new Promise((resolve, reject) => {
-        fs.writeFile(config.dataFile, JSON.stringify(data, null, 2), (err) => (err ? reject(err) : resolve()));
-      })
+function insertAuditEntries(rowId, sectionKey, entries, user) {
+  if (!entries.length) return;
+  const changedAt = nowJalaliDateTime();
+  const insert = db.prepare(`
+    INSERT INTO audit_log (row_id, section_key, field_key, field_label, old_value, new_value, changed_by_username, changed_by_display, changed_at)
+    VALUES (@rowId, @sectionKey, @fieldKey, @fieldLabel, @oldValue, @newValue, @username, @display, @changedAt)
+  `);
+  const insertMany = db.transaction((rows) => {
+    for (const row of rows) insert.run(row);
+  });
+  insertMany(
+    entries.map((e) => ({
+      rowId,
+      sectionKey,
+      fieldKey: e.fieldKey,
+      fieldLabel: e.fieldLabel,
+      oldValue: e.oldValue,
+      newValue: e.newValue,
+      username: user.username,
+      display: user.displayName || user.username,
+      changedAt,
+    }))
   );
-  return writeChain;
 }
 
-function listForms() {
-  return readAll().forms.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-}
-
-function getForm(id) {
-  return readAll().forms.find((f) => f.id === id);
-}
-
-async function createForm({ title, requesterName, createdBy }) {
-  const data = readAll();
-  const form = {
-    id: crypto.randomUUID(),
-    title,
-    requesterName,
-    createdBy,
-    createdAt: new Date().toISOString(),
-    sections: {},
+function createRow(values, user) {
+  const section = findSection('tech_operator');
+  const columns = ['created_by_username', 'created_by_display', 'created_at'];
+  const params = {
+    created_by_username: user.username,
+    created_by_display: user.displayName || user.username,
+    created_at: nowJalaliDateTime(),
   };
-  for (const section of sections) {
-    form.sections[section.key] = {
-      status: 'در انتظار تکمیل',
-      values: {},
-      updatedBy: null,
-      updatedAt: null,
-    };
+
+  const auditEntries = [];
+  for (const field of section.fields) {
+    const value = (values[field.name] || '').toString().trim();
+    columns.push(field.name);
+    params[field.name] = value;
+    if (value) {
+      auditEntries.push({ fieldKey: field.name, fieldLabel: field.label, oldValue: '', newValue: value });
+    }
   }
-  data.forms.push(form);
-  await writeAll(data);
-  return form;
+
+  const placeholders = columns.map((c) => `@${c}`).join(', ');
+  const result = db
+    .prepare(`INSERT INTO rows (${columns.join(', ')}) VALUES (${placeholders})`)
+    .run(params);
+
+  insertAuditEntries(result.lastInsertRowid, 'tech_operator', auditEntries, user);
+  return getRow(result.lastInsertRowid);
 }
 
-async function updateSection(formId, sectionKey, values, updatedBy) {
-  const data = readAll();
-  const form = data.forms.find((f) => f.id === formId);
-  if (!form) throw new Error('فرم یافت نشد');
-  form.sections[sectionKey] = {
-    status: 'تکمیل شده',
-    values,
-    updatedBy,
-    updatedAt: new Date().toISOString(),
-  };
-  await writeAll(data);
-  return form;
+function updateSection(rowId, sectionKey, values, user) {
+  const section = findSection(sectionKey);
+  if (!section) throw new Error('بخش نامعتبر است');
+  const current = getRow(rowId);
+  if (!current) throw new Error('ردیف یافت نشد');
+
+  const auditEntries = [];
+  const setClauses = [];
+  const params = { id: rowId };
+
+  for (const field of section.fields) {
+    const newValue = (values[field.name] || '').toString().trim();
+    const oldValue = current[field.name] || '';
+    setClauses.push(`${field.name} = @${field.name}`);
+    params[field.name] = newValue;
+    if (newValue !== oldValue) {
+      auditEntries.push({ fieldKey: field.name, fieldLabel: field.label, oldValue, newValue });
+    }
+  }
+
+  db.prepare(`UPDATE rows SET ${setClauses.join(', ')} WHERE id = @id`).run(params);
+  insertAuditEntries(rowId, sectionKey, auditEntries, user);
+  return getRow(rowId);
 }
 
-module.exports = { listForms, getForm, createForm, updateSection };
+function getRowHistory(rowId) {
+  return db.prepare('SELECT * FROM audit_log WHERE row_id = ? ORDER BY id DESC').all(rowId);
+}
+
+function searchLogs(filters = {}) {
+  const clauses = [];
+  const params = {};
+
+  if (filters.user) {
+    clauses.push('(changed_by_display LIKE @user OR changed_by_username LIKE @user)');
+    params.user = `%${filters.user}%`;
+  }
+  if (filters.fieldKey) {
+    clauses.push('field_key = @fieldKey');
+    params.fieldKey = filters.fieldKey;
+  }
+  if (filters.rowId) {
+    clauses.push('row_id = @rowId');
+    params.rowId = filters.rowId;
+  }
+  if (filters.from) {
+    clauses.push('changed_at >= @from');
+    params.from = filters.from;
+  }
+  if (filters.to) {
+    // یک روز کامل تا انتهای تاریخ «تا» را نیز شامل شود
+    clauses.push('changed_at <= @to');
+    params.to = `${filters.to} 99:99:99`;
+  }
+
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  return db.prepare(`SELECT * FROM audit_log ${where} ORDER BY id DESC LIMIT 1000`).all(params);
+}
+
+module.exports = {
+  listRows,
+  getRow,
+  createRow,
+  updateSection,
+  getRowHistory,
+  searchLogs,
+  ALL_FIELDS,
+  FIELD_BY_NAME,
+};

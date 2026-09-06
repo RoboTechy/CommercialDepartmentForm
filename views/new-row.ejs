@@ -1,0 +1,17 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+  <main class="container">
+    <h1>افزودن ردیف جدید (دفتر فنی بهره‌بردار)</h1>
+    <% if (error && error.length) { %>
+      <div class="alert alert-error"><%= error[0] %></div>
+    <% } %>
+    <form method="post" action="/rows" class="card">
+      <% section.fields.forEach(function(field) { %>
+        <%- include('partials/field-input', { field: field, value: '', todayJalali: todayJalali }) %>
+      <% }) %>
+      <button type="submit" class="btn btn-primary">ایجاد ردیف</button>
+      <a href="/" class="btn">انصراف</a>
+    </form>
+  </main>
+</body>
+</html>

@@ -1,0 +1,20 @@
+<label>
+  <%= field.label %><% if (field.required) { %> <span class="req">*</span><% } %>
+  <% if (field.type === 'textarea') { %>
+    <textarea name="<%= field.name %>" <%= field.required ? 'required' : '' %>><%= value %></textarea>
+  <% } else if (field.type === 'select') { %>
+    <select name="<%= field.name %>">
+      <option value="">— انتخاب کنید —</option>
+      <% field.options.forEach(function(opt) { %>
+        <option value="<%= opt %>" <%= value === opt ? 'selected' : '' %>><%= opt %></option>
+      <% }) %>
+    </select>
+  <% } else if (field.type === 'jalali-date') { %>
+    <div class="jalali-date-input">
+      <input type="text" name="<%= field.name %>" value="<%= value %>" placeholder="1403/05/12" class="jalali-date-text" />
+      <button type="button" class="btn btn-sm today-btn" data-today="<%= todayJalali %>">امروز</button>
+    </div>
+  <% } else { %>
+    <input type="text" name="<%= field.name %>" value="<%= value %>" <%= field.required ? 'required' : '' %> />
+  <% } %>
+</label>

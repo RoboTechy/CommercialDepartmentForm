@@ -1,45 +1,84 @@
 <%- include('partials/head') %>
 <%- include('partials/nav', { user }) %>
-  <main class="container">
-    <div class="page-header">
-      <h1>فهرست فرم‌ها</h1>
-      <a href="/forms/new" class="btn btn-primary">+ ایجاد فرم جدید</a>
+  <main class="container container-wide">
+    <div class="page-header no-print">
+      <h1>فهرست ردیف‌های درخواست</h1>
+      <div class="actions">
+        <% if (canCreateRows) { %>
+          <a href="/rows/new" class="btn btn-primary">+ افزودن ردیف جدید</a>
+        <% } %>
+        <button type="button" class="btn" onclick="window.print()">چاپ نتایج</button>
+      </div>
     </div>
 
-    <% if (!forms.length) { %>
-      <p class="muted">هنوز فرمی ثبت نشده است.</p>
-    <% } else { %>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>عنوان</th>
-            <th>درخواست‌کننده</th>
-            <th>ایجادکننده</th>
-            <th>تاریخ ایجاد</th>
-            <th>وضعیت بخش‌ها</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <% forms.forEach(function(form) { %>
+    <form method="get" action="/" class="filter-form">
+      <div class="table-scroll">
+        <table class="table sheet-table">
+          <thead>
             <tr>
-              <td><%= form.title %></td>
-              <td><%= form.requesterName || '-' %></td>
-              <td><%= form.createdBy %></td>
-              <td><%= new Date(form.createdAt).toLocaleString('fa-IR') %></td>
-              <td>
-                <% Object.keys(form.sections).forEach(function(key) { %>
-                  <span class="badge <%= form.sections[key].status === 'تکمیل شده' ? 'badge-done' : 'badge-pending' %>">
-                    <%= key %>
-                  </span>
-                <% }) %>
-              </td>
-              <td><a href="/forms/<%= form.id %>" class="btn btn-sm">مشاهده / تکمیل</a></td>
+              <th rowspan="3" class="col-id">ردیف</th>
+              <% sections.forEach(function(section) { %>
+                <th colspan="<%= section.fields.length %>" class="section-head section-<%= section.key %>"><%= section.title %></th>
+              <% }) %>
+              <th rowspan="3" class="col-actions no-print">عملیات</th>
             </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    <% } %>
+            <tr>
+              <% sections.forEach(function(section) { %>
+                <% section.fields.forEach(function(field) { %>
+                  <th class="section-<%= section.key %>"><%= field.label %></th>
+                <% }) %>
+              <% }) %>
+            </tr>
+            <tr class="filter-row no-print">
+              <% sections.forEach(function(section) { %>
+                <% section.fields.forEach(function(field) { %>
+                  <th class="section-<%= section.key %>">
+                    <% if (field.type === 'select') { %>
+                      <select name="<%= field.name %>">
+                        <option value="">همه</option>
+                        <% field.options.forEach(function(opt) { %>
+                          <option value="<%= opt %>" <%= query[field.name] === opt ? 'selected' : '' %>><%= opt %></option>
+                        <% }) %>
+                      </select>
+                    <% } else if (field.type === 'jalali-date') { %>
+                      <div class="filter-date-range">
+                        <input type="text" name="<%= field.name %>_from" placeholder="از" value="<%= query[field.name + '_from'] || '' %>" />
+                        <input type="text" name="<%= field.name %>_to" placeholder="تا" value="<%= query[field.name + '_to'] || '' %>" />
+                      </div>
+                    <% } else { %>
+                      <input type="text" name="<%= field.name %>" placeholder="جستجو..." value="<%= query[field.name] || '' %>" />
+                    <% } %>
+                  </th>
+                <% }) %>
+              <% }) %>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (!rows.length) { %>
+              <tr><td colspan="100" class="muted center-cell">هیچ ردیفی با این فیلتر پیدا نشد.</td></tr>
+            <% } %>
+            <% rows.forEach(function(row) { %>
+              <tr>
+                <td><%= row.id %></td>
+                <% sections.forEach(function(section) { %>
+                  <% section.fields.forEach(function(field) { %>
+                    <td class="section-<%= section.key %>"><%= row[field.name] || '-' %></td>
+                  <% }) %>
+                <% }) %>
+                <td class="no-print actions-cell">
+                  <a href="/rows/<%= row.id %>" class="btn btn-sm">مشاهده / ویرایش</a>
+                  <a href="/rows/<%= row.id %>/history" class="btn btn-sm">تاریخچه</a>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <div class="filter-actions no-print">
+        <button type="submit" class="btn btn-primary btn-sm">اعمال فیلتر</button>
+        <a href="/" class="btn btn-sm">پاک کردن فیلترها</a>
+      </div>
+    </form>
   </main>
 </body>
 </html>

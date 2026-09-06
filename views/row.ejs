@@ -1,0 +1,66 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+  <main class="container">
+    <div class="page-header no-print">
+      <div>
+        <h1>ردیف شماره <%= row.id %></h1>
+        <p class="muted">
+          ایجاد شده توسط <%= row.created_by_display %> در <%= row.created_at %>
+        </p>
+      </div>
+      <div class="actions">
+        <a href="/rows/<%= row.id %>/history" class="btn">تاریخچه‌ی این ردیف</a>
+        <button type="button" class="btn" onclick="window.print()">چاپ این ردیف</button>
+        <a href="/" class="btn">بازگشت به فهرست</a>
+      </div>
+    </div>
+
+    <div class="print-only print-header">
+      <h1>ردیف شماره <%= row.id %></h1>
+      <p>ایجاد شده توسط <%= row.created_by_display %> در <%= row.created_at %></p>
+    </div>
+
+    <% if (message && message.length) { %>
+      <div class="alert alert-success no-print"><%= message[0] %></div>
+    <% } %>
+    <% if (error && error.length) { %>
+      <div class="alert alert-error no-print"><%= error[0] %></div>
+    <% } %>
+
+    <% sectionsView.forEach(function(section) { %>
+      <section class="card section-card">
+        <div class="section-header">
+          <h2><%= section.title %></h2>
+        </div>
+
+        <% if (section.canEdit) { %>
+          <form method="post" action="/rows/<%= row.id %>/sections/<%= section.key %>" class="section-form no-print">
+            <% section.fields.forEach(function(field) { %>
+              <%- include('partials/field-input', { field: field, value: row[field.name] || '', todayJalali: todayJalali }) %>
+            <% }) %>
+            <button type="submit" class="btn btn-primary">ثبت / بروزرسانی «<%= section.title %>»</button>
+          </form>
+          <div class="readonly-fields print-only">
+            <% section.fields.forEach(function(field) { %>
+              <div class="ro-field">
+                <span class="ro-label"><%= field.label %>:</span>
+                <span class="ro-value"><%= row[field.name] || '-' %></span>
+              </div>
+            <% }) %>
+          </div>
+        <% } else { %>
+          <div class="readonly-fields">
+            <% section.fields.forEach(function(field) { %>
+              <div class="ro-field">
+                <span class="ro-label"><%= field.label %>:</span>
+                <span class="ro-value"><%= row[field.name] || '-' %></span>
+              </div>
+            <% }) %>
+            <p class="muted small no-print">🔒 شما مجاز به ویرایش این بخش نیستید (فقط پرسنل «<%= section.title %>»<% if (isAdmin) { %> یا مدیر سیستم<% } %>).</p>
+          </div>
+        <% } %>
+      </section>
+    <% }) %>
+  </main>
+</body>
+</html>

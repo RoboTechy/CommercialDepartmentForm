@@ -64,11 +64,11 @@ services:
       - LDAP_USER_BASE=ou=people,dc=example,dc=com
       - LDAP_GROUP_BASE=ou=groups,dc=example,dc=com
       - LDAP_USERNAME_ATTRIBUTE=uid
-      - LDAP_GROUP_TECHNICAL=technical
-      - LDAP_GROUP_OPERATOR=operator
+      - LDAP_GROUP_TECH_OPERATOR=tech_operator
       - LDAP_GROUP_WAREHOUSE=warehouse
       - LDAP_GROUP_COMMERCIAL=commercial
       - LDAP_GROUP_ADMIN=formadmin
+      - DB_FILE=/app/data/app.db
     ports:
       - "3000:3000"
     volumes:

@@ -1,0 +1,74 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+  <main class="container container-wide">
+    <div class="page-header no-print">
+      <h1>تاریخچه‌ی کامل تغییرات</h1>
+      <button type="button" class="btn" onclick="window.print()">چاپ نتایج</button>
+    </div>
+
+    <form method="get" action="/logs" class="card filter-card no-print">
+      <div class="filter-grid">
+        <label>کاربر
+          <input type="text" name="user" value="<%= filters.user %>" placeholder="نام کاربری یا نام نمایشی" />
+        </label>
+        <label>فیلد
+          <select name="fieldKey">
+            <option value="">همه فیلدها</option>
+            <% sections.forEach(function(section) { %>
+              <optgroup label="<%= section.title %>">
+                <% section.fields.forEach(function(field) { %>
+                  <option value="<%= field.name %>" <%= filters.fieldKey === field.name ? 'selected' : '' %>><%= field.label %></option>
+                <% }) %>
+              </optgroup>
+            <% }) %>
+          </select>
+        </label>
+        <label>شماره ردیف
+          <input type="number" name="rowId" value="<%= filters.rowId %>" placeholder="مثلا 12" />
+        </label>
+        <label>از تاریخ
+          <input type="text" name="from" value="<%= filters.from %>" placeholder="1403/01/01" />
+        </label>
+        <label>تا تاریخ
+          <input type="text" name="to" value="<%= filters.to %>" placeholder="1403/12/29" />
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">جستجو</button>
+      <a href="/logs" class="btn btn-sm">پاک کردن فیلترها</a>
+    </form>
+
+    <% if (!logs.length) { %>
+      <p class="muted">هیچ تغییری با این فیلتر پیدا نشد.</p>
+    <% } else { %>
+      <div class="table-scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>تاریخ و ساعت</th>
+              <th>ردیف</th>
+              <th>بخش</th>
+              <th>فیلد</th>
+              <th>مقدار قبلی</th>
+              <th>مقدار جدید</th>
+              <th>تغییر توسط</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% logs.forEach(function(entry) { %>
+              <tr>
+                <td><%= entry.changed_at %></td>
+                <td><a href="/rows/<%= entry.row_id %>" class="no-print">#<%= entry.row_id %></a><span class="print-only">#<%= entry.row_id %></span></td>
+                <td><% var sec = sections.find(function(s) { return s.key === entry.section_key; }); %><%= sec ? sec.title : entry.section_key %></td>
+                <td><%= entry.field_label %></td>
+                <td><%= entry.old_value || '-' %></td>
+                <td><%= entry.new_value || '-' %></td>
+                <td><%= entry.changed_by_display %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </main>
+</body>
+</html>

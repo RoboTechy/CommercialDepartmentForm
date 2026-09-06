@@ -1,7 +1,7 @@
 {
   "name": "commercial-department-form",
   "version": "1.0.0",
-  "description": "فرم مشترک بخش‌های فنی/بهره‌بردار/انبار کارفرما/بازرگانی غدیر با احراز هویت LDAP",
+  "description": "فرم مشترک دفتر فنی بهره‌بردار/انبار کارفرما/بازرگانی غدیر با احراز هویت LDAP و لاگ کامل تغییرات",
   "private": true,
   "main": "server.js",
   "scripts": {
@@ -9,11 +9,13 @@
     "dev": "node server.js"
   },
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "connect-flash": "^0.1.1",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
+    "jalaali-js": "^2.0.1",
     "ldapjs": "^3.0.7",
     "morgan": "^1.10.0"
   }
