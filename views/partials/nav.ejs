@@ -2,6 +2,7 @@
   <div class="brand"><a href="/" class="brand-link">فرم مشترک دفتر فنی بهره‌بردار / انبار کارفرما / بازرگانی غدیر</a></div>
   <% if (typeof user !== 'undefined' && user) { %>
   <div class="user-box">
+    <a href="/" class="nav-link">🏠 خانه</a>
     <a href="/logs" class="nav-link">تاریخچه‌ی کامل تغییرات</a>
     <span>خوش آمدید، <strong><%= user.displayName %></strong></span>
     <span class="groups"><%= user.groups && user.groups.length ? user.groups.join('، ') : 'بدون گروه' %></span>
