@@ -1,7 +1,7 @@
 {
-  "name": "commercial-department-form",
+  "name": "prt",
   "version": "1.0.0",
-  "description": "فرم مشترک دفتر فنی بهره‌بردار/انبار کارفرما/بازرگانی غدیر با احراز هویت LDAP و لاگ کامل تغییرات",
+  "description": "PRT - فرم مشترک دفتر فنی بهره‌بردار/انبار کارفرما/بازرگانی غدیر با احراز هویت LDAP و لاگ کامل تغییرات",
   "private": true,
   "main": "server.js",
   "scripts": {

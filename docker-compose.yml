@@ -1,89 +1,27 @@
 services:
-  openldap:
-    image: osixia/openldap:1.5.0
-    environment:
-      - LDAP_ORGANISATION=Ghadir Commercial
-      - LDAP_DOMAIN=example.com
-      - LDAP_ADMIN_PASSWORD=adminpassword
-      - LDAP_TLS=false
-    volumes:
-      - openldap_data:/var/lib/ldap
-      - openldap_config:/etc/ldap/slapd.d
-    ports:
-      - "1389:389"
-    networks: [appnet]
-
-  # سرویس یک‌باره‌ای که بعد از بالا آمدن OpenLDAP، کاربران/گروه‌های تستی را
-  # با ldapadd اضافه می‌کند. عمداً به پوشه‌های داخلی ایمیج openldap دست
-  # نمی‌زند (بر خلاف مکانیزم bootstrap خودِ ایمیج که با bind mount مشکل دارد)
-  ldap-init:
-    image: osixia/openldap:1.5.0
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        until ldapwhoami -x -H ldap://openldap:389 -D "cn=admin,dc=example,dc=com" -w adminpassword >/dev/null 2>&1; do
-          echo "در انتظار آماده شدن OpenLDAP..."
-          sleep 2
-        done
-        if ldapsearch -x -H ldap://openldap:389 -D "cn=admin,dc=example,dc=com" -w adminpassword -b "ou=people,dc=example,dc=com" -s base >/dev/null 2>&1; then
-          echo "داده‌های تستی از قبل در LDAP موجودند، بارگذاری دوباره رد شد."
-          exit 0
-        fi
-        if [ ! -f /bootstrap/bootstrap.ldif ] || [ ! -s /bootstrap/bootstrap.ldif ]; then
-          echo "خطا: /bootstrap/bootstrap.ldif یافت نشد یا خالی است (mount درست انجام نشده است)." >&2
-          exit 1
-        fi
-        ldapadd -x -H ldap://openldap:389 -D "cn=admin,dc=example,dc=com" -w adminpassword -f /bootstrap/bootstrap.ldif
-        echo "بارگذاری کاربران/گروه‌های تستی LDAP با موفقیت انجام شد."
-    volumes:
-      - ./ldap/bootstrap.ldif:/bootstrap/bootstrap.ldif:ro
-    depends_on:
-      - openldap
-    networks: [appnet]
-
-  # پنل مدیریت وب برای مشاهده/مدیریت کاربران و گروه‌های LDAP تستی (اختیاری)
-  phpldapadmin:
-    image: osixia/phpldapadmin:0.9.0
-    environment:
-      - PHPLDAPADMIN_LDAP_HOSTS=openldap
-      - PHPLDAPADMIN_HTTPS=false
-    ports:
-      - "8081:80"
-    depends_on:
-      - openldap
-    networks: [appnet]
-
   web:
     build: .
+    # مقادیر حساس (SESSION_SECRET, LDAP_BIND_PASSWORD) هرگز اینجا نوشته نمی‌شوند؛
+    # از فایل .env (که هرگز کامیت نمی‌شود) خوانده می‌شوند
+    env_file:
+      - .env
     environment:
       - PORT=3000
-      - SESSION_SECRET=change-me-to-a-random-secret
-      - LDAP_URL=ldap://openldap:389
-      - LDAP_BIND_DN=cn=admin,dc=example,dc=com
-      - LDAP_BIND_PASSWORD=adminpassword
-      - LDAP_USER_BASE=ou=people,dc=example,dc=com
-      - LDAP_GROUP_BASE=ou=groups,dc=example,dc=com
-      - LDAP_USERNAME_ATTRIBUTE=uid
-      - LDAP_GROUP_TECH_OPERATOR=tech_operator
-      - LDAP_GROUP_WAREHOUSE=warehouse
-      - LDAP_GROUP_COMMERCIAL=commercial
-      - LDAP_GROUP_ADMIN=formadmin
       - DB_FILE=/app/data/app.db
+      - LDAP_URL=ldap://192.168.201.15:389
+      - LDAP_BIND_DN=PRT@bh.igisco.ocmc
+      - LDAP_USER_BASE=DC=bh,DC=igisco,DC=ocmc
+      - LDAP_GROUP_BASE=DC=bh,DC=igisco,DC=ocmc
+      - LDAP_USERNAME_ATTRIBUTE=sAMAccountName
+      - LDAP_GROUP_TECH_OPERATOR=PRT-Technical
+      - LDAP_GROUP_WAREHOUSE=PRT-Warehouse
+      - LDAP_GROUP_COMMERCIAL=PRT-Commercial
+      - LDAP_GROUP_ADMIN=PRT-Admins
     ports:
       - "3000:3000"
     volumes:
       - form_data:/app/data
-    depends_on:
-      openldap:
-        condition: service_started
-      ldap-init:
-        condition: service_completed_successfully
-    networks: [appnet]
+    restart: unless-stopped
 
 volumes:
-  openldap_data:
-  openldap_config:
   form_data:
-
-networks:
-  appnet:

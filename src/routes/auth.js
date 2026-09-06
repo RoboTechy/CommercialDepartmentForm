@@ -4,7 +4,7 @@ const ldap = require('../ldap');
 
 router.get('/login', (req, res) => {
   if (req.session.user) return res.redirect('/');
-  res.render('login', { title: 'ورود به سامانه', error: req.flash('error') });
+  res.render('login', { title: 'ورود به PRT', error: req.flash('error') });
 });
 
 router.post('/login', async (req, res) => {
