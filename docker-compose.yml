@@ -6,13 +6,31 @@ services:
       - LDAP_DOMAIN=example.com
       - LDAP_ADMIN_PASSWORD=adminpassword
       - LDAP_TLS=false
-      - LDAP_REMOVE_CONFIG_AFTER_SETUP=false
     volumes:
-      - ./ldap/bootstrap.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/bootstrap.ldif
       - openldap_data:/var/lib/ldap
       - openldap_config:/etc/ldap/slapd.d
     ports:
       - "1389:389"
+    networks: [appnet]
+
+  # سرویس یک‌باره‌ای که بعد از بالا آمدن OpenLDAP، کاربران/گروه‌های تستی را
+  # با ldapadd اضافه می‌کند. عمداً به پوشه‌های داخلی ایمیج openldap دست
+  # نمی‌زند (بر خلاف مکانیزم bootstrap خودِ ایمیج که با bind mount مشکل دارد)
+  ldap-init:
+    image: osixia/openldap:1.5.0
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until ldapwhoami -x -H ldap://openldap:389 -D "cn=admin,dc=example,dc=com" -w adminpassword >/dev/null 2>&1; do
+          echo "در انتظار آماده شدن OpenLDAP..."
+          sleep 2
+        done
+        ldapadd -x -H ldap://openldap:389 -D "cn=admin,dc=example,dc=com" -w adminpassword -f /bootstrap/bootstrap.ldif || true
+        echo "بارگذاری کاربران/گروه‌های تستی LDAP انجام شد (یا از قبل وجود داشتند)."
+    volumes:
+      - ./ldap/bootstrap.ldif:/bootstrap/bootstrap.ldif:ro
+    depends_on:
+      - openldap
     networks: [appnet]
 
   # پنل مدیریت وب برای مشاهده/مدیریت کاربران و گروه‌های LDAP تستی (اختیاری)
@@ -48,7 +66,10 @@ services:
     volumes:
       - form_data:/app/data
     depends_on:
-      - openldap
+      openldap:
+        condition: service_started
+      ldap-init:
+        condition: service_completed_successfully
     networks: [appnet]
 
 volumes:
