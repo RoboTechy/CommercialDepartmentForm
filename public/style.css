@@ -1,7 +1,25 @@
+/* فایل‌های فونت را در public/fonts/iransansweb/ قرار دهید (راهنما در همان پوشه) */
+@font-face {
+  font-family: 'IRANSansWeb';
+  src: url('/fonts/iransansweb/IRANSansWeb.woff2') format('woff2'),
+       url('/fonts/iransansweb/IRANSansWeb.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IRANSansWeb';
+  src: url('/fonts/iransansweb/IRANSansWeb_Bold.woff2') format('woff2'),
+       url('/fonts/iransansweb/IRANSansWeb_Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: Tahoma, "Vazirmatn", "Segoe UI", sans-serif;
+  font-family: 'IRANSansWeb', Tahoma, "Vazirmatn", "Segoe UI", sans-serif;
   background: #eaf3fb;
   color: #1f2937;
 }
