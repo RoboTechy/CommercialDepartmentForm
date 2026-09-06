@@ -92,10 +92,12 @@ async function authenticate(username, password) {
     userClient = createClient();
     await bindAsync(userClient, userDN, password);
 
-    // یافتن گروه‌هایی که کاربر عضو آن است
+    // یافتن گروه‌هایی که کاربر عضو آن است. عمداً روی objectClass فیلتر نمی‌کنیم
+    // چون OpenLDAP از groupOfNames و Active Directory از group استفاده می‌کند؛
+    // هر دو ویژگی member را یکسان دارند.
     const groupEntries = await searchAsync(searchClient, config.ldap.groupBase, {
       scope: 'sub',
-      filter: `(&(objectClass=groupOfNames)(member=${escapeFilterValue(userDN)}))`,
+      filter: `(member=${escapeFilterValue(userDN)})`,
       attributes: ['cn'],
     });
     const groups = groupEntries.map((g) => g.attrs.cn);
