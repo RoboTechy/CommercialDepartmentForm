@@ -18,7 +18,7 @@ services:
       - LDAP_GROUP_COMMERCIAL=PRT-Commercial
       - LDAP_GROUP_ADMIN=PRT-Admins
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - form_data:/app/data
     restart: unless-stopped
