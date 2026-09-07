@@ -57,6 +57,18 @@ ${fieldColumns}
     CREATE INDEX IF NOT EXISTS idx_audit_changed_at ON audit_log(changed_at);
   `);
 
+  // مهاجرت خودکار: اگر در آینده فیلد جدیدی به sections.js اضافه شود، جدول
+  // rows که از قبل با داده‌ی واقعی وجود دارد را نمی‌شکند - فقط ستون جدید را
+  // با ALTER TABLE اضافه می‌کند (بدون لمس ردیف‌های موجود)
+  const existingColumns = new Set(
+    all('PRAGMA table_info(rows)').map((col) => col.name)
+  );
+  for (const field of allFields()) {
+    if (!existingColumns.has(field.name)) {
+      sqlDb.run(`ALTER TABLE rows ADD COLUMN ${field.name} TEXT NOT NULL DEFAULT ''`);
+    }
+  }
+
   persist();
 })();
 
