@@ -46,7 +46,7 @@
                         <input type="text" class="jalali-date-text" name="<%= field.name %>_to" placeholder="تا" value="<%= query[field.name + '_to'] || '' %>" />
                       </div>
                     <% } else { %>
-                      <input type="text" name="<%= field.name %>" placeholder="جستجو..." value="<%= query[field.name] || '' %>" />
+                      <input type="text" name="<%= field.name %>" placeholder="جستجو..." value="<%= query[field.name] || '' %>" list="dl-<%= field.name %>" autocomplete="off" />
                     <% } %>
                   </th>
                 <% }) %>
@@ -79,6 +79,18 @@
         <a href="/" class="btn btn-sm">پاک کردن فیلترها</a>
       </div>
     </form>
+
+    <% sections.forEach(function(section) { %>
+      <% section.fields.forEach(function(field) { %>
+        <% if (distinctValues[field.name]) { %>
+          <datalist id="dl-<%= field.name %>">
+            <% distinctValues[field.name].forEach(function(val) { %>
+              <option value="<%= val %>"></option>
+            <% }) %>
+          </datalist>
+        <% } %>
+      <% }) %>
+    <% }) %>
   </main>
 </body>
 </html>

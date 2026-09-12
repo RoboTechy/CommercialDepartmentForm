@@ -41,6 +41,14 @@ function getRow(id) {
   return db.get('SELECT * FROM rows WHERE id = @id', { '@id': id });
 }
 
+// مقادیر یکتا و غیرخالی یک ستون، برای پیشنهاد خودکار (autocomplete) در فیلتر جستجو
+function getDistinctValues(fieldName) {
+  if (!FIELD_BY_NAME.has(fieldName)) return [];
+  return db
+    .all(`SELECT DISTINCT ${fieldName} AS value FROM rows WHERE ${fieldName} IS NOT NULL AND ${fieldName} != '' ORDER BY ${fieldName}`)
+    .map((row) => row.value);
+}
+
 function insertAuditEntries(rowId, sectionKey, entries, user) {
   if (!entries.length) return;
   const changedAt = nowJalaliDateTime();
@@ -156,6 +164,7 @@ function searchLogs(filters = {}) {
 module.exports = {
   listRows,
   getRow,
+  getDistinctValues,
   createRow,
   updateSection,
   getRowHistory,

@@ -24,6 +24,14 @@ router.get('/', (req, res) => {
   const user = req.session.user;
   const filters = buildFiltersFromQuery(req.query);
   const rows = store.listRows(filters);
+
+  const distinctValues = {};
+  for (const field of allFields()) {
+    if (field.type === 'text' || field.type === 'textarea') {
+      distinctValues[field.name] = store.getDistinctValues(field.name);
+    }
+  }
+
   res.render('dashboard', {
     rows,
     sections,
@@ -31,6 +39,7 @@ router.get('/', (req, res) => {
     user,
     canCreateRows: canCreateRows(user),
     todayJalali: todayJalaliDate(),
+    distinctValues,
   });
 });
 

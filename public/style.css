@@ -19,10 +19,20 @@
 :root {
   --brand-50: #eef2ff;
   --brand-100: #e0e7ff;
+  --brand-400: #818cf8;
   --brand-500: #6366f1;
   --brand-600: #4f46e5;
   --brand-700: #4338ca;
+  --brand-800: #3730a3;
   --brand-900: #1e1b4b;
+
+  --teal-500: #14b8a6;
+  --teal-600: #0d9488;
+  --teal-700: #0f766e;
+
+  --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --amber-700: #b45309;
 
   --ink-900: #111827;
   --ink-700: #374151;
@@ -31,7 +41,7 @@
   --ink-200: #e5e7eb;
   --ink-100: #f3f4f6;
 
-  --bg: #f4f5fb;
+  --bg: #f4f6fc;
   --card-bg: #ffffff;
   --success-bg: #ecfdf5;
   --success-fg: #047857;
@@ -42,10 +52,10 @@
 
   --section-tech: #eef2ff;
   --section-tech-strong: #c7d2fe;
-  --section-warehouse: #ecfdf5;
-  --section-warehouse-strong: #a7f3d0;
+  --section-warehouse: #f0fdfa;
+  --section-warehouse-strong: #5eead4;
   --section-commercial: #fffbeb;
-  --section-commercial-strong: #fde68a;
+  --section-commercial-strong: #fcd34d;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -65,7 +75,7 @@ body {
 }
 
 .topbar {
-  background: linear-gradient(135deg, var(--brand-900) 0%, var(--brand-700) 100%);
+  background: linear-gradient(120deg, var(--brand-900) 0%, var(--brand-700) 55%, var(--brand-600) 100%);
   color: #fff;
   padding: 14px 28px;
   display: flex;
@@ -178,10 +188,11 @@ textarea { min-height: 84px; resize: vertical; }
 .btn:active { transform: translateY(1px); }
 .btn-sm { padding: 6px 12px; font-size: 12.5px; }
 .btn-primary {
-  background: linear-gradient(135deg, var(--brand-600), var(--brand-500));
+  background: linear-gradient(135deg, var(--brand-700), var(--brand-500));
   border-color: var(--brand-600);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(79, 70, 229, 0.35);
 }
 .btn-primary:hover { background: var(--brand-700); border-color: var(--brand-700); }
 
@@ -191,7 +202,7 @@ textarea { min-height: 84px; resize: vertical; }
 
 .table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: var(--radius-md); overflow: hidden; }
 .table th, .table td { padding: 11px 14px; text-align: right; border-bottom: 1px solid var(--ink-100); font-size: 13.5px; }
-.table th { background: var(--ink-100); font-weight: 700; color: var(--ink-700); }
+.table th { background: var(--ink-100); font-weight: 800; color: var(--ink-900); }
 .table tbody tr:hover { background: #fafaff; }
 
 .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-inline-end: 4px; }
@@ -199,6 +210,9 @@ textarea { min-height: 84px; resize: vertical; }
 .badge-done { background: var(--success-bg); color: var(--success-fg); }
 
 .section-card { border-inline-start: 4px solid var(--brand-500); }
+.section-card.section-tech_operator { border-inline-start-color: var(--brand-500); }
+.section-card.section-warehouse { border-inline-start-color: var(--teal-500); }
+.section-card.section-commercial { border-inline-start-color: var(--amber-500); }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .readonly-fields { background: var(--ink-100); border-radius: var(--radius-sm); padding: 14px; }
 .ro-field { display: flex; gap: 8px; padding: 5px 0; font-size: 14px; border-bottom: 1px dashed var(--ink-200); }
@@ -215,7 +229,14 @@ textarea { min-height: 84px; resize: vertical; }
 .sheet-table td { white-space: normal; max-width: 220px; }
 .col-id { min-width: 60px; }
 .col-actions { min-width: 180px; }
-.section-head { text-align: center; font-size: 12.5px; text-transform: none; letter-spacing: 0.2px; }
+.sheet-table th.section-head {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink-900);
+  text-transform: none;
+  letter-spacing: 0.2px;
+}
 .section-tech_operator { background: var(--section-tech); }
 .section-warehouse { background: var(--section-warehouse); }
 .section-commercial { background: var(--section-commercial); }
