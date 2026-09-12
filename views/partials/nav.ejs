@@ -10,7 +10,6 @@
     <a href="/" class="nav-link">🏠 خانه</a>
     <a href="/logs" class="nav-link">تاریخچه‌ی کامل تغییرات</a>
     <span>خوش آمدید، <strong><%= user.displayName %></strong></span>
-    <span class="groups"><%= user.groups && user.groups.length ? user.groups.join('، ') : 'بدون گروه' %></span>
     <form method="post" action="/logout" style="display:inline">
       <button type="submit" class="link-btn">خروج</button>
     </form>
