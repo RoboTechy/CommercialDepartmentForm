@@ -107,8 +107,9 @@ router.post('/rows', (req, res) => {
     values[field.name] = value;
   }
 
-  if (!values.request_no || !values.item_description) {
-    req.flash('error', 'شماره درخواست کالا و شرح کالا الزامی است.');
+  const missingLabels = section.fields.filter((f) => f.required && !values[f.name]).map((f) => f.label);
+  if (missingLabels.length) {
+    req.flash('error', `تکمیل این فیلدها الزامی است: ${missingLabels.join('، ')}`);
     return res.redirect('/rows/new');
   }
 
@@ -169,6 +170,12 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
       value = normalized;
     }
     values[field.name] = value;
+  }
+
+  const missingLabels = section.fields.filter((f) => f.required && !values[f.name]).map((f) => f.label);
+  if (missingLabels.length) {
+    req.flash('error', `تکمیل این فیلدها الزامی است: ${missingLabels.join('، ')}`);
+    return res.redirect(`/rows/${id}`);
   }
 
   store.updateSection(id, sectionKey, values, user);
