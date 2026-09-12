@@ -49,7 +49,7 @@ document.addEventListener('click', function (e) {
     }
     popup.style.position = 'fixed';
     popup.style.top = Math.max(8, Math.min(top, window.innerHeight - popupHeight - 8)) + 'px';
-    popup.style.insetInlineStart = Math.max(8, Math.min(rect.left, window.innerWidth - 268)) + 'px';
+    popup.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 268)) + 'px';
   }
 
   function renderCalendar(data) {
