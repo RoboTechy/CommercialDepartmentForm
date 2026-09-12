@@ -18,21 +18,21 @@
             <tr>
               <th rowspan="3" class="col-id">ردیف</th>
               <% sections.forEach(function(section) { %>
-                <th colspan="<%= section.fields.length %>" class="section-head section-<%= section.key %>"><%= section.title %></th>
+                <th colspan="<%= section.fields.length %>" class="section-head section-<%= section.color %>"><%= section.title %></th>
               <% }) %>
               <th rowspan="3" class="col-actions no-print">عملیات</th>
             </tr>
             <tr>
               <% sections.forEach(function(section) { %>
                 <% section.fields.forEach(function(field) { %>
-                  <th class="section-<%= section.key %>"><%= field.label %></th>
+                  <th class="section-<%= section.color %>"><%= field.label %></th>
                 <% }) %>
               <% }) %>
             </tr>
             <tr class="filter-row no-print">
               <% sections.forEach(function(section) { %>
                 <% section.fields.forEach(function(field) { %>
-                  <th class="section-<%= section.key %>">
+                  <th class="section-<%= section.color %>">
                     <% if (field.type === 'select') { %>
                       <select name="<%= field.name %>">
                         <option value="">همه</option>
@@ -42,8 +42,8 @@
                       </select>
                     <% } else if (field.type === 'jalali-date') { %>
                       <div class="filter-date-range">
-                        <input type="text" name="<%= field.name %>_from" placeholder="از" value="<%= query[field.name + '_from'] || '' %>" />
-                        <input type="text" name="<%= field.name %>_to" placeholder="تا" value="<%= query[field.name + '_to'] || '' %>" />
+                        <input type="text" class="jalali-date-text" name="<%= field.name %>_from" placeholder="از" value="<%= query[field.name + '_from'] || '' %>" />
+                        <input type="text" class="jalali-date-text" name="<%= field.name %>_to" placeholder="تا" value="<%= query[field.name + '_to'] || '' %>" />
                       </div>
                     <% } else { %>
                       <input type="text" name="<%= field.name %>" placeholder="جستجو..." value="<%= query[field.name] || '' %>" />
@@ -62,7 +62,7 @@
                 <td><%= row.id %></td>
                 <% sections.forEach(function(section) { %>
                   <% section.fields.forEach(function(field) { %>
-                    <td class="section-<%= section.key %>"><%= row[field.name] || '-' %></td>
+                    <td class="section-<%= section.color %>"><%= row[field.name] || '-' %></td>
                   <% }) %>
                 <% }) %>
                 <td class="no-print actions-cell">

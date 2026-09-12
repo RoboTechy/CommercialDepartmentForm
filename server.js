@@ -7,6 +7,7 @@ const config = require('./src/config');
 const db = require('./src/db');
 const authRoutes = require('./src/routes/auth');
 const rowRoutes = require('./src/routes/rows');
+const apiRoutes = require('./src/routes/api');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use(
 app.use(flash());
 
 app.use('/', authRoutes);
+app.use('/', apiRoutes);
 app.use('/', rowRoutes);
 
 app.use((req, res) => {
