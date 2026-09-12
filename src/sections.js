@@ -21,7 +21,7 @@ const sections = [
       { name: 'item_description', label: 'شرح کالا', type: 'textarea', required: true },
       { name: 'priority', label: 'اولویت', type: 'select', options: ['A++', 'A+', 'A', 'B', 'C', 'D'] },
       { name: 'total_qty', label: 'تعداد کل', type: 'text' },
-      { name: 'unit', label: 'واحد', type: 'text' },
+      { name: 'unit', label: 'واحد', type: 'text', hint: 'مثلاً: عدد، کیلوگرم، لیتر، متر، بسته' },
       { name: 'usage_location', label: 'محل مصرف', type: 'text' },
       { name: 'delivery_to_warehouse_date', label: 'تاریخ تحویل درخواست به انبار', type: 'jalali-date' },
       { name: 'item_type', label: 'نوع کالا', type: 'select', options: ['استاندارد', 'ساخت'] },

@@ -142,6 +142,7 @@ h2 { margin: 0; font-size: 17px; font-weight: 700; color: var(--ink-900); }
 .muted.small { font-size: 12px; margin-top: 4px; }
 
 label { display: block; margin-bottom: 14px; font-size: 13.5px; font-weight: 600; color: var(--ink-700); }
+.field-hint { display: inline-block; margin-inline-start: 6px; font-size: 12px; font-weight: 400; color: var(--ink-500); }
 input, textarea, select {
   display: block;
   width: 100%;
