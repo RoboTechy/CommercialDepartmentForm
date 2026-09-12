@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -r
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --omit=dev
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 COPY . .
 
