@@ -8,7 +8,6 @@
   <% if (typeof user !== 'undefined' && user) { %>
   <div class="user-box">
     <a href="/" class="nav-link">🏠 خانه</a>
-    <a href="/logs" class="nav-link">تاریخچه‌ی کامل تغییرات</a>
     <span>خوش آمدید، <strong><%= user.displayName %></strong></span>
     <form method="post" action="/logout" style="display:inline">
       <button type="submit" class="link-btn">خروج</button>
