@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const store = require('../store');
+const config = require('../config');
 const { sections, findSection, allFields } = require('../sections');
 const { requireLogin, canEditSection, canCreateRows, isAdmin } = require('../middleware');
-const { normalizeJalaliDate, todayJalaliDate } = require('../jalaali');
+const { normalizeJalaliDate, todayJalaliDate, daysSinceJalali } = require('../jalaali');
 
 router.use(requireLogin);
 
@@ -23,7 +24,12 @@ function buildFiltersFromQuery(query) {
 router.get('/', (req, res) => {
   const user = req.session.user;
   const filters = buildFiltersFromQuery(req.query);
-  const rows = store.listRows(filters);
+  const rows = store.listRows(filters).map((row) => {
+    const complete = store.isRowComplete(row);
+    const age = daysSinceJalali(row.created_at);
+    const overdue = !complete && age !== null && age > config.overdueDays;
+    return { ...row, isComplete: complete, isOverdue: overdue };
+  });
 
   const distinctValues = {};
   for (const field of allFields()) {
@@ -40,7 +46,31 @@ router.get('/', (req, res) => {
     canCreateRows: canCreateRows(user),
     todayJalali: todayJalaliDate(),
     distinctValues,
+    stats: store.getDashboardStats(),
+    overdueDays: config.overdueDays,
   });
+});
+
+router.get('/export.csv', (req, res) => {
+  const filters = buildFiltersFromQuery(req.query);
+  const rows = store.listRows(filters);
+  const fields = allFields();
+
+  const escapeCsv = (val) => {
+    const str = (val ?? '').toString();
+    return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+  };
+
+  const headerRow = ['ردیف', ...fields.map((f) => f.label)];
+  const lines = [headerRow.map(escapeCsv).join(',')];
+  for (const row of rows) {
+    lines.push([row.id, ...fields.map((f) => row[f.name] || '')].map(escapeCsv).join(','));
+  }
+
+  const filename = `prt-export-${todayJalaliDate().replace(/\//g, '-')}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send('\uFEFF' + lines.join('\r\n'));
 });
 
 router.get('/rows/new', (req, res) => {

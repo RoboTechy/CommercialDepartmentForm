@@ -1,9 +1,30 @@
 const db = require('./db');
-const { findSection, allFields } = require('./sections');
-const { nowJalaliDateTime } = require('./jalaali');
+const { sections, findSection, allFields } = require('./sections');
+const { nowJalaliDateTime, daysBetweenJalali } = require('./jalaali');
 
 const ALL_FIELDS = allFields();
 const FIELD_BY_NAME = new Map(ALL_FIELDS.map((f) => [f.name, f]));
+
+// بخش‌هایی که رنگ یکسان دارند (مثل دو بلوک انبار کارفرما) برای آمار یک
+// «دپارتمان» واحد به‌حساب می‌آیند
+const DEPARTMENTS = (() => {
+  const byColor = new Map();
+  for (const section of sections) {
+    if (!byColor.has(section.color)) {
+      byColor.set(section.color, { color: section.color, title: section.title, fields: [] });
+    }
+    byColor.get(section.color).fields.push(...section.fields);
+  }
+  return [...byColor.values()];
+})();
+
+function isFieldSetComplete(row, fields) {
+  return fields.every((f) => (row[f.name] || '').toString().trim() !== '');
+}
+
+function isRowComplete(row) {
+  return isFieldSetComplete(row, ALL_FIELDS);
+}
 
 function listRows(filters = {}) {
   const clauses = [];
@@ -47,6 +68,40 @@ function getDistinctValues(fieldName) {
   return db
     .all(`SELECT DISTINCT ${fieldName} AS value FROM rows WHERE ${fieldName} IS NOT NULL AND ${fieldName} != '' ORDER BY ${fieldName}`)
     .map((row) => row.value);
+}
+
+// آمار کلی برای نمای بالای صفحه‌ی اصلی: تعداد کل، تکمیل/در انتظار به تفکیک
+// دپارتمان، و میانگین مدت‌زمان تکمیل کامل یک ردیف (از ایجاد تا آخرین تغییر)
+function getDashboardStats() {
+  const allRows = db.all('SELECT * FROM rows');
+  const lastChangeRows = db.all('SELECT row_id, MAX(changed_at) AS last_changed FROM audit_log GROUP BY row_id');
+  const lastChangeByRow = new Map(lastChangeRows.map((r) => [r.row_id, r.last_changed]));
+
+  const departments = DEPARTMENTS.map((dept) => {
+    const completed = allRows.filter((row) => isFieldSetComplete(row, dept.fields)).length;
+    return { color: dept.color, title: dept.title, completed, pending: allRows.length - completed };
+  });
+
+  let fullyCompleted = 0;
+  let totalDays = 0;
+  let daysSampleCount = 0;
+  for (const row of allRows) {
+    if (!isRowComplete(row)) continue;
+    fullyCompleted++;
+    const lastChanged = lastChangeByRow.get(row.id);
+    const days = lastChanged ? daysBetweenJalali(row.created_at, lastChanged) : null;
+    if (days !== null && days >= 0) {
+      totalDays += days;
+      daysSampleCount++;
+    }
+  }
+
+  return {
+    totalRows: allRows.length,
+    fullyCompleted,
+    departments,
+    avgCompletionDays: daysSampleCount ? totalDays / daysSampleCount : null,
+  };
 }
 
 function insertAuditEntries(rowId, sectionKey, entries, user) {
@@ -165,6 +220,8 @@ module.exports = {
   listRows,
   getRow,
   getDistinctValues,
+  getDashboardStats,
+  isRowComplete,
   createRow,
   updateSection,
   getRowHistory,

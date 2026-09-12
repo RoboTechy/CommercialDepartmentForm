@@ -10,6 +10,9 @@ module.exports = {
   port: parseInt(need('PORT', '3000'), 10),
   sessionSecret: need('SESSION_SECRET', 'dev-secret-change-me'),
   dbFile: need('DB_FILE', require('path').join(__dirname, '..', 'data', 'app.db')),
+  // بعد از چند روز از ایجاد یک ردیف، اگر هنوز بخشی از آن تکمیل نشده باشد
+  // در جدول اصلی به‌صورت معطل‌مانده هایلایت می‌شود
+  overdueDays: parseInt(need('OVERDUE_DAYS', '3'), 10),
   // حساب ادمین محلی (اختیاری) - کاملاً مستقل از LDAP/Active Directory، برای
   // مواقعی که اتصال به دامنه قطع می‌شود. اگر LOCAL_ADMIN_USERNAME خالی باشد،
   // این قابلیت کاملاً غیرفعال است.
