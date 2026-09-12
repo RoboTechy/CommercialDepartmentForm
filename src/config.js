@@ -10,6 +10,13 @@ module.exports = {
   port: parseInt(need('PORT', '3000'), 10),
   sessionSecret: need('SESSION_SECRET', 'dev-secret-change-me'),
   dbFile: need('DB_FILE', require('path').join(__dirname, '..', 'data', 'app.db')),
+  // حساب ادمین محلی (اختیاری) - کاملاً مستقل از LDAP/Active Directory، برای
+  // مواقعی که اتصال به دامنه قطع می‌شود. اگر LOCAL_ADMIN_USERNAME خالی باشد،
+  // این قابلیت کاملاً غیرفعال است.
+  localAdmin: {
+    username: need('LOCAL_ADMIN_USERNAME', ''),
+    password: need('LOCAL_ADMIN_PASSWORD', ''),
+  },
   ldap: {
     url: need('LDAP_URL', 'ldap://localhost:1389'),
     bindDN: need('LDAP_BIND_DN', ''),
