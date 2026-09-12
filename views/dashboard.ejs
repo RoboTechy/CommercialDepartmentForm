@@ -18,21 +18,21 @@
             <tr>
               <th rowspan="3" class="col-id">ردیف</th>
               <% sections.forEach(function(section) { %>
-                <th colspan="<%= section.fields.length %>" class="section-head section-<%= section.color %>"><%= section.title %></th>
+                <th colspan="<%= section.fields.length %>" class="section-head section-<%= section.color %> section-boundary"><%= section.title %></th>
               <% }) %>
               <th rowspan="3" class="col-actions no-print">عملیات</th>
             </tr>
             <tr>
               <% sections.forEach(function(section) { %>
-                <% section.fields.forEach(function(field) { %>
-                  <th class="section-<%= section.color %>"><%= field.label %></th>
+                <% section.fields.forEach(function(field, idx) { %>
+                  <th class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %>"><%= field.label %></th>
                 <% }) %>
               <% }) %>
             </tr>
             <tr class="filter-row no-print">
               <% sections.forEach(function(section) { %>
-                <% section.fields.forEach(function(field) { %>
-                  <th class="section-<%= section.color %>">
+                <% section.fields.forEach(function(field, idx) { %>
+                  <th class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %>">
                     <% if (field.type === 'select') { %>
                       <select name="<%= field.name %>">
                         <option value="">همه</option>
@@ -61,8 +61,8 @@
               <tr>
                 <td><%= row.id %></td>
                 <% sections.forEach(function(section) { %>
-                  <% section.fields.forEach(function(field) { %>
-                    <td class="section-<%= section.color %>"><%= row[field.name] || '-' %></td>
+                  <% section.fields.forEach(function(field, idx) { %>
+                    <td class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %>"><%= row[field.name] || '-' %></td>
                   <% }) %>
                 <% }) %>
                 <td class="no-print actions-cell">

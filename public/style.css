@@ -220,6 +220,7 @@ textarea { min-height: 84px; resize: vertical; }
 .section-tech_operator { background: var(--section-tech); }
 .section-warehouse { background: var(--section-warehouse); }
 .section-commercial { background: var(--section-commercial); }
+.section-boundary { border-inline-end: 3px solid var(--ink-700) !important; }
 .filter-row th { padding: 7px 8px; }
 .filter-row input, .filter-row select { margin-top: 0; font-size: 12px; padding: 6px 8px; }
 .filter-date-range { display: flex; gap: 4px; }

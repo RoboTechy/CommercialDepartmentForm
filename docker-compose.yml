@@ -8,6 +8,7 @@ services:
     environment:
       - PORT=3000
       - DB_FILE=/app/data/app.db
+      - TZ=Asia/Tehran
       - LDAP_URL=ldap://192.168.201.15:389
       - LDAP_BIND_DN=PRT@bh.igisco.ocmc
       - LDAP_USER_BASE=DC=bh,DC=igisco,DC=ocmc
@@ -21,4 +22,5 @@ services:
       - "3001:3000"
     volumes:
       - ./data:/app/data
+      - ./backup:/app/backup
     restart: unless-stopped

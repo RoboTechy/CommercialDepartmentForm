@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const path = require('path');
 const config = require('./src/config');
 const db = require('./src/db');
+const { scheduleDailyBackup } = require('./src/backup');
 const authRoutes = require('./src/routes/auth');
 const rowRoutes = require('./src/routes/rows');
 const apiRoutes = require('./src/routes/api');
@@ -38,6 +39,7 @@ app.use((req, res) => {
 
 db.ready
   .then(() => {
+    scheduleDailyBackup();
     app.listen(config.port, () => {
       console.log(`سرویس فرم بازرگانی روی پورت ${config.port} در حال اجراست`);
     });
