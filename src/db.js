@@ -69,6 +69,14 @@ ${fieldColumns}
     }
   }
 
+  // ستون‌های حذف نرم (soft delete) - ردیف واقعاً از دیتابیس پاک نمی‌شود، فقط
+  // پنهان و قابل بازیابی می‌شود
+  for (const col of ['deleted_at', 'deleted_by_username', 'deleted_by_display']) {
+    if (!existingColumns.has(col)) {
+      sqlDb.run(`ALTER TABLE rows ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`);
+    }
+  }
+
   persist();
 })();
 

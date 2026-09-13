@@ -3,7 +3,7 @@ const router = express.Router();
 const store = require('../store');
 const config = require('../config');
 const { sections, findSection, allFields } = require('../sections');
-const { requireLogin, canEditSection, canCreateRows, isAdmin } = require('../middleware');
+const { requireLogin, canEditSection, canCreateRows, isAdmin, isLocalAdmin } = require('../middleware');
 const { normalizeJalaliDate, todayJalaliDate, daysSinceJalali } = require('../jalaali');
 
 router.use(requireLogin);
@@ -44,6 +44,7 @@ router.get('/', (req, res) => {
     query: req.query,
     user,
     canCreateRows: canCreateRows(user),
+    isLocalAdmin: isLocalAdmin(user),
     todayJalali: todayJalaliDate(),
     distinctValues,
     stats: store.getDashboardStats(),
@@ -117,19 +118,59 @@ router.post('/rows', (req, res) => {
   res.redirect(`/rows/${row.id}`);
 });
 
+router.get('/rows/deleted', (req, res) => {
+  const user = req.session.user;
+  if (!isLocalAdmin(user)) {
+    return res.status(403).render('not-found', { message: 'فقط ادمین محلی به ردیف‌های حذف‌شده دسترسی دارد.' });
+  }
+  res.render('deleted-rows', {
+    rows: store.listDeletedRows(),
+    user,
+    message: req.flash('message'),
+  });
+});
+
+router.post('/rows/:id/restore', (req, res) => {
+  const user = req.session.user;
+  if (!isLocalAdmin(user)) {
+    return res.status(403).render('not-found', { message: 'فقط ادمین محلی می‌تواند ردیف حذف‌شده را بازیابی کند.' });
+  }
+  const row = store.getRow(req.params.id);
+  if (!row) return res.status(404).render('not-found');
+  store.restoreRow(req.params.id);
+  req.flash('message', `ردیف شماره ${row.id} بازیابی شد.`);
+  res.redirect('/rows/deleted');
+});
+
+router.post('/rows/:id/delete', (req, res) => {
+  const user = req.session.user;
+  if (!isLocalAdmin(user)) {
+    return res.status(403).render('not-found', { message: 'فقط ادمین محلی اجازه‌ی حذف ردیف را دارد.' });
+  }
+  const row = store.getRow(req.params.id);
+  if (!row) return res.status(404).render('not-found');
+  store.softDeleteRow(req.params.id, user);
+  req.flash('message', `ردیف شماره ${row.id} حذف شد (قابل بازیابی از «ردیف‌های حذف‌شده»).`);
+  res.redirect('/');
+});
+
 router.get('/rows/:id', (req, res) => {
   const row = store.getRow(req.params.id);
   if (!row) return res.status(404).render('not-found');
   const user = req.session.user;
+  if (row.deleted_at && !isLocalAdmin(user)) {
+    return res.status(404).render('not-found', { message: 'این ردیف حذف شده است.' });
+  }
   const sectionsView = sections.map((section) => ({
     ...section,
-    canEdit: canEditSection(user, section.key),
+    canEdit: !row.deleted_at && canEditSection(user, section.key),
   }));
   res.render('row', {
     row,
     sectionsView,
     user,
     isAdmin: isAdmin(user),
+    isLocalAdmin: isLocalAdmin(user),
     todayJalali: todayJalaliDate(),
     message: req.flash('message'),
     error: req.flash('error'),
@@ -144,6 +185,9 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
 
   if (!row) return res.status(404).render('not-found');
   if (!section) return res.status(404).render('not-found');
+  if (row.deleted_at) {
+    return res.status(404).render('not-found', { message: 'این ردیف حذف شده است؛ ابتدا آن را بازیابی کنید.' });
+  }
 
   if (!canEditSection(user, sectionKey)) {
     const sectionsView = sections.map((s) => ({ ...s, canEdit: canEditSection(user, s.key) }));
@@ -152,6 +196,7 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
       sectionsView,
       user,
       isAdmin: isAdmin(user),
+      isLocalAdmin: isLocalAdmin(user),
       todayJalali: todayJalaliDate(),
       message: [],
       error: [`شما مجاز به تکمیل «${section.title}» نیستید. این بخش فقط توسط پرسنل همان بخش قابل تکمیل است.`],

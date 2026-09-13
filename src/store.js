@@ -54,7 +54,8 @@ function listRows(filters = {}) {
     }
   }
 
-  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  clauses.push(`deleted_at = ''`);
+  const where = `WHERE ${clauses.join(' AND ')}`;
   return db.all(`SELECT * FROM rows ${where} ORDER BY id DESC`, params);
 }
 
@@ -66,14 +67,14 @@ function getRow(id) {
 function getDistinctValues(fieldName) {
   if (!FIELD_BY_NAME.has(fieldName)) return [];
   return db
-    .all(`SELECT DISTINCT ${fieldName} AS value FROM rows WHERE ${fieldName} IS NOT NULL AND ${fieldName} != '' ORDER BY ${fieldName}`)
+    .all(`SELECT DISTINCT ${fieldName} AS value FROM rows WHERE ${fieldName} IS NOT NULL AND ${fieldName} != '' AND deleted_at = '' ORDER BY ${fieldName}`)
     .map((row) => row.value);
 }
 
 // آمار کلی برای نمای بالای صفحه‌ی اصلی: تعداد کل، تکمیل/در انتظار به تفکیک
 // دپارتمان، و میانگین مدت‌زمان تکمیل کامل یک ردیف (از ایجاد تا آخرین تغییر)
 function getDashboardStats() {
-  const allRows = db.all('SELECT * FROM rows');
+  const allRows = db.all(`SELECT * FROM rows WHERE deleted_at = ''`);
   const lastChangeRows = db.all('SELECT row_id, MAX(changed_at) AS last_changed FROM audit_log GROUP BY row_id');
   const lastChangeByRow = new Map(lastChangeRows.map((r) => [r.row_id, r.last_changed]));
 
@@ -105,6 +106,8 @@ function getDashboardStats() {
 }
 
 function insertAuditEntries(rowId, sectionKey, entries, user) {
+  // تغییرات ادمین محلی (break-glass) عمداً لاگ نمی‌شود
+  if (user.isLocalAdmin) return;
   if (!entries.length) return;
   const changedAt = nowJalaliDateTime();
   const insertMany = db.transaction((rows) => {
@@ -186,6 +189,32 @@ function getRowHistory(rowId) {
   return db.all('SELECT * FROM audit_log WHERE row_id = @rowId ORDER BY id DESC', { '@rowId': rowId });
 }
 
+// حذف نرم: ردیف واقعاً از دیتابیس پاک نمی‌شود، فقط از فهرست اصلی/آمار/جستجو
+// پنهان می‌شود و قابل بازیابی می‌ماند. این اکشن خودش در audit_log ثبت نمی‌شود
+// (فقط روی خود ردیف مشخص می‌شود چه کسی و چه زمانی حذفش کرده).
+function softDeleteRow(rowId, user) {
+  db.run(
+    `UPDATE rows SET deleted_at = @deletedAt, deleted_by_username = @username, deleted_by_display = @display WHERE id = @id`,
+    {
+      '@id': rowId,
+      '@deletedAt': nowJalaliDateTime(),
+      '@username': user.username,
+      '@display': user.displayName || user.username,
+    }
+  );
+}
+
+function restoreRow(rowId) {
+  db.run(
+    `UPDATE rows SET deleted_at = '', deleted_by_username = '', deleted_by_display = '' WHERE id = @id`,
+    { '@id': rowId }
+  );
+}
+
+function listDeletedRows() {
+  return db.all(`SELECT * FROM rows WHERE deleted_at != '' ORDER BY id DESC`);
+}
+
 function searchLogs(filters = {}) {
   const clauses = [];
   const params = {};
@@ -226,6 +255,9 @@ module.exports = {
   updateSection,
   getRowHistory,
   searchLogs,
+  softDeleteRow,
+  restoreRow,
+  listDeletedRows,
   ALL_FIELDS,
   FIELD_BY_NAME,
 };

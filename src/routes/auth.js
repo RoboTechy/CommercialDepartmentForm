@@ -23,6 +23,7 @@ router.post('/login', async (req, res) => {
       dn: null,
       displayName: `${config.localAdmin.username} (ادمین محلی)`,
       groups: [config.ldap.groups.admin],
+      isLocalAdmin: true,
     };
     return res.redirect('/');
   }

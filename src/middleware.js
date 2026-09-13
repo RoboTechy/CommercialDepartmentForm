@@ -12,6 +12,12 @@ function isAdmin(user) {
   return user.groups.includes(config.ldap.groups.admin);
 }
 
+// ادمین محلی (break-glass): مستقل از LDAP، فقط برای مواقع قطعی ارتباط با
+// Active Directory. تغییراتش لاگ نمی‌شود و اجازه‌ی حذف (نرم) ردیف را دارد.
+function isLocalAdmin(user) {
+  return Boolean(user.isLocalAdmin);
+}
+
 function canEditSection(user, sectionKey) {
   const section = findSection(sectionKey);
   if (!section) return false;
@@ -24,4 +30,4 @@ function canCreateRows(user) {
   return sections.some((s) => s.canCreateRows && user.groups.includes(s.group));
 }
 
-module.exports = { requireLogin, isAdmin, canEditSection, canCreateRows };
+module.exports = { requireLogin, isAdmin, isLocalAdmin, canEditSection, canCreateRows };

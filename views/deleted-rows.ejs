@@ -1,0 +1,49 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+  <main class="container container-wide">
+    <div class="page-header no-print">
+      <h1>ردیف‌های حذف‌شده</h1>
+      <a href="/" class="btn">بازگشت به فهرست</a>
+    </div>
+
+    <% if (message && message.length) { %>
+      <div class="alert alert-success no-print"><%= message[0] %></div>
+    <% } %>
+
+    <% if (!rows.length) { %>
+      <p class="muted">هیچ ردیف حذف‌شده‌ای وجود ندارد.</p>
+    <% } else { %>
+      <div class="table-scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ردیف</th>
+              <th>شماره درخواست کالا</th>
+              <th>شرح کالا</th>
+              <th>حذف‌شده در</th>
+              <th>حذف‌شده توسط</th>
+              <th>عملیات</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% rows.forEach(function(row) { %>
+              <tr>
+                <td>#<%= row.id %></td>
+                <td><%= row.request_no || '-' %></td>
+                <td><%= row.item_description || '-' %></td>
+                <td><%= row.deleted_at %></td>
+                <td><%= row.deleted_by_display %></td>
+                <td>
+                  <form method="post" action="/rows/<%= row.id %>/restore" style="display:inline">
+                    <button type="submit" class="btn btn-sm btn-primary">بازیابی</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </main>
+</body>
+</html>

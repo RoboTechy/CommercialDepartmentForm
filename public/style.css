@@ -189,6 +189,12 @@ textarea { min-height: 84px; resize: vertical; }
   box-shadow: 0 3px 10px rgba(79, 70, 229, 0.35);
 }
 .btn-primary:hover { background: var(--brand-700); border-color: var(--brand-700); }
+.btn-danger {
+  background: var(--danger-bg);
+  border-color: #fecaca;
+  color: var(--danger-fg);
+}
+.btn-danger:hover { background: #fee2e2; border-color: #fca5a5; }
 
 .alert { padding: 11px 16px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 14px; font-weight: 500; }
 .alert-error { background: var(--danger-bg); color: var(--danger-fg); }
