@@ -289,4 +289,34 @@ router.get('/logs', (req, res) => {
   res.render('logs', { logs, filters, fields: allFields(), sections, user: req.session.user });
 });
 
+router.get('/reports/duration', (req, res) => {
+  const dateFields = allFields().filter((f) => f.type === 'jalali-date');
+  const purchaseExecutorField = allFields().find((f) => f.name === 'purchase_executor');
+
+  const params = {
+    startField: req.query.startField || '',
+    endField: req.query.endField || '',
+    purchaseExecutor: req.query.purchaseExecutor || '',
+    createdFrom: req.query.createdFrom || '',
+    createdTo: req.query.createdTo || '',
+  };
+
+  let report = null;
+  let error = null;
+  if (params.startField && params.endField) {
+    report = store.getDurationReport(params);
+    if (!report) error = 'فیلدهای انتخاب‌شده معتبر نیستند.';
+  }
+
+  res.render('duration-report', {
+    user: req.session.user,
+    dateFields,
+    purchaseExecutorOptions: purchaseExecutorField ? purchaseExecutorField.options : [],
+    params,
+    report,
+    error,
+    todayJalali: todayJalaliDate(),
+  });
+});
+
 module.exports = router;

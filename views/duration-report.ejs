@@ -1,0 +1,122 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+  <main class="container container-wide">
+    <div class="page-header no-print">
+      <h1>گزارش‌ساز مدت‌زمان</h1>
+      <a href="/" class="btn">بازگشت به فهرست</a>
+    </div>
+
+    <p class="muted no-print">
+      مدت‌زمان (به روز) بین دو فیلد تاریخ دلخواه را برای ردیف‌های فعال (غیرحذف‌شده و غیرلغوشده)
+      محاسبه می‌کند. مثلاً برای «میانگین مدت خرید»: از «تاریخ ارجاع به بازرگانی» تا «تاریخ صدور
+      مجوز پرداخت» را انتخاب کنید.
+    </p>
+
+    <form method="get" action="/reports/duration" class="card filter-card no-print">
+      <div class="filter-grid">
+        <label>از فیلد (شروع)
+          <select name="startField" required>
+            <option value="">— انتخاب کنید —</option>
+            <% dateFields.forEach(function(f) { %>
+              <option value="<%= f.name %>" <%= params.startField === f.name ? 'selected' : '' %>><%= f.label %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label>تا فیلد (پایان)
+          <select name="endField" required>
+            <option value="">— انتخاب کنید —</option>
+            <% dateFields.forEach(function(f) { %>
+              <option value="<%= f.name %>" <%= params.endField === f.name ? 'selected' : '' %>><%= f.label %></option>
+            <% }) %>
+          </select>
+        </label>
+        <% if (purchaseExecutorOptions.length) { %>
+          <label>مجری خرید (اختیاری)
+            <select name="purchaseExecutor">
+              <option value="">همه</option>
+              <% purchaseExecutorOptions.forEach(function(opt) { %>
+                <option value="<%= opt %>" <%= params.purchaseExecutor === opt ? 'selected' : '' %>><%= opt %></option>
+              <% }) %>
+            </select>
+          </label>
+        <% } %>
+        <label>ایجاد از تاریخ (اختیاری)
+          <input type="text" name="createdFrom" class="jalali-date-text" value="<%= params.createdFrom %>" placeholder="1403/01/01" />
+        </label>
+        <label>ایجاد تا تاریخ (اختیاری)
+          <input type="text" name="createdTo" class="jalali-date-text" value="<%= params.createdTo %>" placeholder="1403/12/29" />
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary">ساخت گزارش</button>
+      <a href="/reports/duration" class="btn">پاک کردن</a>
+    </form>
+
+    <% if (error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+
+    <% if (report) { %>
+      <div class="stats-row no-print">
+        <div class="stat-card">
+          <span class="stat-value"><%= report.count %></span>
+          <span class="stat-label">تعداد ردیف محاسبه‌شده</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value"><%= report.avg !== null ? report.avg.toFixed(1) : '—' %></span>
+          <span class="stat-label">میانگین (روز)</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value"><%= report.median !== null ? report.median.toFixed(1) : '—' %></span>
+          <span class="stat-label">میانه (روز)</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value"><%= report.min !== null ? report.min : '—' %></span>
+          <span class="stat-label">حداقل (روز)</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value"><%= report.max !== null ? report.max : '—' %></span>
+          <span class="stat-label">حداکثر (روز)</span>
+        </div>
+      </div>
+
+      <% if (report.negativeCount) { %>
+        <p class="alert alert-error">
+          <%= report.negativeCount %> ردیف نادیده گرفته شد چون تاریخ پایان قبل از تاریخ شروع بود
+          (احتمالاً اشتباه ثبتی) — این‌ها را جداگانه در فهرست اصلی بررسی کنید.
+        </p>
+      <% } %>
+
+      <% if (!report.count) { %>
+        <p class="muted">هیچ ردیفی با هر دو تاریخ پر و مطابق فیلترها پیدا نشد.</p>
+      <% } else { %>
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ردیف</th>
+                <th>شماره درخواست کالا</th>
+                <th>شرح کالا</th>
+                <th>تاریخ شروع</th>
+                <th>تاریخ پایان</th>
+                <th>مدت (روز)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% report.items.forEach(function(item) { %>
+                <tr>
+                  <td><a href="/rows/<%= item.row.id %>">#<%= item.row.id %></a></td>
+                  <td><%= item.row.request_no %></td>
+                  <td><%= item.row.item_description %></td>
+                  <td><%= item.row[params.startField] %></td>
+                  <td><%= item.row[params.endField] %></td>
+                  <td><%= item.days %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    <% } %>
+  </main>
+</body>
+</html>

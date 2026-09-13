@@ -285,6 +285,68 @@ function searchLogs(filters = {}) {
   return db.all(`SELECT * FROM audit_log ${where} ORDER BY id DESC LIMIT 1000`, params);
 }
 
+function median(sortedNumbers) {
+  const n = sortedNumbers.length;
+  if (!n) return null;
+  const mid = Math.floor(n / 2);
+  return n % 2 ? sortedNumbers[mid] : (sortedNumbers[mid - 1] + sortedNumbers[mid]) / 2;
+}
+
+// گزارش‌ساز عمومی مدت‌زمان: میانگین/میانه/حداقل/حداکثر تعداد روز بین دو فیلد
+// تاریخ شمسی دلخواه (مثلاً «تاریخ ارجاع به بازرگانی» تا «تاریخ صدور مجوز
+// پرداخت»)، با چند فیلتر اختیاری. ردیف‌های حذف‌شده یا لغوشده حساب نمی‌شوند
+// چون هیچ‌وقت این فرایند رویشان کامل نمی‌شود.
+function getDurationReport({ startField, endField, purchaseExecutor, createdFrom, createdTo }) {
+  const startDef = FIELD_BY_NAME.get(startField);
+  const endDef = FIELD_BY_NAME.get(endField);
+  if (!startDef || !endDef || startDef.type !== 'jalali-date' || endDef.type !== 'jalali-date') {
+    return null;
+  }
+
+  const clauses = [`deleted_at = ''`, `cancelled_at = ''`, `${startField} != ''`, `${endField} != ''`];
+  const params = {};
+  if (purchaseExecutor) {
+    clauses.push('purchase_executor = @purchaseExecutor');
+    params['@purchaseExecutor'] = purchaseExecutor;
+  }
+  if (createdFrom) {
+    clauses.push('created_at >= @createdFrom');
+    params['@createdFrom'] = createdFrom;
+  }
+  if (createdTo) {
+    clauses.push('created_at <= @createdTo');
+    params['@createdTo'] = `${createdTo} 99:99:99`;
+  }
+
+  const rows = db.all(`SELECT * FROM rows WHERE ${clauses.join(' AND ')}`, params);
+
+  const items = [];
+  let negativeCount = 0;
+  for (const row of rows) {
+    const days = daysBetweenJalali(row[startField], row[endField]);
+    if (days === null) continue;
+    if (days < 0) {
+      negativeCount++;
+      continue;
+    }
+    items.push({ row, days });
+  }
+
+  items.sort((a, b) => b.days - a.days);
+  const daysSorted = items.map((i) => i.days).sort((a, b) => a - b);
+  const count = daysSorted.length;
+
+  return {
+    count,
+    negativeCount,
+    avg: count ? daysSorted.reduce((sum, d) => sum + d, 0) / count : null,
+    min: count ? daysSorted[0] : null,
+    max: count ? daysSorted[count - 1] : null,
+    median: median(daysSorted),
+    items,
+  };
+}
+
 module.exports = {
   listRows,
   getRow,
@@ -300,6 +362,7 @@ module.exports = {
   listDeletedRows,
   cancelRow,
   uncancelRow,
+  getDurationReport,
   ALL_FIELDS,
   FIELD_BY_NAME,
 };
