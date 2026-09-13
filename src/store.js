@@ -83,23 +83,25 @@ function normalizeForDuplicateCheck(value) {
   return s.toLowerCase();
 }
 
-// برای جلوگیری از ثبت دوباره‌ی یک شماره درخواست کالای تکراری هنگام ایجاد ردیف
-function findRowByRequestNo(requestNo) {
+// همه‌ی ردیف‌هایی که شماره درخواست کالایشان با مقدار داده‌شده «یکی» است (طبق
+// نرمال‌سازی بالا). ثبت دیگر به‌خاطر این مورد رد نمی‌شود؛ فقط برای نمایش یک
+// هشدار/تاییدیه به کاربر پیش از ثبت نهایی استفاده می‌شود (رابط کاربری خودش
+// تصمیم می‌گیرد که آیا اجازه‌ی ادامه بدهد یا نه).
+function findRowsByRequestNo(requestNo) {
   const normalized = normalizeForDuplicateCheck(requestNo);
-  if (!normalized) return null;
+  if (!normalized) return [];
   const rows = db.all(`SELECT * FROM rows WHERE deleted_at = ''`);
-  return rows.find((row) => normalizeForDuplicateCheck(row.request_no) === normalized) || null;
+  return rows.filter((row) => normalizeForDuplicateCheck(row.request_no) === normalized);
 }
 
-// برای جلوگیری از ثبت دوباره‌ی یک شماره درخواست خرید تکراری (توسط انبار کارفرما)
-function findRowByPurchaseRequestNo(purchaseRequestNo, excludeRowId) {
+// همه‌ی ردیف‌هایی که شماره درخواست خریدشان با مقدار داده‌شده «یکی» است -
+// برای هشدار مشابه هنگام تکمیل بخش انبار کارفرما.
+function findRowsByPurchaseRequestNo(purchaseRequestNo, excludeRowId) {
   const normalized = normalizeForDuplicateCheck(purchaseRequestNo);
-  if (!normalized) return null;
+  if (!normalized) return [];
   const rows = db.all(`SELECT * FROM rows WHERE deleted_at = ''`);
-  return (
-    rows.find(
-      (row) => String(row.id) !== String(excludeRowId) && normalizeForDuplicateCheck(row.purchase_request_no) === normalized
-    ) || null
+  return rows.filter(
+    (row) => String(row.id) !== String(excludeRowId) && normalizeForDuplicateCheck(row.purchase_request_no) === normalized
   );
 }
 
@@ -476,8 +478,8 @@ function getDurationReport({ startField, endField, purchaseExecutor, createdFrom
 module.exports = {
   listRows,
   getRow,
-  findRowByRequestNo,
-  findRowByPurchaseRequestNo,
+  findRowsByRequestNo,
+  findRowsByPurchaseRequestNo,
   getDistinctValues,
   getDashboardStats,
   isRowComplete,

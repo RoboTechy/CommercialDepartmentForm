@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jalaali = require('jalaali-js');
 const { requireLogin } = require('../middleware');
+const store = require('../store');
 
 const MONTH_NAMES = [
   'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
@@ -36,6 +37,29 @@ router.get('/api/jalali-calendar', (req, res) => {
     startWeekday,
     today: { y: todayJ.jy, m: todayJ.jm, d: todayJ.jd },
   });
+});
+
+function serializeMatches(rows) {
+  return rows.map((row) => ({
+    id: row.id,
+    requestNo: row.request_no,
+    purchaseRequestNo: row.purchase_request_no,
+  }));
+}
+
+// چک سمت کاربر (پیش از ارسال فرم ایجاد ردیف): آیا این شماره درخواست کالا
+// قبلاً هم ثبت شده؟ دیگر چیزی را رد نمی‌کند، فقط برای نمایش هشدار/تاییدیه
+// به کاربر قبل از ثبت نهایی استفاده می‌شود.
+router.get('/api/check-request-no', (req, res) => {
+  const rows = store.findRowsByRequestNo(req.query.value || '');
+  res.json({ rows: serializeMatches(rows) });
+});
+
+// همان، برای شماره درخواست خرید (بخش انبار کارفرما) - excludeId یعنی خود
+// همین ردیف را که در حال ویرایشش هستیم نادیده بگیر.
+router.get('/api/check-purchase-request-no', (req, res) => {
+  const rows = store.findRowsByPurchaseRequestNo(req.query.value || '', req.query.excludeId || '');
+  res.json({ rows: serializeMatches(rows) });
 });
 
 module.exports = router;

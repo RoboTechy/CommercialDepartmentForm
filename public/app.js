@@ -6,6 +6,73 @@ document.addEventListener('click', function (e) {
   if (input) input.value = btn.dataset.today;
 });
 
+// --- هشدار (نه جلوگیری) هنگام تکراری بودن شماره درخواست کالا/خرید ---
+// قبل از ارسال فرم، از سرور می‌پرسیم آیا این شماره قبلاً هم ثبت شده؛ اگر
+// بله، با confirm() به کاربر نشان می‌دهیم در چه ردیف‌هایی تکرار شده و خودش
+// تصمیم می‌گیرد که آیا همین‌طور ثبت را ادامه بدهد یا نه.
+(function () {
+  function describeMatches(rows) {
+    return rows
+      .map(function (r) {
+        return (
+          '#' + r.id + ' (شماره درخواست کالا: ' + (r.requestNo || '—') +
+          '، شماره درخواست خرید: ' + (r.purchaseRequestNo || '—') + ')'
+        );
+      })
+      .join('\n');
+  }
+
+  function attachDuplicateGuard(form, fieldName, apiPath, extraQuery) {
+    var input = form.querySelector('[name="' + fieldName + '"]');
+    if (!input) return;
+    var lastCheckedValue = null;
+    var lastCheckedOk = false;
+
+    form.addEventListener('submit', function (e) {
+      var value = (input.value || '').trim();
+      if (!value || (lastCheckedOk && value === lastCheckedValue)) return;
+
+      e.preventDefault();
+      var url = apiPath + '?value=' + encodeURIComponent(value) + (extraQuery ? '&' + extraQuery : '');
+      fetch(url)
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          var rows = data.rows || [];
+          lastCheckedValue = value;
+          if (!rows.length) {
+            lastCheckedOk = true;
+            form.submit();
+            return;
+          }
+          var msg =
+            'این شماره قبلاً در ردیف(های) زیر ثبت شده است:\n' + describeMatches(rows) +
+            '\n\nآیا مطمئن هستید می‌خواهید همین‌طور ثبت را انجام دهید؟';
+          lastCheckedOk = window.confirm(msg);
+          if (lastCheckedOk) form.submit();
+        })
+        .catch(function () {
+          // اگر چک سمت سرور به هر دلیلی شکست خورد، مانع ثبت نمی‌شویم
+          lastCheckedOk = true;
+          form.submit();
+        });
+    });
+  }
+
+  var newRowForm = document.querySelector('form[action="/rows"]');
+  if (newRowForm) {
+    attachDuplicateGuard(newRowForm, 'request_no', '/api/check-request-no');
+  }
+
+  document.querySelectorAll('form[data-section-key="warehouse_1"]').forEach(function (form) {
+    attachDuplicateGuard(
+      form,
+      'purchase_request_no',
+      '/api/check-purchase-request-no',
+      'excludeId=' + encodeURIComponent(form.dataset.rowId)
+    );
+  });
+})();
+
 // --- تقویم تعاملی شمسی (باز شدن با کلیک روی فیلدهای تاریخ) ---
 (function () {
   var popup = null;

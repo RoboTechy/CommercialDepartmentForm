@@ -132,7 +132,7 @@
         </div>
 
         <% if (section.canEdit) { %>
-          <form method="post" action="/rows/<%= row.id %>/sections/<%= section.key %>" class="section-form no-print">
+          <form method="post" action="/rows/<%= row.id %>/sections/<%= section.key %>" class="section-form no-print" data-section-key="<%= section.key %>" data-row-id="<%= row.id %>">
             <% section.fields.forEach(function(field) { %>
               <%- include('partials/field-input', { field: field, value: row[field.name] || '', todayJalali: todayJalali }) %>
             <% }) %>

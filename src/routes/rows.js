@@ -123,16 +123,10 @@ router.post('/rows', (req, res) => {
     return res.redirect('/rows/new');
   }
 
-  const duplicate = store.findRowByRequestNo(values.request_no);
-  if (duplicate) {
-    req.flash(
-      'error',
-      `شماره درخواست کالا «${values.request_no}» قبلاً در ردیف شماره ${duplicate.id} ثبت شده است ` +
-        `(شماره درخواست خرید: ${duplicate.purchase_request_no || 'هنوز ثبت نشده'}).`
-    );
-    return res.redirect('/rows/new');
-  }
-
+  // دیگر تکراری بودن شماره درخواست کالا مانع ثبت نمی‌شود - فقط پیش از ارسال
+  // فرم، سمت کاربر (جاوااسکریپت، با /api/check-request-no) یک هشدار/تاییدیه
+  // نمایش داده می‌شود؛ اگر کاربر با وجود هشدار باز هم ثبت را بزند، اینجا
+  // بدون مانع پذیرفته می‌شود.
   const row = store.createRow(values, user);
   res.redirect(`/rows/${row.id}`);
 });
@@ -355,17 +349,8 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
     return res.redirect(`/rows/${id}`);
   }
 
-  if (sectionKey === 'warehouse_1' && values.purchase_request_no) {
-    const duplicate = store.findRowByPurchaseRequestNo(values.purchase_request_no, id);
-    if (duplicate) {
-      req.flash(
-        'error',
-        `شماره درخواست خرید «${values.purchase_request_no}» قبلاً در ردیف شماره ${duplicate.id} ثبت شده است ` +
-          `(شماره درخواست کالا: ${duplicate.request_no || 'ثبت نشده'}).`
-      );
-      return res.redirect(`/rows/${id}`);
-    }
-  }
+  // دیگر تکراری بودن شماره درخواست خرید مانع ثبت نمی‌شود - همان الگوی بالا
+  // (هشدار سمت کاربر پیش از ارسال، با /api/check-purchase-request-no).
 
   store.updateSection(id, sectionKey, values, user);
   req.flash('message', `«${section.title}» با موفقیت به‌روزرسانی شد.`);
