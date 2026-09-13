@@ -35,6 +35,11 @@ module.exports = {
       // فقط مشاهده: دسترسی به فهرست/گزارش‌ها/تاریخچه دارد ولی هیچ‌جا نمی‌تواند
       // چیزی ثبت یا تغییر بدهد
       viewer: need('LDAP_GROUP_VIEWER', 'PRT-Viewer'),
+      // دپارتمان‌های دیگری که هم‌ردیف «درخواست‌کننده» هستند - اعضایشان هم
+      // می‌توانند ردیف جدید بسازند، فقط ردیف‌های دپارتمان خودشان را ویرایش/
+      // لغو کنند (به sections.js -> requesterDepartments مراجعه کنید)
+      civil: need('LDAP_GROUP_CIVIL', 'PRT-Civil'),
+      it: need('LDAP_GROUP_IT', 'PRT-IT'),
     },
   },
 };

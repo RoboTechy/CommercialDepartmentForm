@@ -1,5 +1,5 @@
 const config = require('./config');
-const { sections, findSection } = require('./sections');
+const { sections, findSection, requesterDepartments } = require('./sections');
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -18,22 +18,46 @@ function isLocalAdmin(user) {
   return Boolean(user.isLocalAdmin);
 }
 
+// section.group می‌تواند یک گروه LDAP باشد (اکثر بخش‌ها) یا آرایه‌ای از چند
+// گروه (بخش «درخواست‌کننده» که چند دپارتمان با هم آن را تشکیل می‌دهند)
+function sectionGroups(section) {
+  return Array.isArray(section.group) ? section.group : [section.group];
+}
+
 function canEditSection(user, sectionKey) {
   const section = findSection(sectionKey);
   if (!section) return false;
   if (isAdmin(user)) return true;
-  return user.groups.includes(section.group);
+  return sectionGroups(section).some((g) => user.groups.includes(g));
 }
 
 function canCreateRows(user) {
   if (isAdmin(user)) return true;
-  return sections.some((s) => s.canCreateRows && user.groups.includes(s.group));
+  return sections.some((s) => s.canCreateRows && sectionGroups(s).some((g) => user.groups.includes(g)));
 }
 
-// لغو درخواست: هم درخواست‌کننده (سازنده‌ی درخواست) و هم ادمین
-function canCancelRow(user) {
+function isAnyRequesterDeptMember(user) {
+  return requesterDepartments.some((d) => user.groups.includes(d.group));
+}
+
+// هر عضو یکی از دپارتمان‌های «درخواست‌کننده» (بهره‌بردار/عمران/آی‌تی) فقط
+// می‌تواند ردیف‌هایی را ویرایش کند که فیلد requester_dept‌شان با دپارتمان
+// خودش یکی باشد - نه ردیف‌های دپارتمان‌های دیگر، حتی اگر هر دو در همان بخش
+// «درخواست‌کننده» باشند. ردیف‌های قدیمی (قبل از این قابلیت) هنگام مهاجرت
+// دیتابیس به دپارتمان «بهره‌بردار» نسبت داده شده‌اند (db.js) تا قفل نشوند.
+function canEditRequesterRow(user, row) {
   if (isAdmin(user)) return true;
-  return user.groups.includes(config.ldap.groups.techOperator);
+  const dept = requesterDepartments.find((d) => d.label === row.requester_dept);
+  if (!dept) return false;
+  return user.groups.includes(dept.group);
+}
+
+// لغو درخواست: هم درخواست‌کننده‌ی همان دپارتمان (سازنده‌ی درخواست) و هم ادمین -
+// طبق همان محدودیت بالا (فقط دپارتمان خودش)
+function canCancelRow(user, row) {
+  if (isAdmin(user)) return true;
+  if (!isAnyRequesterDeptMember(user)) return false;
+  return canEditRequesterRow(user, row);
 }
 
 // عودت به درخواست‌کننده: فقط انبار کارفرما (و ادمین) می‌تواند این وضعیت را ثبت/بردارد
@@ -47,6 +71,7 @@ module.exports = {
   isAdmin,
   isLocalAdmin,
   canEditSection,
+  canEditRequesterRow,
   canCreateRows,
   canCancelRow,
   canReturnToTechOffice,

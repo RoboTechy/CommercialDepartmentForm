@@ -19,6 +19,8 @@ services:
       - LDAP_GROUP_COMMERCIAL=PRT-Commercial
       - LDAP_GROUP_ADMIN=PRT-Admins
       - LDAP_GROUP_VIEWER=PRT-Viewer
+      - LDAP_GROUP_CIVIL=PRT-Civil
+      - LDAP_GROUP_IT=PRT-IT
     ports:
       - "3001:3000"
     volumes:

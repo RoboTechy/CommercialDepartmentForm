@@ -9,12 +9,24 @@ const config = require('./config');
 // جریان کار). هر دو بلوک با گروه LDAP یکسان (warehouse) قابل ویرایش‌اند؛
 // key فقط برای مسیر ثبت/آدرس‌دهی هر فرم استفاده می‌شود، color برای رنگ
 // یکسان دو بلوک در جدول/کارت‌ها.
+// دپارتمان‌های مجاز به ثبت درخواست («درخواست‌کننده»، به‌معنای گسترده): هر
+// کاربری که عضو یکی از این گروه‌های LDAP باشد می‌تواند ردیف جدید بسازد، و
+// دپارتمانش به‌صورت خودکار (بدون انتخاب دستی) روی فیلد requester_dept ثبت
+// می‌شود - نه در فرم ایجاد قابل انتخاب است و نه بعداً قابل ویرایش. هر کاربر
+// فقط می‌تواند ردیف‌های همین دپارتمان خودش را ویرایش/لغو کند (به
+// middleware.js -> canEditRequesterRow/canCancelRow مراجعه کنید).
+const requesterDepartments = [
+  { label: 'بهره‌بردار', group: config.ldap.groups.techOperator },
+  { label: 'عمران', group: config.ldap.groups.civil },
+  { label: 'آی‌تی', group: config.ldap.groups.it },
+];
+
 const sections = [
   {
     key: 'tech_operator',
     title: 'درخواست‌کننده',
     color: 'tech_operator',
-    group: config.ldap.groups.techOperator,
+    group: requesterDepartments.map((d) => d.group),
     canCreateRows: true,
     fields: [
       { name: 'request_no', label: 'شماره درخواست کالا', type: 'text', required: true },
@@ -25,6 +37,13 @@ const sections = [
       { name: 'usage_location', label: 'محل مصرف', type: 'text', required: true },
       { name: 'delivery_to_warehouse_date', label: 'تاریخ تحویل درخواست به انبار', type: 'jalali-date', required: true },
       { name: 'item_type', label: 'نوع کالا', type: 'select', options: ['استاندارد', 'ساخت'], required: true },
+      {
+        name: 'requester_dept',
+        label: 'دپارتمان درخواست‌کننده',
+        type: 'select',
+        options: requesterDepartments.map((d) => d.label),
+        readOnly: true,
+      },
     ],
   },
   {
@@ -81,4 +100,4 @@ function allFields() {
   return sections.flatMap((s) => s.fields.map((f) => ({ ...f, sectionKey: s.key })));
 }
 
-module.exports = { sections, findSection, findField, allFields };
+module.exports = { sections, findSection, findField, allFields, requesterDepartments };

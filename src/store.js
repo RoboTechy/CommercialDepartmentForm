@@ -1,6 +1,14 @@
 const db = require('./db');
-const { sections, findSection, allFields } = require('./sections');
+const { sections, findSection, allFields, requesterDepartments } = require('./sections');
 const { nowJalaliDateTime, daysBetweenJalali } = require('./jalaali');
+
+// دپارتمان درخواست‌کننده (بهره‌بردار/عمران/آی‌تی) را از عضویت گروهی کاربر
+// تشخیص می‌دهد - خود کاربر این را انتخاب نمی‌کند، کاملاً خودکار است. اگر
+// کاربر (مثلاً ادمین) عضو هیچ‌کدام از این گروه‌ها نباشد، خالی می‌ماند.
+function resolveRequesterDept(user) {
+  const match = requesterDepartments.find((d) => user.groups.includes(d.group));
+  return match ? match.label : '';
+}
 
 const ALL_FIELDS = allFields();
 const FIELD_BY_NAME = new Map(ALL_FIELDS.map((f) => [f.name, f]));
@@ -249,7 +257,10 @@ function createRow(values, user) {
 
   const auditEntries = [];
   for (const field of section.fields) {
-    const value = (values[field.name] || '').toString().trim();
+    // فیلدهای فقط‌خواندنی (مثل دپارتمان درخواست‌کننده) هرگز از ورودی کاربر
+    // گرفته نمی‌شوند - همیشه سمت سرور محاسبه می‌شوند
+    const value =
+      field.name === 'requester_dept' ? resolveRequesterDept(user) : (values[field.name] || '').toString().trim();
     columns.push(field.name);
     params[`@${field.name}`] = value;
     if (value) {
@@ -275,8 +286,10 @@ function updateSection(rowId, sectionKey, values, user) {
   const params = { '@id': rowId };
 
   for (const field of section.fields) {
-    const newValue = (values[field.name] || '').toString().trim();
     const oldValue = current[field.name] || '';
+    // فیلدهای فقط‌خواندنی (مثل دپارتمان درخواست‌کننده) بعد از ایجاد ردیف هرگز
+    // تغییر نمی‌کنند، حتی اگر مقدار دیگری در فرم ارسال شده باشد
+    const newValue = field.readOnly ? oldValue : (values[field.name] || '').toString().trim();
     setClauses.push(`${field.name} = @${field.name}`);
     params[`@${field.name}`] = newValue;
     if (newValue !== oldValue) {
@@ -438,7 +451,7 @@ function median(sortedNumbers) {
 // پرداخت»)، با چند فیلتر اختیاری - از جمله وضعیت (جاری/لغو شده/عودت به دفتر
 // فنی/همه) تا بشود این دسته‌ها را از هم جدا یا با هم دید. ردیف‌های حذف‌شده
 // همیشه کنار گذاشته می‌شوند.
-function getDurationReport({ startField, endField, purchaseExecutor, createdFrom, createdTo, status }) {
+function getDurationReport({ startField, endField, purchaseExecutor, requesterDept, createdFrom, createdTo, status }) {
   const startDef = FIELD_BY_NAME.get(startField);
   const endDef = FIELD_BY_NAME.get(endField);
   if (!startDef || !endDef || startDef.type !== 'jalali-date' || endDef.type !== 'jalali-date') {
@@ -457,6 +470,10 @@ function getDurationReport({ startField, endField, purchaseExecutor, createdFrom
   if (purchaseExecutor) {
     clauses.push('purchase_executor = @purchaseExecutor');
     params['@purchaseExecutor'] = purchaseExecutor;
+  }
+  if (requesterDept) {
+    clauses.push('requester_dept = @requesterDept');
+    params['@requesterDept'] = requesterDept;
   }
   if (createdFrom) {
     clauses.push('created_at >= @createdFrom');

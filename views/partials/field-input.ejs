@@ -1,7 +1,9 @@
 <label>
   <%= field.label %><% if (field.required) { %> <span class="req">*</span><% } %>
   <% if (field.hint) { %><span class="field-hint"><%= field.hint %></span><% } %>
-  <% if (field.type === 'textarea') { %>
+  <% if (field.readOnly) { %>
+    <input type="text" value="<%= value %>" disabled />
+  <% } else if (field.type === 'textarea') { %>
     <textarea name="<%= field.name %>" <%= field.required ? 'required' : '' %>><%= value %></textarea>
   <% } else if (field.type === 'select') { %>
     <select name="<%= field.name %>" <%= field.required ? 'required' : '' %>>

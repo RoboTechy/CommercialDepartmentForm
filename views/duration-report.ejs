@@ -42,6 +42,16 @@
             </select>
           </label>
         <% } %>
+        <% if (requesterDeptOptions.length) { %>
+          <label>دپارتمان درخواست‌کننده (اختیاری)
+            <select name="requesterDept">
+              <option value="">همه</option>
+              <% requesterDeptOptions.forEach(function(opt) { %>
+                <option value="<%= opt %>" <%= params.requesterDept === opt ? 'selected' : '' %>><%= opt %></option>
+              <% }) %>
+            </select>
+          </label>
+        <% } %>
         <label>ایجاد از تاریخ (اختیاری)
           <input type="text" name="createdFrom" class="jalali-date-text" value="<%= params.createdFrom %>" placeholder="1403/01/01" />
         </label>

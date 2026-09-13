@@ -7,8 +7,11 @@
     <% } %>
     <form method="post" action="/rows" class="card">
       <% section.fields.forEach(function(field) { %>
-        <%- include('partials/field-input', { field: field, value: '', todayJalali: todayJalali }) %>
+        <% if (!field.readOnly) { %>
+          <%- include('partials/field-input', { field: field, value: '', todayJalali: todayJalali }) %>
+        <% } %>
       <% }) %>
+      <p class="muted small">دپارتمان درخواست‌کننده به‌صورت خودکار از عضویت گروهی شما تشخیص داده می‌شود.</p>
       <button type="submit" class="btn btn-primary">ایجاد ردیف</button>
       <a href="/" class="btn">انصراف</a>
     </form>

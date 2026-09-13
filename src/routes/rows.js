@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const store = require('../store');
 const config = require('../config');
-const { sections, findSection, allFields } = require('../sections');
+const { sections, findSection, allFields, requesterDepartments } = require('../sections');
 const {
   requireLogin,
   canEditSection,
+  canEditRequesterRow,
   canCreateRows,
   isAdmin,
   isLocalAdmin,
@@ -186,7 +187,7 @@ router.get('/rows/:id', (req, res) => {
       !row.deleted_at &&
       !row.cancelled_at &&
       !(row.returned_at && section.key !== 'tech_operator') &&
-      canEditSection(user, section.key),
+      (section.key === 'tech_operator' ? canEditRequesterRow(user, row) : canEditSection(user, section.key)),
   }));
   res.render('row', {
     row,
@@ -194,7 +195,7 @@ router.get('/rows/:id', (req, res) => {
     user,
     isAdmin: isAdmin(user),
     isLocalAdmin: isLocalAdmin(user),
-    canCancelRow: canCancelRow(user),
+    canCancelRow: canCancelRow(user, row),
     canReturnToTechOffice: canReturnToTechOffice(user),
     draftRows: row.published_at ? [] : store.listDraftRowsForUser(user.username),
     todayJalali: todayJalaliDate(),
@@ -222,11 +223,11 @@ router.post('/rows/:id/finalize', (req, res) => {
 
 router.post('/rows/:id/cancel', (req, res) => {
   const user = req.session.user;
-  if (!canCancelRow(user)) {
-    return res.status(403).render('not-found', { message: 'شما مجاز به لغو این درخواست نیستید (فقط درخواست‌کننده یا ادمین).' });
-  }
   const row = store.getRow(req.params.id);
   if (!row) return res.status(404).render('not-found');
+  if (!canCancelRow(user, row)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به لغو این درخواست نیستید (فقط درخواست‌کننده‌ی همان دپارتمان یا ادمین).' });
+  }
   if (row.deleted_at) return res.status(404).render('not-found', { message: 'این ردیف حذف شده است.' });
 
   const reason = (req.body.reason || '').toString().trim();
@@ -246,11 +247,11 @@ router.post('/rows/:id/cancel', (req, res) => {
 
 router.post('/rows/:id/uncancel', (req, res) => {
   const user = req.session.user;
-  if (!canCancelRow(user)) {
-    return res.status(403).render('not-found', { message: 'شما مجاز به بازگرداندن این درخواست نیستید (فقط درخواست‌کننده یا ادمین).' });
-  }
   const row = store.getRow(req.params.id);
   if (!row) return res.status(404).render('not-found');
+  if (!canCancelRow(user, row)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به بازگرداندن این درخواست نیستید (فقط درخواست‌کننده‌ی همان دپارتمان یا ادمین).' });
+  }
 
   store.uncancelRow(row.id, user);
   req.flash('message', 'لغو درخواست برداشته شد؛ درخواست دوباره فعال است.');
@@ -314,20 +315,28 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
     return res.status(404).render('not-found', { message: 'این ردیف هنوز ثبت نهایی نشده است.' });
   }
 
-  if (!canEditSection(user, sectionKey)) {
-    const sectionsView = sections.map((s) => ({ ...s, canEdit: canEditSection(user, s.key) }));
+  const canEditThisSection = sectionKey === 'tech_operator' ? canEditRequesterRow(user, row) : canEditSection(user, sectionKey);
+  if (!canEditThisSection) {
+    const sectionsView = sections.map((s) => ({
+      ...s,
+      canEdit: s.key === 'tech_operator' ? canEditRequesterRow(user, row) : canEditSection(user, s.key),
+    }));
+    const deniedMessage =
+      sectionKey === 'tech_operator'
+        ? `شما مجاز به تکمیل «${section.title}» نیستید. این ردیف متعلق به دپارتمان «${row.requester_dept || '-'}» است و فقط پرسنل همان دپارتمان (یا ادمین) می‌توانند ویرایشش کنند.`
+        : `شما مجاز به تکمیل «${section.title}» نیستید. این بخش فقط توسط پرسنل همان بخش قابل تکمیل است.`;
     return res.status(403).render('row', {
       row,
       sectionsView,
       user,
       isAdmin: isAdmin(user),
       isLocalAdmin: isLocalAdmin(user),
-      canCancelRow: canCancelRow(user),
+      canCancelRow: canCancelRow(user, row),
       canReturnToTechOffice: canReturnToTechOffice(user),
       draftRows: row.published_at ? [] : store.listDraftRowsForUser(user.username),
       todayJalali: todayJalaliDate(),
       message: [],
-      error: [`شما مجاز به تکمیل «${section.title}» نیستید. این بخش فقط توسط پرسنل همان بخش قابل تکمیل است.`],
+      error: [deniedMessage],
     });
   }
 
@@ -387,6 +396,7 @@ router.get('/reports/duration', (req, res) => {
     endField: req.query.endField || '',
     status: req.query.status || '',
     purchaseExecutor: req.query.purchaseExecutor || '',
+    requesterDept: req.query.requesterDept || '',
     createdFrom: req.query.createdFrom || '',
     createdTo: req.query.createdTo || '',
   };
@@ -402,6 +412,7 @@ router.get('/reports/duration', (req, res) => {
     user: req.session.user,
     dateFields,
     purchaseExecutorOptions: purchaseExecutorField ? purchaseExecutorField.options : [],
+    requesterDeptOptions: requesterDepartments.map((d) => d.label),
     params,
     report,
     error,

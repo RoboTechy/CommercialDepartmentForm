@@ -66,6 +66,12 @@ ${fieldColumns}
   for (const field of allFields()) {
     if (!existingColumns.has(field.name)) {
       sqlDb.run(`ALTER TABLE rows ADD COLUMN ${field.name} TEXT NOT NULL DEFAULT ''`);
+      // دپارتمان درخواست‌کننده: ردیف‌های از قبل موجود (قبل از این قابلیت) همه
+      // متعلق به همان گروه قدیمی «بهره‌بردار» بوده‌اند - اگر این یک‌بار پر نشود،
+      // با فعال شدن محدودیت «فقط دپارتمان خودش قابل ویرایش است» قفل می‌مانند
+      if (field.name === 'requester_dept') {
+        sqlDb.run(`UPDATE rows SET requester_dept = 'بهره‌بردار' WHERE requester_dept = ''`);
+      }
     }
   }
 
