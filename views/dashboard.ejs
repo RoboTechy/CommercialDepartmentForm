@@ -18,10 +18,10 @@
     </div>
 
     <div class="stats-row no-print">
-      <div class="stat-card">
+      <a href="/" class="stat-card" title="نمایش همه‌ی ردیف‌ها (پاک کردن فیلترها)">
         <span class="stat-value"><%= stats.totalRows %></span>
         <span class="stat-label">کل ردیف‌ها</span>
-      </div>
+      </a>
       <% stats.departments.forEach(function(dept) { %>
         <a href="/?incompleteDept=<%= dept.color %>" class="stat-card section-<%= dept.color %>" title="نمایش ردیف‌های جاری و تکمیل‌نشده‌ی «<%= dept.title %>»">
           <span class="stat-value"><%= dept.completed %> <span class="stat-value-sep">/</span> <%= dept.pending %></span>
