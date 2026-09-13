@@ -75,7 +75,7 @@ router.get('/export.csv', (req, res) => {
   const headerRow = ['ردیف', 'وضعیت', ...fields.map((f) => f.label)];
   const lines = [headerRow.map(escapeCsv).join(',')];
   for (const row of rows) {
-    const status = row.cancelled_at ? 'لغو شده' : row.returned_at ? 'عودت به دفتر فنی' : 'جاری';
+    const status = row.cancelled_at ? 'لغو شده' : row.returned_at ? 'عودت به درخواست‌کننده' : 'جاری';
     lines.push([row.id, status, ...fields.map((f) => row[f.name] || '')].map(escapeCsv).join(','));
   }
 
@@ -88,7 +88,7 @@ router.get('/export.csv', (req, res) => {
 router.get('/rows/new', (req, res) => {
   const user = req.session.user;
   if (!canCreateRows(user)) {
-    return res.status(403).render('not-found', { message: 'شما مجاز به ایجاد ردیف جدید نیستید (فقط دفتر فنی بهره‌بردار).' });
+    return res.status(403).render('not-found', { message: 'شما مجاز به ایجاد ردیف جدید نیستید (فقط درخواست‌کننده).' });
   }
   res.render('new-row', {
     section: findSection('tech_operator'),
@@ -101,7 +101,7 @@ router.get('/rows/new', (req, res) => {
 router.post('/rows', (req, res) => {
   const user = req.session.user;
   if (!canCreateRows(user)) {
-    return res.status(403).render('not-found', { message: 'شما مجاز به ایجاد ردیف جدید نیستید (فقط دفتر فنی بهره‌بردار).' });
+    return res.status(403).render('not-found', { message: 'شما مجاز به ایجاد ردیف جدید نیستید (فقط درخواست‌کننده).' });
   }
 
   const section = findSection('tech_operator');
@@ -206,7 +206,7 @@ router.get('/rows/:id', (req, res) => {
 router.post('/rows/:id/finalize', (req, res) => {
   const user = req.session.user;
   if (!canCreateRows(user)) {
-    return res.status(403).render('not-found', { message: 'شما مجاز به ثبت نهایی ردیف نیستید (فقط دفتر فنی بهره‌بردار).' });
+    return res.status(403).render('not-found', { message: 'شما مجاز به ثبت نهایی ردیف نیستید (فقط درخواست‌کننده).' });
   }
   const row = store.getRow(req.params.id);
   if (!row) return res.status(404).render('not-found');
@@ -223,7 +223,7 @@ router.post('/rows/:id/finalize', (req, res) => {
 router.post('/rows/:id/cancel', (req, res) => {
   const user = req.session.user;
   if (!canCancelRow(user)) {
-    return res.status(403).render('not-found', { message: 'شما مجاز به لغو این درخواست نیستید (فقط دفتر فنی بهره‌بردار یا ادمین).' });
+    return res.status(403).render('not-found', { message: 'شما مجاز به لغو این درخواست نیستید (فقط درخواست‌کننده یا ادمین).' });
   }
   const row = store.getRow(req.params.id);
   if (!row) return res.status(404).render('not-found');
@@ -247,7 +247,7 @@ router.post('/rows/:id/cancel', (req, res) => {
 router.post('/rows/:id/uncancel', (req, res) => {
   const user = req.session.user;
   if (!canCancelRow(user)) {
-    return res.status(403).render('not-found', { message: 'شما مجاز به بازگرداندن این درخواست نیستید (فقط دفتر فنی بهره‌بردار یا ادمین).' });
+    return res.status(403).render('not-found', { message: 'شما مجاز به بازگرداندن این درخواست نیستید (فقط درخواست‌کننده یا ادمین).' });
   }
   const row = store.getRow(req.params.id);
   if (!row) return res.status(404).render('not-found');
@@ -270,13 +270,13 @@ router.post('/rows/:id/return', (req, res) => {
     return res.redirect(`/rows/${row.id}`);
   }
   if (row.returned_at) {
-    req.flash('error', 'این درخواست از قبل به دفتر فنی عودت داده شده است.');
+    req.flash('error', 'این درخواست از قبل به درخواست‌کننده عودت داده شده است.');
     return res.redirect(`/rows/${row.id}`);
   }
 
   const reason = (req.body.reason || '').toString().trim();
   store.returnToTechOffice(row.id, reason, user);
-  req.flash('message', 'درخواست به دفتر فنی عودت داده شد.');
+  req.flash('message', 'درخواست به درخواست‌کننده عودت داده شد.');
   res.redirect(`/rows/${row.id}`);
 });
 
@@ -308,7 +308,7 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
     return res.status(404).render('not-found', { message: 'این درخواست لغو شده است؛ برای ویرایش ابتدا لغو را بردارید.' });
   }
   if (row.returned_at && sectionKey !== 'tech_operator') {
-    return res.status(404).render('not-found', { message: 'این درخواست به دفتر فنی عودت داده شده است؛ فقط دفتر فنی می‌تواند ویرایش کند.' });
+    return res.status(404).render('not-found', { message: 'این درخواست به درخواست‌کننده عودت داده شده است؛ فقط درخواست‌کننده می‌تواند ویرایش کند.' });
   }
   if (!row.published_at && row.created_by_username !== user.username && !isAdmin(user) && !isLocalAdmin(user)) {
     return res.status(404).render('not-found', { message: 'این ردیف هنوز ثبت نهایی نشده است.' });

@@ -54,7 +54,7 @@ function listRows(filters = {}) {
     }
   }
 
-  // فیلتر ستون «وضعیت» (جاری/لغو شده/عودت به دفتر فنی) - همان منطق سه‌حالته‌ای
+  // فیلتر ستون «وضعیت» (جاری/لغو شده/عودت به درخواست‌کننده) - همان منطق سه‌حالته‌ای
   // که در گزارش‌ساز هم استفاده می‌شود
   if (filters.status === 'active') {
     clauses.push(`cancelled_at = ''`, `returned_at = ''`);
@@ -355,9 +355,9 @@ function uncancelRow(rowId, user) {
   );
 }
 
-// عودت به دفتر فنی: انبار کارفرما یک درخواست را برمی‌گرداند (مثلاً به‌خاطر
+// عودت به درخواست‌کننده: انبار کارفرما یک درخواست را برمی‌گرداند (مثلاً به‌خاطر
 // نقص در اطلاعات). ردیف حذف نمی‌شود، در فهرست می‌ماند، رنگش تغییر می‌کند و
-// فقط بخش دفتر فنی قابل ویرایش می‌ماند تا مشکل را برطرف کنند. دلیل اختیاری
+// فقط بخش درخواست‌کننده قابل ویرایش می‌ماند تا مشکل را برطرف کنند. دلیل اختیاری
 // است.
 function returnToTechOffice(rowId, reason, user) {
   db.run(
@@ -377,7 +377,7 @@ function returnToTechOffice(rowId, reason, user) {
       fieldKey: 'return_reason',
       fieldLabel: 'وضعیت درخواست',
       oldValue: 'فعال',
-      newValue: reason ? `عودت به دفتر فنی - دلیل: ${reason}` : 'عودت به دفتر فنی',
+      newValue: reason ? `عودت به درخواست‌کننده - دلیل: ${reason}` : 'عودت به درخواست‌کننده',
     }],
     user
   );
@@ -391,7 +391,7 @@ function unreturnFromTechOffice(rowId, user) {
   insertAuditEntries(
     rowId,
     'warehouse_1',
-    [{ fieldKey: 'return_reason', fieldLabel: 'وضعیت درخواست', oldValue: 'عودت به دفتر فنی', newValue: 'بازگردانده شد (فعال)' }],
+    [{ fieldKey: 'return_reason', fieldLabel: 'وضعیت درخواست', oldValue: 'عودت به درخواست‌کننده', newValue: 'بازگردانده شد (فعال)' }],
     user
   );
 }

@@ -1,7 +1,7 @@
 const config = require('./config');
 
 // تعریف بخش‌ها (بلوک‌های نمایشی) و ستون‌های هر بخش روی ردیف مشترک.
-// فقط دفتر فنی بهره‌بردار اجازه‌ی ایجاد ردیف جدید دارد (canCreateRows).
+// فقط درخواست‌کننده اجازه‌ی ایجاد ردیف جدید دارد (canCreateRows).
 // هر بخش فقط می‌تواند فیلدهای خودش را روی یک ردیف (که قبلاً ایجاد شده) تکمیل/ویرایش کند.
 //
 // نکته: انبار کارفرما به‌عمد به دو بلوک نمایشی (warehouse_1 و warehouse_2)
@@ -12,7 +12,7 @@ const config = require('./config');
 const sections = [
   {
     key: 'tech_operator',
-    title: 'دفتر فنی بهره‌بردار',
+    title: 'درخواست‌کننده',
     color: 'tech_operator',
     group: config.ldap.groups.techOperator,
     canCreateRows: true,

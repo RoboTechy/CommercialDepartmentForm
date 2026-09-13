@@ -30,13 +30,13 @@ function canCreateRows(user) {
   return sections.some((s) => s.canCreateRows && user.groups.includes(s.group));
 }
 
-// لغو درخواست: هم دفتر فنی بهره‌بردار (سازنده‌ی درخواست) و هم ادمین
+// لغو درخواست: هم درخواست‌کننده (سازنده‌ی درخواست) و هم ادمین
 function canCancelRow(user) {
   if (isAdmin(user)) return true;
   return user.groups.includes(config.ldap.groups.techOperator);
 }
 
-// عودت به دفتر فنی: فقط انبار کارفرما (و ادمین) می‌تواند این وضعیت را ثبت/بردارد
+// عودت به درخواست‌کننده: فقط انبار کارفرما (و ادمین) می‌تواند این وضعیت را ثبت/بردارد
 function canReturnToTechOffice(user) {
   if (isAdmin(user)) return true;
   return user.groups.includes(config.ldap.groups.warehouse);

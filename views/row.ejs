@@ -8,7 +8,7 @@
           <% if (row.cancelled_at) { %>
             <span class="status-badge status-cancelled">لغو شده</span>
           <% } else if (row.returned_at) { %>
-            <span class="status-badge status-returned">عودت به دفتر فنی</span>
+            <span class="status-badge status-returned">عودت به درخواست‌کننده</span>
           <% } else if (!row.published_at) { %>
             <span class="status-badge status-draft">پیش‌نویس (ثبت نهایی نشده)</span>
           <% } else { %>
@@ -27,7 +27,7 @@
           <button type="button" class="btn btn-danger" onclick="document.getElementById('cancel-form').hidden = false">لغو درخواست</button>
         <% } %>
         <% if (canReturnToTechOffice && !row.deleted_at && !row.cancelled_at && !row.returned_at) { %>
-          <button type="button" class="btn btn-danger" onclick="document.getElementById('return-form').hidden = false">عودت به دفتر فنی</button>
+          <button type="button" class="btn btn-danger" onclick="document.getElementById('return-form').hidden = false">عودت به درخواست‌کننده</button>
         <% } %>
         <% if (isLocalAdmin && !row.deleted_at) { %>
           <form method="post" action="/rows/<%= row.id %>/delete" style="display:inline" onsubmit="return confirm('این ردیف حذف شود؟ (قابل بازیابی از «ردیف‌های حذف‌شده» است)');">
@@ -49,10 +49,10 @@
 
     <% if (canReturnToTechOffice && !row.deleted_at && !row.cancelled_at && !row.returned_at) { %>
       <form method="post" action="/rows/<%= row.id %>/return" class="card no-print" id="return-form" hidden>
-        <label>دلیل عودت به دفتر فنی (اختیاری)
+        <label>دلیل عودت به درخواست‌کننده (اختیاری)
           <input type="text" name="reason" placeholder="مثلاً: اطلاعات ناقص است، مغایرت در مشخصات و..." />
         </label>
-        <button type="submit" class="btn btn-danger">تایید عودت به دفتر فنی</button>
+        <button type="submit" class="btn btn-danger">تایید عودت به درخواست‌کننده</button>
         <button type="button" class="btn" onclick="document.getElementById('return-form').hidden = true">انصراف</button>
       </form>
     <% } %>
@@ -71,7 +71,7 @@
 
     <% if (row.returned_at) { %>
       <div class="alert alert-error no-print">
-        این درخواست در تاریخ <%= row.returned_at %> توسط <%= row.returned_by_display %> به دفتر فنی عودت داده شده است.
+        این درخواست در تاریخ <%= row.returned_at %> توسط <%= row.returned_by_display %> به درخواست‌کننده عودت داده شده است.
         <% if (row.return_reason) { %>دلیل: «<%= row.return_reason %>»<% } %>
         <% if (canReturnToTechOffice) { %>
           <form method="post" action="/rows/<%= row.id %>/unreturn" style="display:inline">

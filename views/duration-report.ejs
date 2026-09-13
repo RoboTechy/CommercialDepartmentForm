@@ -29,7 +29,7 @@
             <option value="">همه</option>
             <option value="active" <%= params.status === 'active' ? 'selected' : '' %>>جاری</option>
             <option value="cancelled" <%= params.status === 'cancelled' ? 'selected' : '' %>>لغو شده</option>
-            <option value="returned" <%= params.status === 'returned' ? 'selected' : '' %>>عودت به دفتر فنی</option>
+            <option value="returned" <%= params.status === 'returned' ? 'selected' : '' %>>عودت به درخواست‌کننده</option>
           </select>
         </label>
         <% if (purchaseExecutorOptions.length) { %>
@@ -112,7 +112,7 @@
                     <% if (item.row.cancelled_at) { %>
                       <span class="status-badge status-cancelled">لغو شده</span>
                     <% } else if (item.row.returned_at) { %>
-                      <span class="status-badge status-returned">عودت به دفتر فنی</span>
+                      <span class="status-badge status-returned">عودت به درخواست‌کننده</span>
                     <% } else { %>
                       <span class="status-badge status-active">جاری</span>
                     <% } %>
