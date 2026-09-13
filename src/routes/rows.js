@@ -62,10 +62,11 @@ router.get('/export.csv', (req, res) => {
     return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
   };
 
-  const headerRow = ['ردیف', ...fields.map((f) => f.label)];
+  const headerRow = ['ردیف', 'وضعیت', ...fields.map((f) => f.label)];
   const lines = [headerRow.map(escapeCsv).join(',')];
   for (const row of rows) {
-    lines.push([row.id, ...fields.map((f) => row[f.name] || '')].map(escapeCsv).join(','));
+    const status = row.cancelled_at ? 'لغو شده' : 'جاری';
+    lines.push([row.id, status, ...fields.map((f) => row[f.name] || '')].map(escapeCsv).join(','));
   }
 
   const filename = `prt-export-${todayJalaliDate().replace(/\//g, '-')}.csv`;

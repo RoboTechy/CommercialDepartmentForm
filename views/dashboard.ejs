@@ -44,6 +44,7 @@
           <thead>
             <tr>
               <th rowspan="3" class="col-id">ردیف</th>
+              <th rowspan="3" class="col-status">وضعیت</th>
               <% sections.forEach(function(section) { %>
                 <th colspan="<%= section.fields.length %>" class="section-head section-<%= section.color %> section-boundary"><%= section.title %></th>
               <% }) %>
@@ -88,8 +89,14 @@
               <tr class="<%= row.cancelled_at ? 'row-cancelled' : (row.isOverdue ? 'row-overdue' : '') %>">
                 <td>
                   <%= row.id %>
-                  <% if (row.cancelled_at) { %> <span class="cancelled-badge" title="لغو شد توسط <%= row.cancelled_by_display %> - دلیل: <%= row.cancel_reason %>">لغو شده</span><% } %>
                   <% if (row.isOverdue) { %> <span class="overdue-badge" title="بیش از <%= overdueDays %> روز از ایجاد این ردیف گذشته و هنوز تکمیل نشده">⏳</span><% } %>
+                </td>
+                <td>
+                  <% if (row.cancelled_at) { %>
+                    <span class="status-badge status-cancelled" title="لغو شد توسط <%= row.cancelled_by_display %> در <%= row.cancelled_at %> - دلیل: <%= row.cancel_reason %>">لغو شده</span>
+                  <% } else { %>
+                    <span class="status-badge status-active">جاری</span>
+                  <% } %>
                 </td>
                 <% sections.forEach(function(section) { %>
                   <% section.fields.forEach(function(field, idx) { %>
