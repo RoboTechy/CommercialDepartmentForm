@@ -29,6 +29,7 @@ function buildFiltersFromQuery(query) {
   }
   if (query.status) filters.status = query.status;
   if (query.incompleteDept) filters.incompleteDept = query.incompleteDept;
+  if (query.incompleteRequesterDept) filters.incompleteRequesterDept = query.incompleteRequesterDept;
   return filters;
 }
 
@@ -60,6 +61,7 @@ router.get('/', (req, res) => {
     distinctValues,
     stats: store.getDashboardStats(),
     overdueDays: config.overdueDays,
+    myDraftRows: store.listDraftRowsForUser(user.username),
   });
 });
 
@@ -212,13 +214,35 @@ router.post('/rows/:id/finalize', (req, res) => {
   const row = store.getRow(req.params.id);
   if (!row) return res.status(404).render('not-found');
 
-  const finalized = store.finalizeDraftRows(user);
+  // فهرست چک‌باکس‌های تیک‌خورده روی صفحه‌ی جزئیات - کاربر می‌تواند از بین چند
+  // پیش‌نویس فقط بعضی‌ها را ثبت نهایی کند (نه لزوماً همه را با هم)
+  const rawIds = req.body.rowIds;
+  const rowIds = Array.isArray(rawIds) ? rawIds : rawIds ? [rawIds] : [];
+
+  const finalized = store.finalizeDraftRows(user, rowIds);
   if (!finalized.length) {
-    req.flash('message', 'هیچ ردیف پیش‌نویسی برای ثبت نهایی وجود نداشت.');
-    return res.redirect('/');
+    req.flash('error', 'هیچ ردیفی برای ثبت نهایی انتخاب نشده بود.');
+    return res.redirect(`/rows/${row.id}`);
   }
   req.flash('message', `${finalized.length} ردیف با موفقیت در فهرست اصلی ثبت شد.`);
   res.redirect('/');
+});
+
+router.post('/rows/:id/discard', (req, res) => {
+  const user = req.session.user;
+  const row = store.getRow(req.params.id);
+  if (!row) return res.status(404).render('not-found');
+  if (row.published_at) {
+    return res.status(404).render('not-found', { message: 'این ردیف قبلاً ثبت نهایی شده؛ دیگر پیش‌نویس نیست و قابل حذف کامل نیست.' });
+  }
+  if (row.created_by_username !== user.username && !isAdmin(user)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به حذف این پیش‌نویس نیستید (فقط سازنده‌ی آن یا ادمین).' });
+  }
+
+  store.discardDraftRow(row.id);
+  const remaining = store.listDraftRowsForUser(user.username);
+  req.flash('message', `ردیف پیش‌نویس شماره ${row.id} برای همیشه حذف شد.`);
+  res.redirect(remaining.length ? `/rows/${remaining[0].id}` : '/');
 });
 
 router.post('/rows/:id/cancel', (req, res) => {

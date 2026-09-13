@@ -83,6 +83,19 @@ function listRows(filters = {}) {
     }
   }
 
+  // همان‌طور بالا، ولی برای کارت‌های آماری سه‌گانه‌ی «درخواست‌کننده» (دفتر
+  // فنی/عمران/آی‌تی) که هرکدام فقط ردیف‌های دپارتمان خودشان را می‌شمارند
+  if (filters.incompleteRequesterDept) {
+    const dept = requesterDepartments.find((d) => d.label === filters.incompleteRequesterDept);
+    if (dept) {
+      const techFields = findSection('tech_operator').fields.filter((f) => !f.readOnly);
+      clauses.push(`requester_dept = @incompleteRequesterDept`);
+      params['@incompleteRequesterDept'] = filters.incompleteRequesterDept;
+      clauses.push(`(${techFields.map((f) => `${f.name} = ''`).join(' OR ')})`);
+      clauses.push(`cancelled_at = ''`, `returned_at = ''`);
+    }
+  }
+
   clauses.push(`deleted_at = ''`);
   clauses.push(`published_at != ''`);
   const where = `WHERE ${clauses.join(' AND ')}`;
@@ -153,9 +166,14 @@ function listDraftRowsForUser(username) {
 
 // ثبت نهایی: همه‌ی ردیف‌های پیش‌نویس یک کاربر را یکجا وارد فهرست اصلی می‌کند
 // (این‌طوری کاربر می‌تواند چند درخواست را پشت‌سرهم بسازد و با هم ثبت کند)
-function finalizeDraftRows(user) {
+// rowIds اختیاری است: اگر داده شود، فقط همان پیش‌نویس‌ها (که واقعاً هم مال
+// همین کاربرند) ثبت نهایی می‌شوند - نه همه‌ی پیش‌نویس‌های کاربر. این‌طوری
+// کاربر می‌تواند از بین چند پیش‌نویس، فقط بعضی‌ها را ثبت نهایی کند و بقیه را
+// برای بعد نگه دارد (یا حذفشان کند - به discardDraftRow مراجعه کنید).
+function finalizeDraftRows(user, rowIds) {
   const drafts = listDraftRowsForUser(user.username);
-  if (!drafts.length) return [];
+  const toFinalize = rowIds ? drafts.filter((d) => rowIds.map(String).includes(String(d.id))) : drafts;
+  if (!toFinalize.length) return [];
   const publishedAt = nowJalaliDateTime();
   const finalize = db.transaction((rowsToPublish) => {
     for (const draft of rowsToPublish) {
@@ -165,8 +183,8 @@ function finalizeDraftRows(user) {
       });
     }
   });
-  finalize(drafts);
-  for (const draft of drafts) {
+  finalize(toFinalize);
+  for (const draft of toFinalize) {
     insertAuditEntries(
       draft.id,
       'tech_operator',
@@ -174,7 +192,24 @@ function finalizeDraftRows(user) {
       user
     );
   }
-  return drafts;
+  return toFinalize;
+}
+
+// حذف کامل (نه نرم) یک ردیف پیش‌نویس - فقط زمانی مجاز است که ردیف هنوز
+// هیچ‌جای مشترکی دیده نشده باشد (published_at خالی)؛ چون هیچ بخش دیگری
+// (انبار/بازرگانی) از وجودش خبردار نشده، حذف کامل بی‌خطر است و برخلاف حذف
+// ردیف‌های ثبت‌نهایی‌شده، نیازی به بازیابی/تاریخچه ندارد. برای جلوگیری از
+// شلوغی audit_log با رکوردهای بی‌معنیِ یک پیش‌نویس منصرف‌شده، لاگ همان ردیف
+// هم با خودش حذف می‌شود.
+function discardDraftRow(rowId) {
+  const row = getRow(rowId);
+  if (!row || row.published_at) return false;
+  const doDelete = db.transaction(() => {
+    db.runRaw(`DELETE FROM audit_log WHERE row_id = @id`, { '@id': rowId });
+    db.runRaw(`DELETE FROM rows WHERE id = @id`, { '@id': rowId });
+  });
+  doDelete();
+  return true;
 }
 
 // آمار کلی برای نمای بالای صفحه‌ی اصلی: تعداد کل، تکمیل/در انتظار به تفکیک
@@ -188,9 +223,19 @@ function getDashboardStats() {
   const lastChangeRows = db.all('SELECT row_id, MAX(changed_at) AS last_changed FROM audit_log GROUP BY row_id');
   const lastChangeByRow = new Map(lastChangeRows.map((r) => [r.row_id, r.last_changed]));
 
-  const departments = DEPARTMENTS.map((dept) => {
+  // بخش «درخواست‌کننده» به‌جای یک کارت آماری واحد، به تفکیک هر دپارتمان
+  // (دفتر فنی/عمران/آی‌تی) جدا حساب می‌شود؛ بقیه‌ی دپارتمان‌ها (انبار/بازرگانی)
+  // مثل قبل یک کارت واحد دارند
+  const departments = DEPARTMENTS.filter((dept) => dept.color !== 'tech_operator').map((dept) => {
     const completed = activeRows.filter((row) => isFieldSetComplete(row, dept.fields)).length;
     return { color: dept.color, title: dept.title, completed, pending: activeRows.length - completed };
+  });
+
+  const techOperatorFields = findSection('tech_operator').fields.filter((f) => !f.readOnly);
+  const requesterDeptStats = requesterDepartments.map((dept) => {
+    const deptRows = activeRows.filter((row) => row.requester_dept === dept.label);
+    const completed = deptRows.filter((row) => isFieldSetComplete(row, techOperatorFields)).length;
+    return { label: dept.label, completed, pending: deptRows.length - completed };
   });
 
   let fullyCompleted = 0;
@@ -213,6 +258,7 @@ function getDashboardStats() {
     returnedCount: allRows.filter((row) => !row.cancelled_at && row.returned_at).length,
     fullyCompleted,
     departments,
+    requesterDeptStats,
     avgCompletionDays: daysSampleCount ? totalDays / daysSampleCount : null,
   };
 }
@@ -524,6 +570,7 @@ module.exports = {
   createRow,
   listDraftRowsForUser,
   finalizeDraftRows,
+  discardDraftRow,
   updateSection,
   getRowHistory,
   searchLogs,

@@ -201,6 +201,20 @@ textarea { min-height: 84px; resize: vertical; }
 .alert-success { background: var(--success-bg); color: var(--success-fg); }
 .alert-info { background: var(--brand-50); color: var(--brand-700); }
 
+.draft-list { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.draft-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.draft-list-item label { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+
 .table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: var(--radius-md); overflow: hidden; }
 .table th, .table td { padding: 11px 14px; text-align: right; border-bottom: 1px solid var(--ink-100); font-size: 13.5px; }
 .table th { background: var(--ink-100); font-weight: 800; color: var(--ink-900); }

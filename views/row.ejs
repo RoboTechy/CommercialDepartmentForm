@@ -94,21 +94,30 @@
       <div class="alert alert-info no-print">
         <p>
           این ردیف هنوز «پیش‌نویس» است و تا زمانی که «ثبت نهایی» را نزنید، در فهرست اصلی نمایش داده
-          نمی‌شود. می‌توانید چند ردیف دیگر هم اضافه کنید و همه را یکجا ثبت نهایی کنید.
+          نمی‌شود. می‌توانید چند ردیف دیگر هم اضافه کنید و همه را با هم یا هرکدام را جدا ثبت نهایی
+          کنید؛ هرکدام را که نمی‌خواهید هم می‌توانید کامل حذف کنید (مثلاً اگر در میانه‌ی کار یکی از
+          آن‌ها اشتباه شد - بقیه دست‌نخورده می‌مانند).
         </p>
-        <% if (draftRows.length > 1) { %>
-          <p class="muted small">
-            ردیف‌های پیش‌نویس شما (<%= draftRows.length %> ردیف):
-            <% draftRows.forEach(function(d, idx) { %>
-              <a href="/rows/<%= d.id %>"><%= d.id === row.id ? ('#' + d.id + ' (همین ردیف)') : ('#' + d.id) %></a><%= idx < draftRows.length - 1 ? '،' : '' %>
-            <% }) %>
-          </p>
-        <% } %>
+
+        <form method="post" action="/rows/<%= row.id %>/finalize" id="finalize-drafts-form"></form>
+        <div class="draft-list">
+          <% draftRows.forEach(function(d) { %>
+            <div class="draft-list-item">
+              <label>
+                <input type="checkbox" name="rowIds" value="<%= d.id %>" checked form="finalize-drafts-form" />
+                <a href="/rows/<%= d.id %>">#<%= d.id %><% if (d.id === row.id) { %> (همین ردیف)<% } %></a>
+                <%= d.request_no || '—' %>
+              </label>
+              <form method="post" action="/rows/<%= d.id %>/discard" style="display:inline" onsubmit="return confirm('این پیش‌نویس برای همیشه حذف شود؟ این کار قابل بازگشت نیست (بقیه‌ی پیش‌نویس‌هایتان دست‌نخورده می‌مانند).');">
+                <button type="submit" class="btn btn-sm btn-danger">حذف این پیش‌نویس</button>
+              </form>
+            </div>
+          <% }) %>
+        </div>
+
         <div class="actions">
           <a href="/rows/new" class="btn">+ افزودن ردیف جدید</a>
-          <form method="post" action="/rows/<%= row.id %>/finalize" style="display:inline">
-            <button type="submit" class="btn btn-primary">ثبت نهایی (<%= draftRows.length %> ردیف)</button>
-          </form>
+          <button type="submit" form="finalize-drafts-form" class="btn btn-primary">ثبت نهایی موارد تیک‌خورده</button>
         </div>
       </div>
     <% } %>

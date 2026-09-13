@@ -17,11 +17,24 @@
       </div>
     </div>
 
+    <% if (myDraftRows && myDraftRows.length) { %>
+      <div class="alert alert-info no-print">
+        شما <%= myDraftRows.length %> ردیف پیش‌نویس (ثبت‌نشده) دارید که هنوز در این فهرست نمایش داده نمی‌شوند.
+        <a href="/rows/<%= myDraftRows[0].id %>">مشاهده و ثبت نهایی</a>
+      </div>
+    <% } %>
+
     <div class="stats-row no-print">
       <a href="/" class="stat-card" title="نمایش همه‌ی ردیف‌ها (پاک کردن فیلترها)">
         <span class="stat-value"><%= stats.totalRows %></span>
         <span class="stat-label">کل ردیف‌ها</span>
       </a>
+      <% stats.requesterDeptStats.forEach(function(dept) { %>
+        <a href="/?incompleteRequesterDept=<%= encodeURIComponent(dept.label) %>" class="stat-card section-tech_operator" title="نمایش ردیف‌های جاری و تکمیل‌نشده‌ی «<%= dept.label %>»">
+          <span class="stat-value"><%= dept.completed %> <span class="stat-value-sep">/</span> <%= dept.pending %></span>
+          <span class="stat-label"><%= dept.label %> (تکمیل‌شده / در انتظار)</span>
+        </a>
+      <% }) %>
       <% stats.departments.forEach(function(dept) { %>
         <a href="/?incompleteDept=<%= dept.color %>" class="stat-card section-<%= dept.color %>" title="نمایش ردیف‌های جاری و تکمیل‌نشده‌ی «<%= dept.title %>»">
           <span class="stat-value"><%= dept.completed %> <span class="stat-value-sep">/</span> <%= dept.pending %></span>
@@ -118,7 +131,13 @@
                 </td>
                 <% sections.forEach(function(section) { %>
                   <% section.fields.forEach(function(field, idx) { %>
-                    <td class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %>"><%= row[field.name] || '-' %></td>
+                    <td class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %>">
+                      <% if (field.name === 'request_no' && row[field.name]) { %>
+                        <a href="/rows/<%= row.id %>"><%= row[field.name] %></a>
+                      <% } else { %>
+                        <%= row[field.name] || '-' %>
+                      <% } %>
+                    </td>
                   <% }) %>
                 <% }) %>
                 <td class="no-print actions-cell">
