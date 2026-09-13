@@ -23,23 +23,23 @@
         <span class="stat-label">کل ردیف‌ها</span>
       </div>
       <% stats.departments.forEach(function(dept) { %>
-        <div class="stat-card section-<%= dept.color %>">
+        <a href="/?incompleteDept=<%= dept.color %>" class="stat-card section-<%= dept.color %>" title="نمایش ردیف‌های جاری و تکمیل‌نشده‌ی «<%= dept.title %>»">
           <span class="stat-value"><%= dept.completed %> <span class="stat-value-sep">/</span> <%= dept.pending %></span>
           <span class="stat-label"><%= dept.title %> (تکمیل‌شده / در انتظار)</span>
-        </div>
+        </a>
       <% }) %>
       <div class="stat-card">
         <span class="stat-value"><%= stats.avgCompletionDays !== null ? stats.avgCompletionDays.toFixed(1) : '—' %></span>
         <span class="stat-label">میانگین روز تا تکمیل کامل (<%= stats.fullyCompleted %> ردیف تکمیل‌شده)</span>
       </div>
-      <div class="stat-card stat-card-cancelled">
+      <a href="/?status=cancelled" class="stat-card stat-card-cancelled" title="نمایش ردیف‌های لغو شده">
         <span class="stat-value"><%= stats.cancelledCount %></span>
         <span class="stat-label">لغو شده</span>
-      </div>
-      <div class="stat-card stat-card-returned">
+      </a>
+      <a href="/?status=returned" class="stat-card stat-card-returned" title="نمایش ردیف‌های عودت به دفتر فنی">
         <span class="stat-value"><%= stats.returnedCount %></span>
         <span class="stat-label">عودت به دفتر فنی</span>
-      </div>
+      </a>
     </div>
 
     <form method="get" action="/" class="filter-form">
@@ -48,7 +48,7 @@
           <thead>
             <tr>
               <th rowspan="3" class="col-id">ردیف</th>
-              <th rowspan="3" class="col-status">وضعیت</th>
+              <th rowspan="2" class="col-status">وضعیت</th>
               <% sections.forEach(function(section) { %>
                 <th colspan="<%= section.fields.length %>" class="section-head section-<%= section.color %> section-boundary"><%= section.title %></th>
               <% }) %>
@@ -62,6 +62,14 @@
               <% }) %>
             </tr>
             <tr class="filter-row no-print">
+              <th class="col-status">
+                <select name="status">
+                  <option value="">همه</option>
+                  <option value="active" <%= query.status === 'active' ? 'selected' : '' %>>جاری</option>
+                  <option value="cancelled" <%= query.status === 'cancelled' ? 'selected' : '' %>>لغو شده</option>
+                  <option value="returned" <%= query.status === 'returned' ? 'selected' : '' %>>عودت به دفتر فنی</option>
+                </select>
+              </th>
               <% sections.forEach(function(section) { %>
                 <% section.fields.forEach(function(field, idx) { %>
                   <th class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %>">

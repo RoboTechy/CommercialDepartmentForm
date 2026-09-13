@@ -54,6 +54,27 @@ function listRows(filters = {}) {
     }
   }
 
+  // فیلتر ستون «وضعیت» (جاری/لغو شده/عودت به دفتر فنی) - همان منطق سه‌حالته‌ای
+  // که در گزارش‌ساز هم استفاده می‌شود
+  if (filters.status === 'active') {
+    clauses.push(`cancelled_at = ''`, `returned_at = ''`);
+  } else if (filters.status === 'cancelled') {
+    clauses.push(`cancelled_at != ''`);
+  } else if (filters.status === 'returned') {
+    clauses.push(`cancelled_at = ''`, `returned_at != ''`);
+  }
+
+  // فیلتر «کلیک روی کارت آماری یک دپارتمان»: فقط ردیف‌های جاری (نه لغو/عودت)
+  // که حداقل یکی از فیلدهای آن دپارتمان هنوز خالی است - دقیقاً همان ردیف‌هایی
+  // که در شمارشِ «در انتظار» روی همان کارت لحاظ شده‌اند
+  if (filters.incompleteDept) {
+    const dept = DEPARTMENTS.find((d) => d.color === filters.incompleteDept);
+    if (dept) {
+      clauses.push(`(${dept.fields.map((f) => `${f.name} = ''`).join(' OR ')})`);
+      clauses.push(`cancelled_at = ''`, `returned_at = ''`);
+    }
+  }
+
   clauses.push(`deleted_at = ''`);
   clauses.push(`published_at != ''`);
   const where = `WHERE ${clauses.join(' AND ')}`;

@@ -26,6 +26,8 @@ function buildFiltersFromQuery(query) {
       filters[field.name] = query[field.name];
     }
   }
+  if (query.status) filters.status = query.status;
+  if (query.incompleteDept) filters.incompleteDept = query.incompleteDept;
   return filters;
 }
 
