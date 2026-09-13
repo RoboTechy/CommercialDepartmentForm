@@ -2,7 +2,7 @@ const db = require('./db');
 const { sections, findSection, allFields, requesterDepartments } = require('./sections');
 const { nowJalaliDateTime, daysBetweenJalali } = require('./jalaali');
 
-// دپارتمان درخواست‌کننده (بهره‌بردار/عمران/آی‌تی) را از عضویت گروهی کاربر
+// دپارتمان درخواست‌کننده (دفتر فنی/عمران/آی‌تی) را از عضویت گروهی کاربر
 // تشخیص می‌دهد - خود کاربر این را انتخاب نمی‌کند، کاملاً خودکار است. اگر
 // کاربر (مثلاً ادمین) عضو هیچ‌کدام از این گروه‌ها نباشد، خالی می‌ماند.
 function resolveRequesterDept(user) {

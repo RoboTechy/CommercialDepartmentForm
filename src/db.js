@@ -67,12 +67,19 @@ ${fieldColumns}
     if (!existingColumns.has(field.name)) {
       sqlDb.run(`ALTER TABLE rows ADD COLUMN ${field.name} TEXT NOT NULL DEFAULT ''`);
       // دپارتمان درخواست‌کننده: ردیف‌های از قبل موجود (قبل از این قابلیت) همه
-      // متعلق به همان گروه قدیمی «بهره‌بردار» بوده‌اند - اگر این یک‌بار پر نشود،
+      // متعلق به همان گروه قدیمی «دفتر فنی» بوده‌اند - اگر این یک‌بار پر نشود،
       // با فعال شدن محدودیت «فقط دپارتمان خودش قابل ویرایش است» قفل می‌مانند
       if (field.name === 'requester_dept') {
-        sqlDb.run(`UPDATE rows SET requester_dept = 'بهره‌بردار' WHERE requester_dept = ''`);
+        sqlDb.run(`UPDATE rows SET requester_dept = 'دفتر فنی' WHERE requester_dept = ''`);
       }
     }
+  }
+
+  // برچسب اولیه‌ی این دپارتمان قبلاً «بهره‌بردار» بود و به «دفتر فنی» تغییر کرد؛
+  // اگر نسخه‌ی قبلی قبلاً روی این دیتابیس اجرا و ردیف‌هایی با برچسب قدیمی
+  // ساخته/مهاجرت شده باشند، اینجا (بی‌ضرر و در هر اجرا) به برچسب جدید اصلاح می‌شوند
+  if (existingColumns.has('requester_dept')) {
+    sqlDb.run(`UPDATE rows SET requester_dept = 'دفتر فنی' WHERE requester_dept = 'بهره‌بردار'`);
   }
 
   // ستون‌های حذف نرم (soft delete) - ردیف واقعاً از دیتابیس پاک نمی‌شود، فقط

@@ -40,11 +40,11 @@ function isAnyRequesterDeptMember(user) {
   return requesterDepartments.some((d) => user.groups.includes(d.group));
 }
 
-// هر عضو یکی از دپارتمان‌های «درخواست‌کننده» (بهره‌بردار/عمران/آی‌تی) فقط
+// هر عضو یکی از دپارتمان‌های «درخواست‌کننده» (دفتر فنی/عمران/آی‌تی) فقط
 // می‌تواند ردیف‌هایی را ویرایش کند که فیلد requester_dept‌شان با دپارتمان
 // خودش یکی باشد - نه ردیف‌های دپارتمان‌های دیگر، حتی اگر هر دو در همان بخش
 // «درخواست‌کننده» باشند. ردیف‌های قدیمی (قبل از این قابلیت) هنگام مهاجرت
-// دیتابیس به دپارتمان «بهره‌بردار» نسبت داده شده‌اند (db.js) تا قفل نشوند.
+// دیتابیس به دپارتمان «دفتر فنی» نسبت داده شده‌اند (db.js) تا قفل نشوند.
 function canEditRequesterRow(user, row) {
   if (isAdmin(user)) return true;
   const dept = requesterDepartments.find((d) => d.label === row.requester_dept);

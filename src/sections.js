@@ -16,7 +16,7 @@ const config = require('./config');
 // فقط می‌تواند ردیف‌های همین دپارتمان خودش را ویرایش/لغو کند (به
 // middleware.js -> canEditRequesterRow/canCancelRow مراجعه کنید).
 const requesterDepartments = [
-  { label: 'بهره‌بردار', group: config.ldap.groups.techOperator },
+  { label: 'دفتر فنی', group: config.ldap.groups.techOperator },
   { label: 'عمران', group: config.ldap.groups.civil },
   { label: 'آی‌تی', group: config.ldap.groups.it },
 ];
