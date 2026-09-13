@@ -30,4 +30,10 @@ function canCreateRows(user) {
   return sections.some((s) => s.canCreateRows && user.groups.includes(s.group));
 }
 
-module.exports = { requireLogin, isAdmin, isLocalAdmin, canEditSection, canCreateRows };
+// لغو درخواست: هم دفتر فنی بهره‌بردار (سازنده‌ی درخواست) و هم ادمین
+function canCancelRow(user) {
+  if (isAdmin(user)) return true;
+  return user.groups.includes(config.ldap.groups.techOperator);
+}
+
+module.exports = { requireLogin, isAdmin, isLocalAdmin, canEditSection, canCreateRows, canCancelRow };

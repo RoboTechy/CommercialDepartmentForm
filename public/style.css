@@ -278,6 +278,22 @@ textarea { min-height: 84px; resize: vertical; }
 }
 .overdue-badge { font-size: 12px; }
 
+.row-cancelled td {
+  background: var(--ink-100);
+  color: var(--ink-500);
+}
+.cancelled-badge {
+  display: inline-block;
+  background: var(--ink-300);
+  color: var(--ink-900);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.stat-card-cancelled { border-inline-start-color: var(--ink-500); }
+
 .jalali-cal-popup {
   z-index: 1000;
   width: 252px;

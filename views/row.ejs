@@ -12,6 +12,9 @@
         <a href="/rows/<%= row.id %>/history" class="btn">تاریخچه‌ی این ردیف</a>
         <button type="button" class="btn" onclick="window.print()">چاپ این ردیف</button>
         <a href="/" class="btn">بازگشت به فهرست</a>
+        <% if (canCancelRow && !row.deleted_at && !row.cancelled_at) { %>
+          <button type="button" class="btn btn-danger" onclick="document.getElementById('cancel-form').hidden = false">لغو درخواست</button>
+        <% } %>
         <% if (isLocalAdmin && !row.deleted_at) { %>
           <form method="post" action="/rows/<%= row.id %>/delete" style="display:inline" onsubmit="return confirm('این ردیف حذف شود؟ (قابل بازیابی از «ردیف‌های حذف‌شده» است)');">
             <button type="submit" class="btn btn-danger">حذف ردیف</button>
@@ -19,6 +22,28 @@
         <% } %>
       </div>
     </div>
+
+    <% if (canCancelRow && !row.deleted_at && !row.cancelled_at) { %>
+      <form method="post" action="/rows/<%= row.id %>/cancel" class="card no-print" id="cancel-form" hidden>
+        <label>دلیل لغو درخواست <span class="req">*</span>
+          <input type="text" name="reason" required placeholder="مثلاً: نیاز برطرف شد، دو بار ثبت شده و..." />
+        </label>
+        <button type="submit" class="btn btn-danger">تایید لغو درخواست</button>
+        <button type="button" class="btn" onclick="document.getElementById('cancel-form').hidden = true">انصراف</button>
+      </form>
+    <% } %>
+
+    <% if (row.cancelled_at) { %>
+      <div class="alert alert-error no-print">
+        این درخواست در تاریخ <%= row.cancelled_at %> توسط <%= row.cancelled_by_display %> لغو شده است.
+        دلیل: «<%= row.cancel_reason %>»
+        <% if (canCancelRow) { %>
+          <form method="post" action="/rows/<%= row.id %>/uncancel" style="display:inline">
+            <button type="submit" class="btn btn-sm">بازگرداندن از لغو</button>
+          </form>
+        <% } %>
+      </div>
+    <% } %>
 
     <% if (row.deleted_at) { %>
       <div class="alert alert-error no-print">

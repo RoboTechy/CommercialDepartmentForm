@@ -14,6 +14,7 @@
         <label>فیلد
           <select name="fieldKey">
             <option value="">همه فیلدها</option>
+            <option value="cancel_reason" <%= filters.fieldKey === 'cancel_reason' ? 'selected' : '' %>>وضعیت درخواست (لغو/بازگردانی)</option>
             <% sections.forEach(function(section) { %>
               <optgroup label="<%= section.title %>">
                 <% section.fields.forEach(function(field) { %>

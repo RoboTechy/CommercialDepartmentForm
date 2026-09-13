@@ -31,6 +31,10 @@
         <span class="stat-value"><%= stats.avgCompletionDays !== null ? stats.avgCompletionDays.toFixed(1) : '—' %></span>
         <span class="stat-label">میانگین روز تا تکمیل کامل (<%= stats.fullyCompleted %> ردیف تکمیل‌شده)</span>
       </div>
+      <div class="stat-card stat-card-cancelled">
+        <span class="stat-value"><%= stats.cancelledCount %></span>
+        <span class="stat-label">لغو شده</span>
+      </div>
     </div>
 
     <form method="get" action="/" class="filter-form">
@@ -80,8 +84,12 @@
               <tr><td colspan="100" class="muted center-cell">هیچ ردیفی با این فیلتر پیدا نشد.</td></tr>
             <% } %>
             <% rows.forEach(function(row) { %>
-              <tr class="<%= row.isOverdue ? 'row-overdue' : '' %>">
-                <td><%= row.id %><% if (row.isOverdue) { %> <span class="overdue-badge" title="بیش از <%= overdueDays %> روز از ایجاد این ردیف گذشته و هنوز تکمیل نشده">⏳</span><% } %></td>
+              <tr class="<%= row.cancelled_at ? 'row-cancelled' : (row.isOverdue ? 'row-overdue' : '') %>">
+                <td>
+                  <%= row.id %>
+                  <% if (row.cancelled_at) { %> <span class="cancelled-badge" title="لغو شد توسط <%= row.cancelled_by_display %> - دلیل: <%= row.cancel_reason %>">لغو شده</span><% } %>
+                  <% if (row.isOverdue) { %> <span class="overdue-badge" title="بیش از <%= overdueDays %> روز از ایجاد این ردیف گذشته و هنوز تکمیل نشده">⏳</span><% } %>
+                </td>
                 <% sections.forEach(function(section) { %>
                   <% section.fields.forEach(function(field, idx) { %>
                     <td class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %>"><%= row[field.name] || '-' %></td>

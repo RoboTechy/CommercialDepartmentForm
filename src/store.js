@@ -75,18 +75,21 @@ function getDistinctValues(fieldName) {
 // دپارتمان، و میانگین مدت‌زمان تکمیل کامل یک ردیف (از ایجاد تا آخرین تغییر)
 function getDashboardStats() {
   const allRows = db.all(`SELECT * FROM rows WHERE deleted_at = ''`);
+  // ردیف‌های لغوشده دیگر قرار نیست تکمیل شوند، پس از آمار «تکمیل/در انتظار» و
+  // میانگین زمان تکمیل کنار گذاشته می‌شوند تا آمار واقعی را خراب نکنند
+  const activeRows = allRows.filter((row) => !row.cancelled_at);
   const lastChangeRows = db.all('SELECT row_id, MAX(changed_at) AS last_changed FROM audit_log GROUP BY row_id');
   const lastChangeByRow = new Map(lastChangeRows.map((r) => [r.row_id, r.last_changed]));
 
   const departments = DEPARTMENTS.map((dept) => {
-    const completed = allRows.filter((row) => isFieldSetComplete(row, dept.fields)).length;
-    return { color: dept.color, title: dept.title, completed, pending: allRows.length - completed };
+    const completed = activeRows.filter((row) => isFieldSetComplete(row, dept.fields)).length;
+    return { color: dept.color, title: dept.title, completed, pending: activeRows.length - completed };
   });
 
   let fullyCompleted = 0;
   let totalDays = 0;
   let daysSampleCount = 0;
-  for (const row of allRows) {
+  for (const row of activeRows) {
     if (!isRowComplete(row)) continue;
     fullyCompleted++;
     const lastChanged = lastChangeByRow.get(row.id);
@@ -99,6 +102,7 @@ function getDashboardStats() {
 
   return {
     totalRows: allRows.length,
+    cancelledCount: allRows.length - activeRows.length,
     fullyCompleted,
     departments,
     avgCompletionDays: daysSampleCount ? totalDays / daysSampleCount : null,
@@ -215,6 +219,42 @@ function listDeletedRows() {
   return db.all(`SELECT * FROM rows WHERE deleted_at != '' ORDER BY id DESC`);
 }
 
+// لغو درخواست: ردیف حذف نمی‌شود و در فهرست می‌ماند، فقط رنگش تغییر می‌کند و
+// دیگر هیچ بخشی قابل ویرایش نیست. حتماً با یک دلیل همراه است و مثل بقیه‌ی
+// تغییرات در تاریخچه ثبت می‌شود (مگر توسط ادمین محلی - طبق قاعده‌ی کلی
+// insertAuditEntries).
+function cancelRow(rowId, reason, user) {
+  db.run(
+    `UPDATE rows SET cancelled_at = @cancelledAt, cancelled_by_username = @username, cancelled_by_display = @display, cancel_reason = @reason WHERE id = @id`,
+    {
+      '@id': rowId,
+      '@cancelledAt': nowJalaliDateTime(),
+      '@username': user.username,
+      '@display': user.displayName || user.username,
+      '@reason': reason,
+    }
+  );
+  insertAuditEntries(
+    rowId,
+    'tech_operator',
+    [{ fieldKey: 'cancel_reason', fieldLabel: 'وضعیت درخواست', oldValue: 'فعال', newValue: `لغو شد - دلیل: ${reason}` }],
+    user
+  );
+}
+
+function uncancelRow(rowId, user) {
+  db.run(
+    `UPDATE rows SET cancelled_at = '', cancelled_by_username = '', cancelled_by_display = '', cancel_reason = '' WHERE id = @id`,
+    { '@id': rowId }
+  );
+  insertAuditEntries(
+    rowId,
+    'tech_operator',
+    [{ fieldKey: 'cancel_reason', fieldLabel: 'وضعیت درخواست', oldValue: 'لغو شد', newValue: 'بازگردانده شد (فعال)' }],
+    user
+  );
+}
+
 function searchLogs(filters = {}) {
   const clauses = [];
   const params = {};
@@ -258,6 +298,8 @@ module.exports = {
   softDeleteRow,
   restoreRow,
   listDeletedRows,
+  cancelRow,
+  uncancelRow,
   ALL_FIELDS,
   FIELD_BY_NAME,
 };

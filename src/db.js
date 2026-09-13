@@ -77,6 +77,14 @@ ${fieldColumns}
     }
   }
 
+  // ستون‌های لغو درخواست - ردیف حذف نمی‌شود، در فهرست می‌ماند ولی رنگش تغییر
+  // می‌کند و بخش‌ها دیگر قابل ویرایش نیستند
+  for (const col of ['cancelled_at', 'cancelled_by_username', 'cancelled_by_display', 'cancel_reason']) {
+    if (!existingColumns.has(col)) {
+      sqlDb.run(`ALTER TABLE rows ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`);
+    }
+  }
+
   persist();
 })();
 

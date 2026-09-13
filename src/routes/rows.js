@@ -3,7 +3,7 @@ const router = express.Router();
 const store = require('../store');
 const config = require('../config');
 const { sections, findSection, allFields } = require('../sections');
-const { requireLogin, canEditSection, canCreateRows, isAdmin, isLocalAdmin } = require('../middleware');
+const { requireLogin, canEditSection, canCreateRows, isAdmin, isLocalAdmin, canCancelRow } = require('../middleware');
 const { normalizeJalaliDate, todayJalaliDate, daysSinceJalali } = require('../jalaali');
 
 router.use(requireLogin);
@@ -27,7 +27,7 @@ router.get('/', (req, res) => {
   const rows = store.listRows(filters).map((row) => {
     const complete = store.isRowComplete(row);
     const age = daysSinceJalali(row.created_at);
-    const overdue = !complete && age !== null && age > config.overdueDays;
+    const overdue = !row.cancelled_at && !complete && age !== null && age > config.overdueDays;
     return { ...row, isComplete: complete, isOverdue: overdue };
   });
 
@@ -163,7 +163,7 @@ router.get('/rows/:id', (req, res) => {
   }
   const sectionsView = sections.map((section) => ({
     ...section,
-    canEdit: !row.deleted_at && canEditSection(user, section.key),
+    canEdit: !row.deleted_at && !row.cancelled_at && canEditSection(user, section.key),
   }));
   res.render('row', {
     row,
@@ -171,10 +171,48 @@ router.get('/rows/:id', (req, res) => {
     user,
     isAdmin: isAdmin(user),
     isLocalAdmin: isLocalAdmin(user),
+    canCancelRow: canCancelRow(user),
     todayJalali: todayJalaliDate(),
     message: req.flash('message'),
     error: req.flash('error'),
   });
+});
+
+router.post('/rows/:id/cancel', (req, res) => {
+  const user = req.session.user;
+  if (!canCancelRow(user)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به لغو این درخواست نیستید (فقط دفتر فنی بهره‌بردار یا ادمین).' });
+  }
+  const row = store.getRow(req.params.id);
+  if (!row) return res.status(404).render('not-found');
+  if (row.deleted_at) return res.status(404).render('not-found', { message: 'این ردیف حذف شده است.' });
+
+  const reason = (req.body.reason || '').toString().trim();
+  if (!reason) {
+    req.flash('error', 'برای لغو درخواست، نوشتن دلیل الزامی است.');
+    return res.redirect(`/rows/${row.id}`);
+  }
+  if (row.cancelled_at) {
+    req.flash('error', 'این درخواست از قبل لغو شده است.');
+    return res.redirect(`/rows/${row.id}`);
+  }
+
+  store.cancelRow(row.id, reason, user);
+  req.flash('message', 'درخواست لغو شد.');
+  res.redirect(`/rows/${row.id}`);
+});
+
+router.post('/rows/:id/uncancel', (req, res) => {
+  const user = req.session.user;
+  if (!canCancelRow(user)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به بازگرداندن این درخواست نیستید (فقط دفتر فنی بهره‌بردار یا ادمین).' });
+  }
+  const row = store.getRow(req.params.id);
+  if (!row) return res.status(404).render('not-found');
+
+  store.uncancelRow(row.id, user);
+  req.flash('message', 'لغو درخواست برداشته شد؛ درخواست دوباره فعال است.');
+  res.redirect(`/rows/${row.id}`);
 });
 
 router.post('/rows/:id/sections/:sectionKey', (req, res) => {
@@ -188,6 +226,9 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
   if (row.deleted_at) {
     return res.status(404).render('not-found', { message: 'این ردیف حذف شده است؛ ابتدا آن را بازیابی کنید.' });
   }
+  if (row.cancelled_at) {
+    return res.status(404).render('not-found', { message: 'این درخواست لغو شده است؛ برای ویرایش ابتدا لغو را بردارید.' });
+  }
 
   if (!canEditSection(user, sectionKey)) {
     const sectionsView = sections.map((s) => ({ ...s, canEdit: canEditSection(user, s.key) }));
@@ -197,6 +238,7 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
       user,
       isAdmin: isAdmin(user),
       isLocalAdmin: isLocalAdmin(user),
+      canCancelRow: canCancelRow(user),
       todayJalali: todayJalaliDate(),
       message: [],
       error: [`شما مجاز به تکمیل «${section.title}» نیستید. این بخش فقط توسط پرسنل همان بخش قابل تکمیل است.`],
