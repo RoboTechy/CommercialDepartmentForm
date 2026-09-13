@@ -199,6 +199,7 @@ textarea { min-height: 84px; resize: vertical; }
 .alert { padding: 11px 16px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 14px; font-weight: 500; }
 .alert-error { background: var(--danger-bg); color: var(--danger-fg); }
 .alert-success { background: var(--success-bg); color: var(--success-fg); }
+.alert-info { background: var(--brand-50); color: var(--brand-700); }
 
 .table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: var(--radius-md); overflow: hidden; }
 .table th, .table td { padding: 11px 14px; text-align: right; border-bottom: 1px solid var(--ink-100); font-size: 13.5px; }
@@ -290,6 +291,7 @@ textarea { min-height: 84px; resize: vertical; }
 .status-active { background: var(--success-bg); color: var(--success-fg); }
 .status-cancelled { background: #ef4444; color: #fff; box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4); }
 .status-returned { background: #8b5cf6; color: #fff; box-shadow: 0 1px 4px rgba(139, 92, 246, 0.4); }
+.status-draft { background: var(--ink-200); color: var(--ink-700); }
 
 .row-cancelled td {
   background: #fef2f2;

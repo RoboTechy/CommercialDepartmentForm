@@ -180,6 +180,10 @@ router.get('/rows/:id', (req, res) => {
   if (row.deleted_at && !isLocalAdmin(user)) {
     return res.status(404).render('not-found', { message: 'این ردیف حذف شده است.' });
   }
+  const isOwner = row.created_by_username === user.username;
+  if (!row.published_at && !isOwner && !isAdmin(user) && !isLocalAdmin(user)) {
+    return res.status(404).render('not-found', { message: 'این ردیف هنوز ثبت نهایی نشده است.' });
+  }
   const sectionsView = sections.map((section) => ({
     ...section,
     canEdit:
@@ -196,10 +200,28 @@ router.get('/rows/:id', (req, res) => {
     isLocalAdmin: isLocalAdmin(user),
     canCancelRow: canCancelRow(user),
     canReturnToTechOffice: canReturnToTechOffice(user),
+    draftRows: row.published_at ? [] : store.listDraftRowsForUser(user.username),
     todayJalali: todayJalaliDate(),
     message: req.flash('message'),
     error: req.flash('error'),
   });
+});
+
+router.post('/rows/:id/finalize', (req, res) => {
+  const user = req.session.user;
+  if (!canCreateRows(user)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به ثبت نهایی ردیف نیستید (فقط دفتر فنی بهره‌بردار).' });
+  }
+  const row = store.getRow(req.params.id);
+  if (!row) return res.status(404).render('not-found');
+
+  const finalized = store.finalizeDraftRows(user);
+  if (!finalized.length) {
+    req.flash('message', 'هیچ ردیف پیش‌نویسی برای ثبت نهایی وجود نداشت.');
+    return res.redirect('/');
+  }
+  req.flash('message', `${finalized.length} ردیف با موفقیت در فهرست اصلی ثبت شد.`);
+  res.redirect('/');
 });
 
 router.post('/rows/:id/cancel', (req, res) => {
@@ -292,6 +314,9 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
   if (row.returned_at && sectionKey !== 'tech_operator') {
     return res.status(404).render('not-found', { message: 'این درخواست به دفتر فنی عودت داده شده است؛ فقط دفتر فنی می‌تواند ویرایش کند.' });
   }
+  if (!row.published_at && row.created_by_username !== user.username && !isAdmin(user) && !isLocalAdmin(user)) {
+    return res.status(404).render('not-found', { message: 'این ردیف هنوز ثبت نهایی نشده است.' });
+  }
 
   if (!canEditSection(user, sectionKey)) {
     const sectionsView = sections.map((s) => ({ ...s, canEdit: canEditSection(user, s.key) }));
@@ -303,6 +328,7 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
       isLocalAdmin: isLocalAdmin(user),
       canCancelRow: canCancelRow(user),
       canReturnToTechOffice: canReturnToTechOffice(user),
+      draftRows: row.published_at ? [] : store.listDraftRowsForUser(user.username),
       todayJalali: todayJalaliDate(),
       message: [],
       error: [`شما مجاز به تکمیل «${section.title}» نیستید. این بخش فقط توسط پرسنل همان بخش قابل تکمیل است.`],

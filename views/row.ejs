@@ -9,6 +9,8 @@
             <span class="status-badge status-cancelled">لغو شده</span>
           <% } else if (row.returned_at) { %>
             <span class="status-badge status-returned">عودت به دفتر فنی</span>
+          <% } else if (!row.published_at) { %>
+            <span class="status-badge status-draft">پیش‌نویس (ثبت نهایی نشده)</span>
           <% } else { %>
             <span class="status-badge status-active">جاری</span>
           <% } %>
@@ -85,6 +87,29 @@
         <form method="post" action="/rows/<%= row.id %>/restore" style="display:inline">
           <button type="submit" class="btn btn-sm">بازیابی ردیف</button>
         </form>
+      </div>
+    <% } %>
+
+    <% if (!row.published_at) { %>
+      <div class="alert alert-info no-print">
+        <p>
+          این ردیف هنوز «پیش‌نویس» است و تا زمانی که «ثبت نهایی» را نزنید، در فهرست اصلی نمایش داده
+          نمی‌شود. می‌توانید چند ردیف دیگر هم اضافه کنید و همه را یکجا ثبت نهایی کنید.
+        </p>
+        <% if (draftRows.length > 1) { %>
+          <p class="muted small">
+            ردیف‌های پیش‌نویس شما (<%= draftRows.length %> ردیف):
+            <% draftRows.forEach(function(d, idx) { %>
+              <a href="/rows/<%= d.id %>"><%= d.id === row.id ? ('#' + d.id + ' (همین ردیف)') : ('#' + d.id) %></a><%= idx < draftRows.length - 1 ? '،' : '' %>
+            <% }) %>
+          </p>
+        <% } %>
+        <div class="actions">
+          <a href="/rows/new" class="btn">+ افزودن ردیف جدید</a>
+          <form method="post" action="/rows/<%= row.id %>/finalize" style="display:inline">
+            <button type="submit" class="btn btn-primary">ثبت نهایی (<%= draftRows.length %> ردیف)</button>
+          </form>
+        </div>
       </div>
     <% } %>
 

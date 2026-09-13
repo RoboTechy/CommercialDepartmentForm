@@ -93,6 +93,15 @@ ${fieldColumns}
     }
   }
 
+  // ستون ثبت نهایی (published_at) - دفتر فنی می‌تواند چند ردیف را پشت‌سرهم
+  // به‌صورت پیش‌نویس بسازد (published_at خالی) و همه را با هم «ثبت نهایی»
+  // کند تا وارد فهرست اصلی شوند. ردیف‌های از قبل موجود (قبل از این قابلیت)
+  // همین یک‌بار با تاریخ ایجادشان پر می‌شوند تا هرگز از فهرست ناپدید نشوند.
+  if (!existingColumns.has('published_at')) {
+    sqlDb.run(`ALTER TABLE rows ADD COLUMN published_at TEXT NOT NULL DEFAULT ''`);
+    sqlDb.run(`UPDATE rows SET published_at = created_at WHERE published_at = ''`);
+  }
+
   persist();
 })();
 

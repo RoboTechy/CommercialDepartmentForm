@@ -55,6 +55,7 @@ function listRows(filters = {}) {
   }
 
   clauses.push(`deleted_at = ''`);
+  clauses.push(`published_at != ''`);
   const where = `WHERE ${clauses.join(' AND ')}`;
   return db.all(`SELECT * FROM rows ${where} ORDER BY id DESC`, params);
 }
@@ -74,14 +75,49 @@ function findRowByRequestNo(requestNo) {
 function getDistinctValues(fieldName) {
   if (!FIELD_BY_NAME.has(fieldName)) return [];
   return db
-    .all(`SELECT DISTINCT ${fieldName} AS value FROM rows WHERE ${fieldName} IS NOT NULL AND ${fieldName} != '' AND deleted_at = '' ORDER BY ${fieldName}`)
+    .all(`SELECT DISTINCT ${fieldName} AS value FROM rows WHERE ${fieldName} IS NOT NULL AND ${fieldName} != '' AND deleted_at = '' AND published_at != '' ORDER BY ${fieldName}`)
     .map((row) => row.value);
+}
+
+// ردیف‌های پیش‌نویس یک کاربر خاص - ساخته شده ولی هنوز «ثبت نهایی» نشده‌اند،
+// پس در فهرست اصلی/آمار/جستجو ظاهر نمی‌شوند تا وقتی کاربر با هم ثبت نهاییشان کند
+function listDraftRowsForUser(username) {
+  return db.all(
+    `SELECT * FROM rows WHERE created_by_username = @username AND published_at = '' AND deleted_at = '' ORDER BY id ASC`,
+    { '@username': username }
+  );
+}
+
+// ثبت نهایی: همه‌ی ردیف‌های پیش‌نویس یک کاربر را یکجا وارد فهرست اصلی می‌کند
+// (این‌طوری کاربر می‌تواند چند درخواست را پشت‌سرهم بسازد و با هم ثبت کند)
+function finalizeDraftRows(user) {
+  const drafts = listDraftRowsForUser(user.username);
+  if (!drafts.length) return [];
+  const publishedAt = nowJalaliDateTime();
+  const finalize = db.transaction((rowsToPublish) => {
+    for (const draft of rowsToPublish) {
+      db.runRaw(`UPDATE rows SET published_at = @publishedAt WHERE id = @id`, {
+        '@id': draft.id,
+        '@publishedAt': publishedAt,
+      });
+    }
+  });
+  finalize(drafts);
+  for (const draft of drafts) {
+    insertAuditEntries(
+      draft.id,
+      'tech_operator',
+      [{ fieldKey: 'published_at', fieldLabel: 'وضعیت ثبت', oldValue: 'پیش‌نویس', newValue: 'ثبت نهایی شد' }],
+      user
+    );
+  }
+  return drafts;
 }
 
 // آمار کلی برای نمای بالای صفحه‌ی اصلی: تعداد کل، تکمیل/در انتظار به تفکیک
 // دپارتمان، و میانگین مدت‌زمان تکمیل کامل یک ردیف (از ایجاد تا آخرین تغییر)
 function getDashboardStats() {
-  const allRows = db.all(`SELECT * FROM rows WHERE deleted_at = ''`);
+  const allRows = db.all(`SELECT * FROM rows WHERE deleted_at = '' AND published_at != ''`);
   // ردیف‌های لغوشده یا عودت‌داده‌شده دیگر در روند عادی پیش نمی‌روند، پس از
   // آمار «تکمیل/در انتظار» و میانگین زمان تکمیل کنار گذاشته می‌شوند تا آمار
   // واقعی را خراب نکنند
@@ -354,7 +390,7 @@ function getDurationReport({ startField, endField, purchaseExecutor, createdFrom
     return null;
   }
 
-  const clauses = [`deleted_at = ''`, `${startField} != ''`, `${endField} != ''`];
+  const clauses = [`deleted_at = ''`, `published_at != ''`, `${startField} != ''`, `${endField} != ''`];
   const params = {};
   if (status === 'active') {
     clauses.push(`cancelled_at = ''`, `returned_at = ''`);
@@ -413,6 +449,8 @@ module.exports = {
   getDashboardStats,
   isRowComplete,
   createRow,
+  listDraftRowsForUser,
+  finalizeDraftRows,
   updateSection,
   getRowHistory,
   searchLogs,
