@@ -64,11 +64,43 @@ function getRow(id) {
   return db.get('SELECT * FROM rows WHERE id = @id', { '@id': id });
 }
 
+// برای تشخیص شماره‌های «تکراری» (شماره درخواست کالا / شماره درخواست خرید)
+// بدون حساسیت به حروف بزرگ/کوچک، بدون حساسیت به رقم فارسی/عربی در برابر
+// انگلیسی، بدون حساسیت به نوع خط تیره (-/–/—/...)، و بدون تأثیرپذیری از
+// کاراکترهای نامرئی که هنگام کپی/پیست معمولاً وارد متن می‌شوند (نیم‌فاصله،
+// علامت‌های جهت راست‌به‌چپ/چپ‌به‌راست و مانند آن) - چون این‌ها می‌توانند دو
+// مقدار را «از نظر چشمی یکسان» ولی از نظر رشته‌ای متفاوت کنند.
+const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+const ARABIC_INDIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+
+function normalizeForDuplicateCheck(value) {
+  let s = (value || '').toString();
+  s = s.replace(/[​‌‍‎‏﻿]/g, ''); // نیم‌فاصله و کاراکترهای نامرئی جهت‌دهی
+  s = s.replace(/[۰-۹]/g, (d) => String(PERSIAN_DIGITS.indexOf(d)));
+  s = s.replace(/[٠-٩]/g, (d) => String(ARABIC_INDIC_DIGITS.indexOf(d)));
+  s = s.replace(/[‐‑‒–—−ـ]/g, '-'); // انواع خط تیره + کشیده‌ی عربی
+  s = s.replace(/\s+/g, ' ').trim();
+  return s.toLowerCase();
+}
+
 // برای جلوگیری از ثبت دوباره‌ی یک شماره درخواست کالای تکراری هنگام ایجاد ردیف
 function findRowByRequestNo(requestNo) {
-  return db.get(`SELECT * FROM rows WHERE request_no = @requestNo AND deleted_at = '' LIMIT 1`, {
-    '@requestNo': requestNo,
-  });
+  const normalized = normalizeForDuplicateCheck(requestNo);
+  if (!normalized) return null;
+  const rows = db.all(`SELECT * FROM rows WHERE deleted_at = ''`);
+  return rows.find((row) => normalizeForDuplicateCheck(row.request_no) === normalized) || null;
+}
+
+// برای جلوگیری از ثبت دوباره‌ی یک شماره درخواست خرید تکراری (توسط انبار کارفرما)
+function findRowByPurchaseRequestNo(purchaseRequestNo, excludeRowId) {
+  const normalized = normalizeForDuplicateCheck(purchaseRequestNo);
+  if (!normalized) return null;
+  const rows = db.all(`SELECT * FROM rows WHERE deleted_at = ''`);
+  return (
+    rows.find(
+      (row) => String(row.id) !== String(excludeRowId) && normalizeForDuplicateCheck(row.purchase_request_no) === normalized
+    ) || null
+  );
 }
 
 // مقادیر یکتا و غیرخالی یک ستون، برای پیشنهاد خودکار (autocomplete) در فیلتر جستجو
@@ -445,6 +477,7 @@ module.exports = {
   listRows,
   getRow,
   findRowByRequestNo,
+  findRowByPurchaseRequestNo,
   getDistinctValues,
   getDashboardStats,
   isRowComplete,

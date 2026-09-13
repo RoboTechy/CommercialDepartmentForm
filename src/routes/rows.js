@@ -355,6 +355,18 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
     return res.redirect(`/rows/${id}`);
   }
 
+  if (sectionKey === 'warehouse_1' && values.purchase_request_no) {
+    const duplicate = store.findRowByPurchaseRequestNo(values.purchase_request_no, id);
+    if (duplicate) {
+      req.flash(
+        'error',
+        `شماره درخواست خرید «${values.purchase_request_no}» قبلاً در ردیف شماره ${duplicate.id} ثبت شده است ` +
+          `(شماره درخواست کالا: ${duplicate.request_no || 'ثبت نشده'}).`
+      );
+      return res.redirect(`/rows/${id}`);
+    }
+  }
+
   store.updateSection(id, sectionKey, values, user);
   req.flash('message', `«${section.title}» با موفقیت به‌روزرسانی شد.`);
   res.redirect(`/rows/${id}`);
