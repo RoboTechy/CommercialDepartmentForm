@@ -63,6 +63,13 @@ function getRow(id) {
   return db.get('SELECT * FROM rows WHERE id = @id', { '@id': id });
 }
 
+// برای جلوگیری از ثبت دوباره‌ی یک شماره درخواست کالای تکراری هنگام ایجاد ردیف
+function findRowByRequestNo(requestNo) {
+  return db.get(`SELECT * FROM rows WHERE request_no = @requestNo AND deleted_at = '' LIMIT 1`, {
+    '@requestNo': requestNo,
+  });
+}
+
 // مقادیر یکتا و غیرخالی یک ستون، برای پیشنهاد خودکار (autocomplete) در فیلتر جستجو
 function getDistinctValues(fieldName) {
   if (!FIELD_BY_NAME.has(fieldName)) return [];
@@ -75,9 +82,10 @@ function getDistinctValues(fieldName) {
 // دپارتمان، و میانگین مدت‌زمان تکمیل کامل یک ردیف (از ایجاد تا آخرین تغییر)
 function getDashboardStats() {
   const allRows = db.all(`SELECT * FROM rows WHERE deleted_at = ''`);
-  // ردیف‌های لغوشده دیگر قرار نیست تکمیل شوند، پس از آمار «تکمیل/در انتظار» و
-  // میانگین زمان تکمیل کنار گذاشته می‌شوند تا آمار واقعی را خراب نکنند
-  const activeRows = allRows.filter((row) => !row.cancelled_at);
+  // ردیف‌های لغوشده یا عودت‌داده‌شده دیگر در روند عادی پیش نمی‌روند، پس از
+  // آمار «تکمیل/در انتظار» و میانگین زمان تکمیل کنار گذاشته می‌شوند تا آمار
+  // واقعی را خراب نکنند
+  const activeRows = allRows.filter((row) => !row.cancelled_at && !row.returned_at);
   const lastChangeRows = db.all('SELECT row_id, MAX(changed_at) AS last_changed FROM audit_log GROUP BY row_id');
   const lastChangeByRow = new Map(lastChangeRows.map((r) => [r.row_id, r.last_changed]));
 
@@ -102,7 +110,8 @@ function getDashboardStats() {
 
   return {
     totalRows: allRows.length,
-    cancelledCount: allRows.length - activeRows.length,
+    cancelledCount: allRows.filter((row) => row.cancelled_at).length,
+    returnedCount: allRows.filter((row) => !row.cancelled_at && row.returned_at).length,
     fullyCompleted,
     departments,
     avgCompletionDays: daysSampleCount ? totalDays / daysSampleCount : null,
@@ -255,6 +264,47 @@ function uncancelRow(rowId, user) {
   );
 }
 
+// عودت به دفتر فنی: انبار کارفرما یک درخواست را برمی‌گرداند (مثلاً به‌خاطر
+// نقص در اطلاعات). ردیف حذف نمی‌شود، در فهرست می‌ماند، رنگش تغییر می‌کند و
+// فقط بخش دفتر فنی قابل ویرایش می‌ماند تا مشکل را برطرف کنند. دلیل اختیاری
+// است.
+function returnToTechOffice(rowId, reason, user) {
+  db.run(
+    `UPDATE rows SET returned_at = @returnedAt, returned_by_username = @username, returned_by_display = @display, return_reason = @reason WHERE id = @id`,
+    {
+      '@id': rowId,
+      '@returnedAt': nowJalaliDateTime(),
+      '@username': user.username,
+      '@display': user.displayName || user.username,
+      '@reason': reason,
+    }
+  );
+  insertAuditEntries(
+    rowId,
+    'warehouse_1',
+    [{
+      fieldKey: 'return_reason',
+      fieldLabel: 'وضعیت درخواست',
+      oldValue: 'فعال',
+      newValue: reason ? `عودت به دفتر فنی - دلیل: ${reason}` : 'عودت به دفتر فنی',
+    }],
+    user
+  );
+}
+
+function unreturnFromTechOffice(rowId, user) {
+  db.run(
+    `UPDATE rows SET returned_at = '', returned_by_username = '', returned_by_display = '', return_reason = '' WHERE id = @id`,
+    { '@id': rowId }
+  );
+  insertAuditEntries(
+    rowId,
+    'warehouse_1',
+    [{ fieldKey: 'return_reason', fieldLabel: 'وضعیت درخواست', oldValue: 'عودت به دفتر فنی', newValue: 'بازگردانده شد (فعال)' }],
+    user
+  );
+}
+
 function searchLogs(filters = {}) {
   const clauses = [];
   const params = {};
@@ -294,9 +344,9 @@ function median(sortedNumbers) {
 
 // گزارش‌ساز عمومی مدت‌زمان: میانگین/میانه/حداقل/حداکثر تعداد روز بین دو فیلد
 // تاریخ شمسی دلخواه (مثلاً «تاریخ ارجاع به بازرگانی» تا «تاریخ صدور مجوز
-// پرداخت»)، با چند فیلتر اختیاری - از جمله وضعیت (جاری/لغو شده/همه) تا
-// بشود این دو دسته را از هم جدا یا با هم دید. ردیف‌های حذف‌شده همیشه کنار
-// گذاشته می‌شوند.
+// پرداخت»)، با چند فیلتر اختیاری - از جمله وضعیت (جاری/لغو شده/عودت به دفتر
+// فنی/همه) تا بشود این دسته‌ها را از هم جدا یا با هم دید. ردیف‌های حذف‌شده
+// همیشه کنار گذاشته می‌شوند.
 function getDurationReport({ startField, endField, purchaseExecutor, createdFrom, createdTo, status }) {
   const startDef = FIELD_BY_NAME.get(startField);
   const endDef = FIELD_BY_NAME.get(endField);
@@ -307,9 +357,11 @@ function getDurationReport({ startField, endField, purchaseExecutor, createdFrom
   const clauses = [`deleted_at = ''`, `${startField} != ''`, `${endField} != ''`];
   const params = {};
   if (status === 'active') {
-    clauses.push(`cancelled_at = ''`);
+    clauses.push(`cancelled_at = ''`, `returned_at = ''`);
   } else if (status === 'cancelled') {
     clauses.push(`cancelled_at != ''`);
+  } else if (status === 'returned') {
+    clauses.push(`cancelled_at = ''`, `returned_at != ''`);
   }
   if (purchaseExecutor) {
     clauses.push('purchase_executor = @purchaseExecutor');
@@ -356,6 +408,7 @@ function getDurationReport({ startField, endField, purchaseExecutor, createdFrom
 module.exports = {
   listRows,
   getRow,
+  findRowByRequestNo,
   getDistinctValues,
   getDashboardStats,
   isRowComplete,
@@ -368,6 +421,8 @@ module.exports = {
   listDeletedRows,
   cancelRow,
   uncancelRow,
+  returnToTechOffice,
+  unreturnFromTechOffice,
   getDurationReport,
   ALL_FIELDS,
   FIELD_BY_NAME,

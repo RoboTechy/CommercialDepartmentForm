@@ -85,6 +85,14 @@ ${fieldColumns}
     }
   }
 
+  // ستون‌های عودت به دفتر فنی - انبار می‌تواند یک درخواست را به این وضعیت
+  // برگرداند؛ فقط بخش دفتر فنی قابل ویرایش می‌ماند
+  for (const col of ['returned_at', 'returned_by_username', 'returned_by_display', 'return_reason']) {
+    if (!existingColumns.has(col)) {
+      sqlDb.run(`ALTER TABLE rows ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`);
+    }
+  }
+
   persist();
 })();
 

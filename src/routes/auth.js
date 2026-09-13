@@ -30,6 +30,17 @@ router.post('/login', async (req, res) => {
 
   try {
     const user = await ldap.authenticate(username, password);
+
+    // فقط اعضای یکی از گروه‌های شناخته‌شده‌ی PRT اجازه‌ی ورود دارند (حتی اگر
+    // رمز عبورشان در Active Directory درست باشد) - جلوگیری از دسترسی مشاهده
+    // برای هر کاربر دامنه که عمداً به هیچ‌کدام از این گروه‌ها اضافه نشده
+    const allowedGroups = Object.values(config.ldap.groups);
+    const hasAccess = user.groups.some((g) => allowedGroups.includes(g));
+    if (!hasAccess) {
+      req.flash('error', 'شما عضو هیچ‌کدام از گروه‌های مجاز این سرویس نیستید. با مدیر سیستم تماس بگیرید.');
+      return res.redirect('/login');
+    }
+
     req.session.user = user;
     res.redirect('/');
   } catch (err) {

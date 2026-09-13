@@ -36,6 +36,10 @@
         <span class="stat-value"><%= stats.cancelledCount %></span>
         <span class="stat-label">لغو شده</span>
       </div>
+      <div class="stat-card stat-card-returned">
+        <span class="stat-value"><%= stats.returnedCount %></span>
+        <span class="stat-label">عودت به دفتر فنی</span>
+      </div>
     </div>
 
     <form method="get" action="/" class="filter-form">
@@ -86,7 +90,7 @@
               <tr><td colspan="100" class="muted center-cell">هیچ ردیفی با این فیلتر پیدا نشد.</td></tr>
             <% } %>
             <% rows.forEach(function(row) { %>
-              <tr class="<%= row.cancelled_at ? 'row-cancelled' : (row.isOverdue ? 'row-overdue' : '') %>">
+              <tr class="<%= row.cancelled_at ? 'row-cancelled' : (row.returned_at ? 'row-returned' : (row.isOverdue ? 'row-overdue' : '')) %>">
                 <td>
                   <%= row.id %>
                   <% if (row.isOverdue) { %> <span class="overdue-badge" title="بیش از <%= overdueDays %> روز از ایجاد این ردیف گذشته و هنوز تکمیل نشده">⏳</span><% } %>
@@ -94,6 +98,8 @@
                 <td>
                   <% if (row.cancelled_at) { %>
                     <span class="status-badge status-cancelled" title="لغو شد توسط <%= row.cancelled_by_display %> در <%= row.cancelled_at %> - دلیل: <%= row.cancel_reason %>">لغو شده</span>
+                  <% } else if (row.returned_at) { %>
+                    <span class="status-badge status-returned" title="عودت داده شد توسط <%= row.returned_by_display %> در <%= row.returned_at %><% if (row.return_reason) { %> - دلیل: <%= row.return_reason %><% } %>">عودت به دفتر فنی</span>
                   <% } else { %>
                     <span class="status-badge status-active">جاری</span>
                   <% } %>

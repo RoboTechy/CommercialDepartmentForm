@@ -36,4 +36,18 @@ function canCancelRow(user) {
   return user.groups.includes(config.ldap.groups.techOperator);
 }
 
-module.exports = { requireLogin, isAdmin, isLocalAdmin, canEditSection, canCreateRows, canCancelRow };
+// عودت به دفتر فنی: فقط انبار کارفرما (و ادمین) می‌تواند این وضعیت را ثبت/بردارد
+function canReturnToTechOffice(user) {
+  if (isAdmin(user)) return true;
+  return user.groups.includes(config.ldap.groups.warehouse);
+}
+
+module.exports = {
+  requireLogin,
+  isAdmin,
+  isLocalAdmin,
+  canEditSection,
+  canCreateRows,
+  canCancelRow,
+  canReturnToTechOffice,
+};

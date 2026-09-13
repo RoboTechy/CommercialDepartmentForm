@@ -289,6 +289,7 @@ textarea { min-height: 84px; resize: vertical; }
 }
 .status-active { background: var(--success-bg); color: var(--success-fg); }
 .status-cancelled { background: #ef4444; color: #fff; box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4); }
+.status-returned { background: #8b5cf6; color: #fff; box-shadow: 0 1px 4px rgba(139, 92, 246, 0.4); }
 
 .row-cancelled td {
   background: #fef2f2;
@@ -298,6 +299,15 @@ textarea { min-height: 84px; resize: vertical; }
   border-inline-start: 4px solid #ef4444;
 }
 .stat-card-cancelled { border-inline-start-color: #ef4444; }
+
+.row-returned td {
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+.row-returned td:first-child {
+  border-inline-start: 4px solid #8b5cf6;
+}
+.stat-card-returned { border-inline-start-color: #8b5cf6; }
 
 .jalali-cal-popup {
   z-index: 1000;

@@ -3,7 +3,15 @@ const router = express.Router();
 const store = require('../store');
 const config = require('../config');
 const { sections, findSection, allFields } = require('../sections');
-const { requireLogin, canEditSection, canCreateRows, isAdmin, isLocalAdmin, canCancelRow } = require('../middleware');
+const {
+  requireLogin,
+  canEditSection,
+  canCreateRows,
+  isAdmin,
+  isLocalAdmin,
+  canCancelRow,
+  canReturnToTechOffice,
+} = require('../middleware');
 const { normalizeJalaliDate, todayJalaliDate, daysSinceJalali } = require('../jalaali');
 
 router.use(requireLogin);
@@ -27,7 +35,7 @@ router.get('/', (req, res) => {
   const rows = store.listRows(filters).map((row) => {
     const complete = store.isRowComplete(row);
     const age = daysSinceJalali(row.created_at);
-    const overdue = !row.cancelled_at && !complete && age !== null && age > config.overdueDays;
+    const overdue = !row.cancelled_at && !row.returned_at && !complete && age !== null && age > config.overdueDays;
     return { ...row, isComplete: complete, isOverdue: overdue };
   });
 
@@ -65,7 +73,7 @@ router.get('/export.csv', (req, res) => {
   const headerRow = ['ردیف', 'وضعیت', ...fields.map((f) => f.label)];
   const lines = [headerRow.map(escapeCsv).join(',')];
   for (const row of rows) {
-    const status = row.cancelled_at ? 'لغو شده' : 'جاری';
+    const status = row.cancelled_at ? 'لغو شده' : row.returned_at ? 'عودت به دفتر فنی' : 'جاری';
     lines.push([row.id, status, ...fields.map((f) => row[f.name] || '')].map(escapeCsv).join(','));
   }
 
@@ -112,6 +120,16 @@ router.post('/rows', (req, res) => {
   const missingLabels = section.fields.filter((f) => f.required && !values[f.name]).map((f) => f.label);
   if (missingLabels.length) {
     req.flash('error', `تکمیل این فیلدها الزامی است: ${missingLabels.join('، ')}`);
+    return res.redirect('/rows/new');
+  }
+
+  const duplicate = store.findRowByRequestNo(values.request_no);
+  if (duplicate) {
+    req.flash(
+      'error',
+      `شماره درخواست کالا «${values.request_no}» قبلاً در ردیف شماره ${duplicate.id} ثبت شده است ` +
+        `(شماره درخواست خرید: ${duplicate.purchase_request_no || 'هنوز ثبت نشده'}).`
+    );
     return res.redirect('/rows/new');
   }
 
@@ -164,7 +182,11 @@ router.get('/rows/:id', (req, res) => {
   }
   const sectionsView = sections.map((section) => ({
     ...section,
-    canEdit: !row.deleted_at && !row.cancelled_at && canEditSection(user, section.key),
+    canEdit:
+      !row.deleted_at &&
+      !row.cancelled_at &&
+      !(row.returned_at && section.key !== 'tech_operator') &&
+      canEditSection(user, section.key),
   }));
   res.render('row', {
     row,
@@ -173,6 +195,7 @@ router.get('/rows/:id', (req, res) => {
     isAdmin: isAdmin(user),
     isLocalAdmin: isLocalAdmin(user),
     canCancelRow: canCancelRow(user),
+    canReturnToTechOffice: canReturnToTechOffice(user),
     todayJalali: todayJalaliDate(),
     message: req.flash('message'),
     error: req.flash('error'),
@@ -216,6 +239,42 @@ router.post('/rows/:id/uncancel', (req, res) => {
   res.redirect(`/rows/${row.id}`);
 });
 
+router.post('/rows/:id/return', (req, res) => {
+  const user = req.session.user;
+  if (!canReturnToTechOffice(user)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به عودت این درخواست نیستید (فقط انبار کارفرما یا ادمین).' });
+  }
+  const row = store.getRow(req.params.id);
+  if (!row) return res.status(404).render('not-found');
+  if (row.deleted_at) return res.status(404).render('not-found', { message: 'این ردیف حذف شده است.' });
+  if (row.cancelled_at) {
+    req.flash('error', 'این درخواست لغو شده است؛ نمی‌توان آن را عودت داد.');
+    return res.redirect(`/rows/${row.id}`);
+  }
+  if (row.returned_at) {
+    req.flash('error', 'این درخواست از قبل به دفتر فنی عودت داده شده است.');
+    return res.redirect(`/rows/${row.id}`);
+  }
+
+  const reason = (req.body.reason || '').toString().trim();
+  store.returnToTechOffice(row.id, reason, user);
+  req.flash('message', 'درخواست به دفتر فنی عودت داده شد.');
+  res.redirect(`/rows/${row.id}`);
+});
+
+router.post('/rows/:id/unreturn', (req, res) => {
+  const user = req.session.user;
+  if (!canReturnToTechOffice(user)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به بازگرداندن این درخواست نیستید (فقط انبار کارفرما یا ادمین).' });
+  }
+  const row = store.getRow(req.params.id);
+  if (!row) return res.status(404).render('not-found');
+
+  store.unreturnFromTechOffice(row.id, user);
+  req.flash('message', 'عودت درخواست برداشته شد؛ درخواست دوباره فعال است.');
+  res.redirect(`/rows/${row.id}`);
+});
+
 router.post('/rows/:id/sections/:sectionKey', (req, res) => {
   const { id, sectionKey } = req.params;
   const user = req.session.user;
@@ -230,6 +289,9 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
   if (row.cancelled_at) {
     return res.status(404).render('not-found', { message: 'این درخواست لغو شده است؛ برای ویرایش ابتدا لغو را بردارید.' });
   }
+  if (row.returned_at && sectionKey !== 'tech_operator') {
+    return res.status(404).render('not-found', { message: 'این درخواست به دفتر فنی عودت داده شده است؛ فقط دفتر فنی می‌تواند ویرایش کند.' });
+  }
 
   if (!canEditSection(user, sectionKey)) {
     const sectionsView = sections.map((s) => ({ ...s, canEdit: canEditSection(user, s.key) }));
@@ -240,6 +302,7 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
       isAdmin: isAdmin(user),
       isLocalAdmin: isLocalAdmin(user),
       canCancelRow: canCancelRow(user),
+      canReturnToTechOffice: canReturnToTechOffice(user),
       todayJalali: todayJalaliDate(),
       message: [],
       error: [`شما مجاز به تکمیل «${section.title}» نیستید. این بخش فقط توسط پرسنل همان بخش قابل تکمیل است.`],

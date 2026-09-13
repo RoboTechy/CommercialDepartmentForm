@@ -32,6 +32,9 @@ module.exports = {
       warehouse: need('LDAP_GROUP_WAREHOUSE', 'warehouse'),
       commercial: need('LDAP_GROUP_COMMERCIAL', 'commercial'),
       admin: need('LDAP_GROUP_ADMIN', 'formadmin'),
+      // فقط مشاهده: دسترسی به فهرست/گزارش‌ها/تاریخچه دارد ولی هیچ‌جا نمی‌تواند
+      // چیزی ثبت یا تغییر بدهد
+      viewer: need('LDAP_GROUP_VIEWER', 'PRT-Viewer'),
     },
   },
 };
