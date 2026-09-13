@@ -294,17 +294,23 @@ function median(sortedNumbers) {
 
 // گزارش‌ساز عمومی مدت‌زمان: میانگین/میانه/حداقل/حداکثر تعداد روز بین دو فیلد
 // تاریخ شمسی دلخواه (مثلاً «تاریخ ارجاع به بازرگانی» تا «تاریخ صدور مجوز
-// پرداخت»)، با چند فیلتر اختیاری. ردیف‌های حذف‌شده یا لغوشده حساب نمی‌شوند
-// چون هیچ‌وقت این فرایند رویشان کامل نمی‌شود.
-function getDurationReport({ startField, endField, purchaseExecutor, createdFrom, createdTo }) {
+// پرداخت»)، با چند فیلتر اختیاری - از جمله وضعیت (جاری/لغو شده/همه) تا
+// بشود این دو دسته را از هم جدا یا با هم دید. ردیف‌های حذف‌شده همیشه کنار
+// گذاشته می‌شوند.
+function getDurationReport({ startField, endField, purchaseExecutor, createdFrom, createdTo, status }) {
   const startDef = FIELD_BY_NAME.get(startField);
   const endDef = FIELD_BY_NAME.get(endField);
   if (!startDef || !endDef || startDef.type !== 'jalali-date' || endDef.type !== 'jalali-date') {
     return null;
   }
 
-  const clauses = [`deleted_at = ''`, `cancelled_at = ''`, `${startField} != ''`, `${endField} != ''`];
+  const clauses = [`deleted_at = ''`, `${startField} != ''`, `${endField} != ''`];
   const params = {};
+  if (status === 'active') {
+    clauses.push(`cancelled_at = ''`);
+  } else if (status === 'cancelled') {
+    clauses.push(`cancelled_at != ''`);
+  }
   if (purchaseExecutor) {
     clauses.push('purchase_executor = @purchaseExecutor');
     params['@purchaseExecutor'] = purchaseExecutor;

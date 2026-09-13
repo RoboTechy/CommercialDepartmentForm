@@ -6,12 +6,6 @@
       <a href="/" class="btn">بازگشت به فهرست</a>
     </div>
 
-    <p class="muted no-print">
-      مدت‌زمان (به روز) بین دو فیلد تاریخ دلخواه را برای ردیف‌های فعال (غیرحذف‌شده و غیرلغوشده)
-      محاسبه می‌کند. مثلاً برای «میانگین مدت خرید»: از «تاریخ ارجاع به بازرگانی» تا «تاریخ صدور
-      مجوز پرداخت» را انتخاب کنید.
-    </p>
-
     <form method="get" action="/reports/duration" class="card filter-card no-print">
       <div class="filter-grid">
         <label>از فیلد (شروع)
@@ -28,6 +22,13 @@
             <% dateFields.forEach(function(f) { %>
               <option value="<%= f.name %>" <%= params.endField === f.name ? 'selected' : '' %>><%= f.label %></option>
             <% }) %>
+          </select>
+        </label>
+        <label>وضعیت (اختیاری)
+          <select name="status">
+            <option value="">همه</option>
+            <option value="active" <%= params.status === 'active' ? 'selected' : '' %>>جاری</option>
+            <option value="cancelled" <%= params.status === 'cancelled' ? 'selected' : '' %>>لغو شده</option>
           </select>
         </label>
         <% if (purchaseExecutorOptions.length) { %>
@@ -94,6 +95,7 @@
             <thead>
               <tr>
                 <th>ردیف</th>
+                <th>وضعیت</th>
                 <th>شماره درخواست کالا</th>
                 <th>شرح کالا</th>
                 <th>تاریخ شروع</th>
@@ -105,6 +107,13 @@
               <% report.items.forEach(function(item) { %>
                 <tr>
                   <td><a href="/rows/<%= item.row.id %>">#<%= item.row.id %></a></td>
+                  <td>
+                    <% if (item.row.cancelled_at) { %>
+                      <span class="status-badge status-cancelled">لغو شده</span>
+                    <% } else { %>
+                      <span class="status-badge status-active">جاری</span>
+                    <% } %>
+                  </td>
                   <td><%= item.row.request_no %></td>
                   <td><%= item.row.item_description %></td>
                   <td><%= item.row[params.startField] %></td>

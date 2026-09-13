@@ -297,6 +297,7 @@ router.get('/reports/duration', (req, res) => {
   const params = {
     startField: req.query.startField || '',
     endField: req.query.endField || '',
+    status: req.query.status || '',
     purchaseExecutor: req.query.purchaseExecutor || '',
     createdFrom: req.query.createdFrom || '',
     createdTo: req.query.createdTo || '',
