@@ -1,6 +1,15 @@
+<%
+  // اگر این فیلد به‌طور دائمی readOnly نیست ولی به دلیلی موقت/وابسته به
+  // مقدار یک فیلد دیگر (مثلاً مجری خرید) باید فعلاً غیرقابل‌ویرایش نمایش
+  // داده شود، صدا زننده forceReadOnlyReason را (یک متن توضیح، نه صرفاً
+  // true/false) پاس می‌دهد؛ بر خلاف field.readOnly، نام فیلد در فرم باقی
+  // می‌ماند تا مقدار فعلی‌اش دست‌نخورده دوباره ارسال/ذخیره شود، نه پاک شود
+  var waived = typeof forceReadOnlyReason !== 'undefined' && forceReadOnlyReason;
+%>
 <label>
   <%= field.label %><% if (field.required) { %> <span class="req">*</span><% } %>
   <% if (field.hint) { %><span class="field-hint"><%= field.hint %></span><% } %>
+  <% if (waived) { %><span class="field-hint"><%= forceReadOnlyReason %></span><% } %>
   <% if (field.readOnly) { %>
     <input type="text" value="<%= value %>" disabled />
   <% } else if (field.type === 'textarea') { %>
@@ -14,8 +23,8 @@
     </select>
   <% } else if (field.type === 'jalali-date') { %>
     <div class="jalali-date-input">
-      <input type="text" name="<%= field.name %>" value="<%= value %>" placeholder="1403/05/12" class="jalali-date-text" <%= field.required ? 'required' : '' %> />
-      <button type="button" class="btn btn-sm today-btn" data-today="<%= todayJalali %>">امروز</button>
+      <input type="text" name="<%= field.name %>" value="<%= value %>" placeholder="1403/05/12" class="jalali-date-text<%= waived ? ' is-waived' : '' %>" <%= field.required ? 'required' : '' %> <%= waived ? 'readonly' : '' %> />
+      <button type="button" class="btn btn-sm today-btn" data-today="<%= todayJalali %>" <%= waived ? 'disabled' : '' %>>امروز</button>
     </div>
   <% } else { %>
     <input type="text" name="<%= field.name %>" value="<%= value %>" placeholder="<%= field.hint || '' %>" <%= field.required ? 'required' : '' %> />

@@ -84,6 +84,17 @@ const sections = [
   },
 ];
 
+// اگر «مجری خرید» تهران یا برنا باشد، خرید دیگر توسط بازرگانی سایت انجام
+// نمی‌شود، پس بازرگانی سایت اصلاً مجوز پرداخت صادر نمی‌کند: «تاریخ صدور
+// مجوز پرداخت» در این حالت هم از حالت قابل‌ویرایش خارج می‌شود (سمت سرور و
+// کلاینت) و هم برای «تکمیل‌شده» حساب‌شدن بخش بازرگانی/کل ردیف لازم نیست.
+// توجه: این دو مقدار در public/app.js هم (برای غیرفعال‌کردن آنی فیلد بدون
+// رفرش صفحه) تکرار شده‌اند - اگر این‌جا تغییر کرد، آن‌جا را هم به‌روز کنید.
+const EXTERNAL_PURCHASE_EXECUTORS = ['تهران', 'برنا'];
+function isPaymentAuthWaived(row) {
+  return EXTERNAL_PURCHASE_EXECUTORS.includes(row.purchase_executor);
+}
+
 function findSection(key) {
   return sections.find((s) => s.key === key);
 }
@@ -100,4 +111,4 @@ function allFields() {
   return sections.flatMap((s) => s.fields.map((f) => ({ ...f, sectionKey: s.key })));
 }
 
-module.exports = { sections, findSection, findField, allFields, requesterDepartments };
+module.exports = { sections, findSection, findField, allFields, requesterDepartments, isPaymentAuthWaived };

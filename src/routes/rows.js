@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const store = require('../store');
 const config = require('../config');
-const { sections, findSection, findField, allFields, requesterDepartments } = require('../sections');
+const { sections, findSection, findField, allFields, requesterDepartments, isPaymentAuthWaived } = require('../sections');
 const {
   requireLogin,
   canEditSectionForRow,
@@ -21,7 +21,8 @@ router.use(requireLogin);
 // می‌شود (همه‌ی فیلدهای غیر-فقط‌خواندنی پر باشند)؛ هیچ مجوز/قفلی از این
 // محاسبه نتیجه نمی‌شود - فقط یک نشانه‌ی بصری است.
 function isSectionComplete(row, section) {
-  return section.fields.filter((f) => !f.readOnly).every((f) => (row[f.name] || '').toString().trim() !== '');
+  const fields = store.fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly));
+  return fields.every((f) => (row[f.name] || '').toString().trim() !== '');
 }
 
 function buildFiltersFromQuery(query) {
@@ -57,6 +58,10 @@ router.get('/', (req, res) => {
       if (!canEditSectionForRow(user, row, section.key)) continue;
       for (const field of section.fields) {
         if (field.name === 'request_no' || field.readOnly) continue;
+        // مجری خرید تهران/برنا: بازرگانی سایت مجوز پرداخت صادر نمی‌کند،
+        // پس این فیلد از همین فهرست هم قابل ویرایش درجا نیست (به توضیح
+        // isPaymentAuthWaived در sections.js مراجعه کنید)
+        if (field.name === 'payment_auth_issued_date' && isPaymentAuthWaived(row)) continue;
         editableFieldNames.push(field.name);
       }
     }
@@ -232,6 +237,7 @@ router.get('/rows/:id', (req, res) => {
     canReturnToTechOffice: canReturnToTechOffice(user),
     draftRows: row.published_at ? [] : store.listDraftRowsForUser(user.username),
     todayJalali: todayJalaliDate(),
+    paymentAuthWaived: isPaymentAuthWaived(row),
     message: req.flash('message'),
     error: req.flash('error'),
   });
@@ -390,6 +396,7 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
       canReturnToTechOffice: canReturnToTechOffice(user),
       draftRows: row.published_at ? [] : store.listDraftRowsForUser(user.username),
       todayJalali: todayJalaliDate(),
+      paymentAuthWaived: isPaymentAuthWaived(row),
       message: [],
       error: [deniedMessage],
     });
@@ -442,6 +449,9 @@ router.post('/rows/:id/fields/:fieldName', (req, res) => {
   }
   if (field.readOnly) {
     return res.status(400).json({ ok: false, error: 'این فیلد فقط‌خواندنی است و خودکار محاسبه می‌شود.' });
+  }
+  if (field.name === 'payment_auth_issued_date' && isPaymentAuthWaived(row)) {
+    return res.status(400).json({ ok: false, error: 'چون مجری خرید «' + row.purchase_executor + '» است، بازرگانی سایت برای این خرید مجوز پرداخت صادر نمی‌کند و این فیلد قابل ویرایش نیست.' });
   }
   if (!row.published_at) {
     return res.status(404).json({ ok: false, error: 'این ردیف هنوز ثبت نهایی نشده است.' });

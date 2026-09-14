@@ -189,7 +189,13 @@
             <% if (section.canEdit) { %>
               <form method="post" action="/rows/<%= row.id %>/sections/<%= section.key %>" class="section-form no-print" data-section-key="<%= section.key %>" data-row-id="<%= row.id %>">
                 <% section.fields.forEach(function(field) { %>
-                  <%- include('partials/field-input', { field: field, value: row[field.name] || '', todayJalali: todayJalali }) %>
+                  <%
+                    var fieldReadOnlyReason = '';
+                    if (field.name === 'payment_auth_issued_date' && paymentAuthWaived) {
+                      fieldReadOnlyReason = 'چون مجری خرید «' + row.purchase_executor + '» است، بازرگانی سایت برای این خرید مجوز پرداخت صادر نمی‌کند';
+                    }
+                  %>
+                  <%- include('partials/field-input', { field: field, value: row[field.name] || '', todayJalali: todayJalali, forceReadOnlyReason: fieldReadOnlyReason }) %>
                 <% }) %>
                 <button type="submit" class="btn btn-primary">ثبت / بروزرسانی «<%= section.title %>»</button>
               </form>

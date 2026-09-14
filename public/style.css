@@ -391,6 +391,9 @@ textarea { min-height: 84px; resize: vertical; }
 .jalali-date-input { display: flex; gap: 6px; align-items: center; }
 .jalali-date-input input { margin-top: 6px; }
 .jalali-date-input .today-btn { margin-top: 6px; white-space: nowrap; }
+.jalali-date-input .today-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+input.jalali-date-text.is-waived,
+input.jalali-date-text[readonly] { background: var(--ink-100); color: var(--ink-500); cursor: not-allowed; }
 
 .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px 16px; margin-bottom: 12px; }
 

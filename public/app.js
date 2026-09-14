@@ -186,13 +186,13 @@ document.addEventListener('click', function (e) {
   }
 
   document.addEventListener('focusin', function (e) {
-    if (e.target.matches && e.target.matches('.jalali-date-text')) {
+    if (e.target.matches && e.target.matches('.jalali-date-text:not([readonly]):not([disabled])')) {
       openPopup(e.target);
     }
   });
 
   document.addEventListener('click', function (e) {
-    var input = e.target.closest('.jalali-date-text');
+    var input = e.target.closest('.jalali-date-text:not([readonly]):not([disabled])');
     if (input) {
       openPopup(input);
       return;
@@ -562,6 +562,29 @@ document.addEventListener('click', function (e) {
       });
       item.classList.add('open');
       item.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+})();
+
+// --- بازرگانی غدیر: اگر مجری خرید «تهران» یا «برنا» باشد، بازرگانی سایت
+// مجوز پرداخت صادر نمی‌کند، پس «تاریخ صدور مجوز پرداخت» غیرفعال می‌شود -
+// وضعیت اولیه (صفحه بارگذاری‌شده) را خود سرور رندر کرده (به
+// isPaymentAuthWaived در src/sections.js مراجعه کنید)؛ این بخش فقط برای
+// وقتی است که کاربر بدون رفرش صفحه مقدار «مجری خرید» را عوض می‌کند - باید
+// همان دو مقدار دقیقاً با sections.js هماهنگ بماند ---
+(function () {
+  var EXTERNAL_PURCHASE_EXECUTORS = ['تهران', 'برنا'];
+  document.querySelectorAll('form[data-section-key="commercial"]').forEach(function (form) {
+    var executorSelect = form.querySelector('[name="purchase_executor"]');
+    var paymentInput = form.querySelector('[name="payment_auth_issued_date"]');
+    var todayBtn = paymentInput && paymentInput.closest('.jalali-date-input').querySelector('.today-btn');
+    if (!executorSelect || !paymentInput) return;
+
+    executorSelect.addEventListener('change', function () {
+      var waived = EXTERNAL_PURCHASE_EXECUTORS.indexOf(executorSelect.value) !== -1;
+      paymentInput.readOnly = waived;
+      paymentInput.classList.toggle('is-waived', waived);
+      if (todayBtn) todayBtn.disabled = waived;
     });
   });
 })();

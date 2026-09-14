@@ -1,5 +1,5 @@
 const db = require('./db');
-const { sections, findSection, allFields, requesterDepartments } = require('./sections');
+const { sections, findSection, allFields, requesterDepartments, isPaymentAuthWaived } = require('./sections');
 const { nowJalaliDateTime, daysBetweenJalali } = require('./jalaali');
 
 // دپارتمان درخواست‌کننده (دفتر فنی/عمران/آی‌تی) را از عضویت گروهی کاربر
@@ -30,8 +30,16 @@ function isFieldSetComplete(row, fields) {
   return fields.every((f) => (row[f.name] || '').toString().trim() !== '');
 }
 
+// همان fields را برمی‌گرداند، مگر اینکه طبق isPaymentAuthWaived این ردیف
+// دیگر نیازی به «تاریخ صدور مجوز پرداخت» نداشته باشد (مجری خرید تهران/برنا)
+// - در آن صورت آن یک فیلد از لیست فیلدهای لازم برای «تکمیل‌شده» کنار می‌رود
+function fieldsForCompletion(row, fields) {
+  if (!isPaymentAuthWaived(row)) return fields;
+  return fields.filter((f) => f.name !== 'payment_auth_issued_date');
+}
+
 function isRowComplete(row) {
-  return isFieldSetComplete(row, ALL_FIELDS);
+  return isFieldSetComplete(row, fieldsForCompletion(row, ALL_FIELDS));
 }
 
 function listRows(filters = {}) {
@@ -227,7 +235,7 @@ function getDashboardStats() {
   // (دفتر فنی/عمران/آی‌تی) جدا حساب می‌شود؛ بقیه‌ی دپارتمان‌ها (انبار/بازرگانی)
   // مثل قبل یک کارت واحد دارند
   const departments = DEPARTMENTS.filter((dept) => dept.color !== 'tech_operator').map((dept) => {
-    const completed = activeRows.filter((row) => isFieldSetComplete(row, dept.fields)).length;
+    const completed = activeRows.filter((row) => isFieldSetComplete(row, fieldsForCompletion(row, dept.fields))).length;
     return { color: dept.color, title: dept.title, completed, pending: activeRows.length - completed };
   });
 
@@ -593,6 +601,7 @@ module.exports = {
   returnToTechOffice,
   unreturnFromTechOffice,
   getDurationReport,
+  fieldsForCompletion,
   ALL_FIELDS,
   FIELD_BY_NAME,
 };
