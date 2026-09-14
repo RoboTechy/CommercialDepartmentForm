@@ -191,6 +191,33 @@ body.dashboard-scroll .sheet-table thead {
   z-index: 5;
   background: var(--card-bg);
 }
+/* روی صفحه‌های باریک (موبایل)، دکمه‌های بالای صفحه چند ردیف می‌شکنند و
+   ارتفاع زیادی می‌گیرند؛ چون ارتفاع کل صفحه ثابت (100vh) و اسکرول فقط
+   داخل جدول تعریف شده بود، فضای باقی‌مانده برای جدول به یک نوار خیلی
+   باریک فشرده می‌شد و اسکرول عمودی به‌جای خود فهرست، انگار همان‌جا کنار
+   هدر ظاهر می‌شد. در این عرض‌ها کل صفحه به اسکرول معمولی (مثل بقیه‌ی
+   صفحه‌های سایت) برمی‌گردد تا هم هدر و هم جدول جای کافی داشته باشند */
+@media (max-width: 700px) {
+  body.dashboard-scroll {
+    height: auto;
+    overflow: visible;
+    display: block;
+  }
+  body.dashboard-scroll .container-wide {
+    display: block;
+    overflow: visible;
+  }
+  body.dashboard-scroll .filter-form {
+    display: block;
+  }
+  body.dashboard-scroll .table-scroll {
+    flex: none;
+    overflow-y: visible;
+  }
+  body.dashboard-scroll .sheet-table thead {
+    position: static;
+  }
+}
 @media print {
   body.dashboard-scroll,
   body.dashboard-scroll .container-wide,
