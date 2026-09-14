@@ -149,84 +149,25 @@ body {
 .container-wide { max-width: 100%; }
 .center-page { display: flex; align-items: center; justify-content: center; min-height: 80vh; }
 
-/* صفحه‌ی اصلی: فقط خود فهرست ردیف‌ها اسکرول می‌شود، نه کل صفحه - هدر بالا،
-   عنوان/دکمه‌ها، و نوار فیلتر/دکمه‌های پایین همیشه سرجایشان ثابت می‌مانند */
-body.dashboard-scroll {
-  height: 100vh;
-  margin: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-body.dashboard-scroll .topbar { flex: 0 0 auto; }
-body.dashboard-scroll .container-wide {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  margin: 16px auto;
-  overflow: hidden;
-}
-body.dashboard-scroll .page-header,
-body.dashboard-scroll > .container-wide > .alert {
-  flex: 0 0 auto;
-}
-body.dashboard-scroll .filter-form {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-body.dashboard-scroll .filter-actions {
-  flex: 0 0 auto;
-}
-body.dashboard-scroll .table-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-}
-body.dashboard-scroll .sheet-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: var(--card-bg);
-}
-/* روی صفحه‌های باریک (موبایل)، دکمه‌های بالای صفحه چند ردیف می‌شکنند و
-   ارتفاع زیادی می‌گیرند؛ چون ارتفاع کل صفحه ثابت (100vh) و اسکرول فقط
-   داخل جدول تعریف شده بود، فضای باقی‌مانده برای جدول به یک نوار خیلی
-   باریک فشرده می‌شد و اسکرول عمودی به‌جای خود فهرست، انگار همان‌جا کنار
-   هدر ظاهر می‌شد. در این عرض‌ها کل صفحه به اسکرول معمولی (مثل بقیه‌ی
-   صفحه‌های سایت) برمی‌گردد تا هم هدر و هم جدول جای کافی داشته باشند */
-@media (max-width: 700px) {
-  body.dashboard-scroll {
-    height: auto;
-    overflow: visible;
-    display: block;
-  }
-  body.dashboard-scroll .container-wide {
-    display: block;
-    overflow: visible;
-  }
-  body.dashboard-scroll .filter-form {
-    display: block;
-  }
-  body.dashboard-scroll .table-scroll {
-    flex: none;
-    overflow-y: visible;
-  }
-  body.dashboard-scroll .sheet-table thead {
-    position: static;
-  }
-}
-@media print {
-  body.dashboard-scroll,
-  body.dashboard-scroll .container-wide,
-  body.dashboard-scroll .filter-form {
-    display: block;
-    height: auto;
-    overflow: visible;
-  }
-}
+/* صفحه‌ی اصلی: قبلاً با قفل‌کردن کل صفحه به ارتفاع دقیق 100vh و
+   اسکرول‌دادن فقط به خود جدول پیاده شده بود تا هدر/دکمه‌ها همیشه در دید
+   بمانند. آن روش دو مشکل واقعی داشت: (۱) روی صفحه‌های باریک، دکمه‌های
+   بالا چند ردیف می‌شکستند و فضای جدول را به یک نوار خیلی باریک فشرده
+   می‌کردند؛ (۲) در کروم، اسکرول موس روی نواحی غیرقابل‌اسکرول بالای جدول
+   (مثل ردیف دکمه‌های فیلتر) به‌جای بی‌اثر بودن، به‌طور غیرمنتظره جدول را
+   اسکرول می‌کرد (scroll chaining مرورگر داخل یک کانتینر تودرتوی
+   قفل‌شده). امتحان شد که سرستون جدول هم به‌صورت sticky (نسبت به کل صفحه،
+   نه فقط داخل جدول) در دید بماند، اما چون جدول برای اسکرول افقی داخل یک
+   .table-scroll با overflow-x:auto پیچیده شده، طبق مشخصات CSS مرورگر
+   خودش overflow-y را هم به‌طور خودکار «auto» حساب می‌کند (نمی‌شود با
+   گذاشتن overflow-y:visible/clip این رفتار را دور زد) - و همین باعث
+   می‌شود position:sticky روی هر عنصر داخلش (چه خود <thead> چه تک‌تک
+   <th>ها) فقط نسبت به همان جدول بچسبد، نه نسبت به کل صفحه؛ راه‌حل درستش
+   یا کنار گذاشتن اسکرول افقی مستقل جدول است یا شبیه‌سازی sticky با
+   جاوااسکریپت (هر دو ریسک/پیچیدگی اضافه دارند) - برای همین فعلاً کنار
+   گذاشته شد تا این باگ اسکرول کاملاً و مطمئن رفع شود؛ الان کل صفحه (هدر،
+   فیلترها، و جدول) مثل هر صفحه‌ی دیگر سایت یک‌جا و معمولی اسکرول می‌شود؛
+   فقط نوار برند بالا (.topbar) با sticky ثابت می‌ماند */
 
 .card {
   background: var(--card-bg);

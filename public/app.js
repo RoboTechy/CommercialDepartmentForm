@@ -528,6 +528,9 @@ document.addEventListener('click', function (e) {
 
   var scrollHost = document.getElementById('rows-table-scroll');
   if (scrollHost) scrollHost.addEventListener('scroll', closePopup);
+  // چون این باکس position:fixed است، اگر کل صفحه اسکرول شود (نه فقط خود
+  // جدول)، موقعیتش دیگر با سلول واقعی هماهنگ نمی‌ماند - پس بسته می‌شود
+  window.addEventListener('scroll', closePopup, true);
   window.addEventListener('resize', closePopup);
 })();
 
