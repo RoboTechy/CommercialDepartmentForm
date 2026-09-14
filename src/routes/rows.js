@@ -72,9 +72,19 @@ router.get('/', (req, res) => {
     isLocalAdmin: isLocalAdmin(user),
     todayJalali: todayJalaliDate(),
     distinctValues,
-    stats: store.getDashboardStats(),
     overdueDays: config.overdueDays,
     myDraftRows: store.listDraftRowsForUser(user.username),
+  });
+});
+
+// صفحه‌ی جدا برای کارت‌های آماری - قبلاً بالای فهرست اصلی بودند؛ جدا شدند
+// تا هم فهرست عملیاتی سبک‌تر/سریع‌تر بارگذاری شود (دیگر نیازی به محاسبه‌ی
+// آمار روی هر بار باز شدن فهرست نیست) و هم دید کلی از دید کار روزمره جدا باشد
+router.get('/stats', (req, res) => {
+  const user = req.session.user;
+  res.render('stats', {
+    user,
+    stats: store.getDashboardStats(),
   });
 });
 

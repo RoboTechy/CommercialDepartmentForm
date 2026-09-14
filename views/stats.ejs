@@ -1,0 +1,43 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+  <main class="container container-wide">
+    <div class="page-header no-print">
+      <h1>آمار</h1>
+      <a href="/" class="btn">بازگشت به فهرست</a>
+    </div>
+
+    <div class="stats-row no-print">
+      <a href="/" class="stat-card" title="نمایش همه‌ی ردیف‌ها (پاک کردن فیلترها)">
+        <span class="stat-value"><%= stats.totalRows %></span>
+        <span class="stat-label">کل ردیف‌ها</span>
+      </a>
+      <% stats.requesterDeptStats.forEach(function(dept) { %>
+        <a href="/?incompleteRequesterDept=<%= encodeURIComponent(dept.label) %>" class="stat-card section-tech_operator" title="نمایش ردیف‌های جاری و تکمیل‌نشده‌ی «<%= dept.label %>»">
+          <span class="stat-value"><%= dept.completed %> <span class="stat-value-sep">/</span> <%= dept.pending %></span>
+          <span class="stat-label"><%= dept.label %> (تکمیل‌شده / در انتظار)</span>
+        </a>
+      <% }) %>
+      <% stats.departments.forEach(function(dept) { %>
+        <a href="/?incompleteDept=<%= dept.color %>" class="stat-card section-<%= dept.color %>" title="نمایش ردیف‌های جاری و تکمیل‌نشده‌ی «<%= dept.title %>»">
+          <span class="stat-value"><%= dept.completed %> <span class="stat-value-sep">/</span> <%= dept.pending %></span>
+          <span class="stat-label"><%= dept.title %> (تکمیل‌شده / در انتظار)</span>
+        </a>
+      <% }) %>
+      <div class="stat-card">
+        <span class="stat-value"><%= stats.avgCompletionDays !== null ? stats.avgCompletionDays.toFixed(1) : '—' %></span>
+        <span class="stat-label">میانگین روز تا تکمیل کامل (<%= stats.fullyCompleted %> ردیف تکمیل‌شده)</span>
+      </div>
+      <a href="/?status=cancelled" class="stat-card stat-card-cancelled" title="نمایش ردیف‌های لغو شده">
+        <span class="stat-value"><%= stats.cancelledCount %></span>
+        <span class="stat-label">لغو شده</span>
+      </a>
+      <a href="/?status=returned" class="stat-card stat-card-returned" title="نمایش ردیف‌های عودت به درخواست‌کننده">
+        <span class="stat-value"><%= stats.returnedCount %></span>
+        <span class="stat-label">عودت به درخواست‌کننده</span>
+      </a>
+    </div>
+
+    <p class="muted small">روی هر کارت کلیک کنید تا فهرست اصلی روی همان مورد فیلتر شود.</p>
+  </main>
+</body>
+</html>
