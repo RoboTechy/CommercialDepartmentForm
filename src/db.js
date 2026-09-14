@@ -9,10 +9,53 @@ const { allFields } = require('./sections');
 
 let sqlDb = null;
 
-function persist() {
+// نوشتن کامل فایل دیتابیس روی دیسک هزینه دارد (کل حافظه export و روی
+// دیسک نوشته می‌شود، نه فقط تغییر) - با رشد تعداد ردیف‌ها، انجامش بعد از
+// هر تک تغییر (حتی یک فیلد) می‌تواند هر بار سرور را برای لحظه‌ای برای
+// همه کند کند. به‌جای آن، چند تغییری که نزدیک به هم اتفاق می‌افتند در یک
+// پنجره‌ی کوتاه (PERSIST_DEBOUNCE_MS) جمع و یک‌جا نوشته می‌شوند.
+//
+// نکته‌ی مهم درباره‌ی ایمنی داده: این فقط زمان *نوشتن روی دیسک* را عقب
+// می‌اندازد - تغییر همان لحظه در حافظه (sqlDb) اعمال می‌شود، پس همه‌ی
+// خواندن‌های بعدی همان لحظه (حتی قبل از نوشتن روی دیسک) مقدار درست و
+// به‌روز را می‌بینند؛ تنها ریسک این است که اگر سرور دقیقاً در همین کسری
+// از ثانیه (کمتر از PERSIST_DEBOUNCE_MS) کرش کند یا برق قطع شود، آخرین
+// تغییرات ثبت‌نشده روی دیسک از دست بروند. برای پوشش رایج‌ترین حالت (توقف
+// عادی سرور هنگام deploy/ری‌استارت با docker) پایین همین فایل، پیش از
+// خروج، هر نوشتن معلق فوراً و به‌طور کامل روی دیسک نوشته می‌شود.
+const PERSIST_DEBOUNCE_MS = 300;
+let persistTimer = null;
+let dirty = false;
+
+// نوشتن فوری و همزمان (synchronous) - برای مهاجرت اولیه‌ی راه‌اندازی و
+// برای flush قبل از خروج سرور استفاده می‌شود، جایی که تاخیر قابل‌قبول نیست
+function persistNow() {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
   const data = sqlDb.export();
   fs.writeFileSync(config.dbFile, Buffer.from(data));
+  dirty = false;
 }
+
+// نوشتن دسته‌ای: تغییر را «کثیف» علامت می‌زند و اگر نوشتنی از قبل
+// زمان‌بندی نشده، یکی برای PERSIST_DEBOUNCE_MS بعد زمان‌بندی می‌کند
+function persist() {
+  dirty = true;
+  if (persistTimer) return;
+  persistTimer = setTimeout(persistNow, PERSIST_DEBOUNCE_MS);
+}
+
+// قبل از خروج عادی سرور (مثلاً docker compose down/restart که SIGTERM
+// می‌فرستد) هر نوشتن معلقی که هنوز روی دیسک نرفته را فوراً کامل می‌نویسد
+// تا با ری‌استارت/دیپلوی هیچ تغییری گم نشود
+function shutdown() {
+  if (dirty && sqlDb) persistNow();
+  process.exit(0);
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 const ready = (async () => {
   const dir = path.dirname(config.dbFile);
@@ -115,7 +158,9 @@ ${fieldColumns}
     sqlDb.run(`UPDATE rows SET published_at = created_at WHERE published_at = ''`);
   }
 
-  persist();
+  // مهاجرت اولیه‌ی راه‌اندازی - برخلاف بقیه‌ی نوشتن‌ها، فوری و همزمان
+  // ذخیره می‌شود (نه دسته‌ای) چون تاخیرش قابل‌قبول نیست
+  persistNow();
 })();
 
 function all(sql, params = {}) {
@@ -140,7 +185,8 @@ function runRaw(sql, params = {}) {
   return { lastInsertRowid };
 }
 
-// اجرای یک دستور نوشتن مستقل (خارج از تراکنش) و ذخیره‌ی فوری دیتابیس روی دیسک
+// اجرای یک دستور نوشتن مستقل (خارج از تراکنش) و زمان‌بندی ذخیره‌ی دیتابیس
+// روی دیسک (دسته‌ای - به توضیح بالای PERSIST_DEBOUNCE_MS مراجعه کنید)
 function run(sql, params = {}) {
   const result = runRaw(sql, params);
   persist();
