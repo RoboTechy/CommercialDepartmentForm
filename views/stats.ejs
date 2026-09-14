@@ -38,6 +38,123 @@
     </div>
 
     <p class="muted small">روی هر کارت کلیک کنید تا فهرست اصلی روی همان مورد فیلتر شود.</p>
+
+    <section class="report-section">
+      <h2>ردیف‌های معطل‌مانده (بیش از <%= overdueDays %> روز از ایجادشان گذشته)</h2>
+      <p class="muted small">ردیف‌هایی که هنوز کامل نشده‌اند و مشخص است همین الان منتظر کدام واحدند - برای پیگیری مستقیم.</p>
+      <% if (!overdueRows.length) { %>
+        <p class="muted">هیچ ردیف معطل‌مانده‌ای نیست.</p>
+      <% } else { %>
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ردیف</th>
+                <th>شماره درخواست کالا</th>
+                <th>شرح کالا</th>
+                <th>چند روز گذشته</th>
+                <th>منتظر کدام بخش</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% overdueRows.forEach(function(item) { %>
+                <tr>
+                  <td><a href="/rows/<%= item.row.id %>">#<%= item.row.id %></a></td>
+                  <td><%= item.row.request_no %></td>
+                  <td><%= item.row.item_description %></td>
+                  <td><%= Math.floor(item.ageDays) %></td>
+                  <td><span class="badge section-<%= item.blockingSection.color %>"><%= item.blockingSection.displayTitle %></span></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="report-section">
+      <h2>لغوشده‌ها و عودت‌ها همراه با دلیل</h2>
+      <% if (!cancelledReturnedList.length) { %>
+        <p class="muted">هیچ ردیف لغو یا عودت‌شده‌ای نیست.</p>
+      <% } else { %>
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ردیف</th>
+                <th>وضعیت</th>
+                <th>شماره درخواست کالا</th>
+                <th>تاریخ</th>
+                <th>توسط</th>
+                <th>دلیل</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% cancelledReturnedList.forEach(function(item) { %>
+                <tr>
+                  <td><a href="/rows/<%= item.row.id %>">#<%= item.row.id %></a></td>
+                  <td>
+                    <% if (item.kind === 'cancelled') { %>
+                      <span class="status-badge status-cancelled">لغو شده</span>
+                    <% } else { %>
+                      <span class="status-badge status-returned">عودت به درخواست‌کننده</span>
+                    <% } %>
+                  </td>
+                  <td><%= item.row.request_no %></td>
+                  <td><%= item.at %></td>
+                  <td><%= item.byDisplay %></td>
+                  <td><%= item.reason || '—' %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="report-section">
+      <h2>حجم درخواست به تفکیک ماه و دپارتمان درخواست‌کننده</h2>
+      <% if (!volumeByMonth.length) { %>
+        <p class="muted">داده‌ای برای نمایش نیست.</p>
+      <% } else { %>
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ماه</th>
+                <% volumeByMonth[0].byDept.forEach(function(d) { %><th><%= d.label %></th><% }) %>
+                <th>جمع کل</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% volumeByMonth.forEach(function(row) { %>
+                <tr>
+                  <td><%= row.month %></td>
+                  <% row.byDept.forEach(function(d) { %><td><%= d.count %></td><% }) %>
+                  <td><strong><%= row.total %></strong></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="report-section">
+      <h2>سهم هر مجری خرید</h2>
+      <% if (!executorSplit.some(function(e) { return e.count > 0; })) { %>
+        <p class="muted">هنوز هیچ ردیفی به مرحله‌ی «مجری خرید» نرسیده است.</p>
+      <% } else { %>
+        <div class="stats-row no-print">
+          <% executorSplit.forEach(function(e) { %>
+            <div class="stat-card">
+              <span class="stat-value"><%= e.count %></span>
+              <span class="stat-label">مجری خرید: <%= e.label %></span>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </section>
   </main>
 </body>
 </html>

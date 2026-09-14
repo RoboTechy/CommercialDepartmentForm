@@ -1,6 +1,7 @@
 const db = require('./db');
+const config = require('./config');
 const { sections, findSection, allFields, requesterDepartments, isPaymentAuthWaived } = require('./sections');
-const { nowJalaliDateTime, daysBetweenJalali } = require('./jalaali');
+const { nowJalaliDateTime, daysBetweenJalali, daysSinceJalali } = require('./jalaali');
 
 // دپارتمان درخواست‌کننده (دفتر فنی/عمران/آی‌تی) را از عضویت گروهی کاربر
 // تشخیص می‌دهد - خود کاربر این را انتخاب نمی‌کند، کاملاً خودکار است. اگر
@@ -38,8 +39,29 @@ function fieldsForCompletion(row, fields) {
   return fields.filter((f) => f.name !== 'payment_auth_issued_date');
 }
 
+// فیلدهای فقط‌خواندنی (مثل دپارتمان درخواست‌کننده) هرگز توسط کاربر پر
+// نمی‌شوند، پس نباید در تشخیص «تکمیل‌شده بودن» ردیف شرط باشند - همان
+// قاعده‌ای که برای currentBlockingSection زیر و techOperatorFields در
+// getDashboardStats استفاده می‌شود
+const NON_READONLY_FIELDS = ALL_FIELDS.filter((f) => !f.readOnly);
+
 function isRowComplete(row) {
-  return isFieldSetComplete(row, fieldsForCompletion(row, ALL_FIELDS));
+  return isFieldSetComplete(row, fieldsForCompletion(row, NON_READONLY_FIELDS));
+}
+
+// برای یک ردیف «جاری» (نه لغو/عودت‌شده)، اولین بخشی که هنوز کامل نیست را
+// برمی‌گرداند - یعنی همین الان عملاً منتظر کدام واحد است؛ اگر همه‌ی
+// بخش‌ها کامل باشند null برمی‌گرداند (یعنی کاملاً تکمیل شده). هم برای
+// نمایش وضعیت در فهرست اصلی استفاده می‌شود، هم برای گزارش ردیف‌های
+// معطل‌مانده
+function currentBlockingSection(row) {
+  for (const section of sections) {
+    const fields = fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly));
+    if (!fields.every((f) => (row[f.name] || '').toString().trim() !== '')) {
+      return section;
+    }
+  }
+  return null;
 }
 
 function listRows(filters = {}) {
@@ -269,6 +291,78 @@ function getDashboardStats() {
     requesterDeptStats,
     avgCompletionDays: daysSampleCount ? totalDays / daysSampleCount : null,
   };
+}
+
+// فهرست ردیف‌های «معطل‌مانده» - جاری (نه لغو/عودت‌شده)، هنوز کامل نشده، و
+// از تاریخ ایجادشان بیشتر از حد مجاز (config.overdueDays) گذشته؛ به تفکیک
+// اینکه همین الان منتظر کدام بخش‌اند تا بشود مستقیم پیگیری کرد
+function getOverdueRows() {
+  const rows = db.all(
+    `SELECT * FROM rows WHERE deleted_at = '' AND published_at != '' AND cancelled_at = '' AND returned_at = ''`
+  );
+  const items = [];
+  for (const row of rows) {
+    const blocking = currentBlockingSection(row);
+    if (!blocking) continue; // کاملاً تکمیل شده
+    const age = daysSinceJalali(row.created_at);
+    if (age === null || age <= config.overdueDays) continue;
+    items.push({ row, blockingSection: blocking, ageDays: age });
+  }
+  items.sort((a, b) => b.ageDays - a.ageDays);
+  return items;
+}
+
+// فهرست همه‌ی ردیف‌های لغو‌شده یا عودت‌داده‌شده همراه با دلیل - برای دیدن
+// الگوهای تکراری (مثلاً «دوبار ثبت شده») که شاید نشان‌دهنده‌ی یک نقص در
+// فرایند باشند
+function getCancelledReturnedList() {
+  const rows = db.all(
+    `SELECT * FROM rows WHERE deleted_at = '' AND (cancelled_at != '' OR returned_at != '') ORDER BY id DESC`
+  );
+  return rows.map((row) => ({
+    row,
+    kind: row.cancelled_at ? 'cancelled' : 'returned',
+    at: row.cancelled_at || row.returned_at,
+    byDisplay: row.cancelled_at ? row.cancelled_by_display : row.returned_by_display,
+    reason: row.cancelled_at ? row.cancel_reason : row.return_reason,
+  }));
+}
+
+// حجم درخواست‌های ثبت‌نهایی‌شده به تفکیک ماه شمسی (از روی created_at) و
+// دپارتمان درخواست‌کننده - برای دیدن روند و برنامه‌ریزی نیرو
+function getVolumeByMonth() {
+  const rows = db.all(`SELECT created_at, requester_dept FROM rows WHERE deleted_at = '' AND published_at != ''`);
+  const byMonth = new Map();
+  for (const row of rows) {
+    const month = (row.created_at || '').slice(0, 7); // "1405/06"
+    if (!month) continue;
+    if (!byMonth.has(month)) byMonth.set(month, { month, total: 0, byDept: new Map() });
+    const entry = byMonth.get(month);
+    entry.total++;
+    const dept = row.requester_dept || '—';
+    entry.byDept.set(dept, (entry.byDept.get(dept) || 0) + 1);
+  }
+  return [...byMonth.values()]
+    .sort((a, b) => (a.month < b.month ? 1 : -1)) // جدیدترین ماه اول
+    .map((entry) => ({
+      month: entry.month,
+      total: entry.total,
+      byDept: requesterDepartments.map((d) => ({ label: d.label, count: entry.byDept.get(d.label) || 0 })),
+    }));
+}
+
+// سهم هر مجری خرید (سایت/تهران/برنا) از بین ردیف‌هایی که این فیلد
+// برایشان پر شده (یعنی به این مرحله رسیده‌اند)
+function getPurchaseExecutorSplit() {
+  const rows = db.all(
+    `SELECT purchase_executor FROM rows WHERE deleted_at = '' AND published_at != '' AND purchase_executor != ''`
+  );
+  const counts = new Map();
+  for (const row of rows) {
+    counts.set(row.purchase_executor, (counts.get(row.purchase_executor) || 0) + 1);
+  }
+  const executorField = findSection('commercial').fields.find((f) => f.name === 'purchase_executor');
+  return executorField.options.map((opt) => ({ label: opt, count: counts.get(opt) || 0 }));
 }
 
 function insertAuditEntries(rowId, sectionKey, entries, user) {
@@ -602,6 +696,11 @@ module.exports = {
   unreturnFromTechOffice,
   getDurationReport,
   fieldsForCompletion,
+  currentBlockingSection,
+  getOverdueRows,
+  getCancelledReturnedList,
+  getVolumeByMonth,
+  getPurchaseExecutorSplit,
   ALL_FIELDS,
   FIELD_BY_NAME,
 };

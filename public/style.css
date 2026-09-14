@@ -186,6 +186,10 @@ h1 { margin: 0 0 8px; font-size: 23px; font-weight: 800; letter-spacing: -0.2px;
 h2 { margin: 0; font-size: 17px; font-weight: 800; color: var(--ink-900); }
 .muted { color: var(--ink-500); font-size: 14px; }
 .muted.small { font-size: 12px; margin-top: 4px; }
+.report-section { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--ink-200); }
+.report-section h2 { margin-bottom: 8px; }
+.report-section > .muted.small { margin-bottom: 14px; }
+.report-section .table-scroll { margin-top: 8px; }
 
 label { display: block; margin-bottom: 14px; font-size: 13.5px; font-weight: 700; color: var(--ink-700); }
 .field-hint { display: inline-block; margin-inline-start: 6px; font-size: 12px; font-weight: 400; color: var(--ink-500); }
@@ -414,7 +418,7 @@ a.stat-card:hover {
 }
 .overdue-badge { font-size: 12px; }
 
-.col-status { min-width: 90px; text-align: center; }
+.col-status { min-width: 150px; text-align: center; }
 
 .cell-editable { cursor: pointer; position: relative; }
 .cell-editable:hover { background: var(--brand-50); box-shadow: inset 0 0 0 1px var(--brand-400); }

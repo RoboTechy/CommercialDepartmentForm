@@ -95,6 +95,10 @@
                     <span class="status-badge status-cancelled" title="لغو شد توسط <%= row.cancelled_by_display %> در <%= row.cancelled_at %> - دلیل: <%= row.cancel_reason %>">لغو شده</span>
                   <% } else if (row.returned_at) { %>
                     <span class="status-badge status-returned" title="عودت داده شد توسط <%= row.returned_by_display %> در <%= row.returned_at %><% if (row.return_reason) { %> - دلیل: <%= row.return_reason %><% } %>">عودت به درخواست‌کننده</span>
+                  <% } else if (row.isComplete) { %>
+                    <span class="status-badge status-active">تکمیل شده</span>
+                  <% } else if (row.blockingSection) { %>
+                    <span class="status-badge section-<%= row.blockingSection.color %>" title="هنوز کامل نشده - منتظر تکمیل توسط «<%= row.blockingSection.displayTitle %>»">در انتظار «<%= row.blockingSection.displayTitle %>»</span>
                   <% } else { %>
                     <span class="status-badge status-active">جاری</span>
                   <% } %>

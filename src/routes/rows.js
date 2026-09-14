@@ -20,6 +20,16 @@ router.use(requireLogin);
 // و نشان تیک بخورد یا نه) پر شده؟ همان قاعده‌ای که برای آمار داشبورد استفاده
 // می‌شود (همه‌ی فیلدهای غیر-فقط‌خواندنی پر باشند)؛ هیچ مجوز/قفلی از این
 // محاسبه نتیجه نمی‌شود - فقط یک نشانه‌ی بصری است.
+// عنوان نمایشی متمایز برای دو بخشی که هر دو «انبار کارفرما» نام دارند
+// (warehouse_1 و warehouse_2 - طبق sections.js عمداً به دو بلوک تقسیم
+// شده‌اند تا بازرگانی غدیر بینشان بیاید)؛ همان قاعده‌ای که در row.ejs هم
+// برای نوار مراحل/آکاردئون استفاده می‌شود، اینجا هم برای نشان «در انتظار»
+// در فهرست اصلی لازم است تا با هم اشتباه گرفته نشوند
+function sectionDisplayTitle(section) {
+  if (section.key === 'warehouse_2') return section.title + ' — ارسال نامه';
+  return section.title;
+}
+
 function isSectionComplete(row, section) {
   const fields = store.fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly));
   return fields.every((f) => (row[f.name] || '').toString().trim() !== '');
@@ -48,6 +58,13 @@ router.get('/', (req, res) => {
     const complete = store.isRowComplete(row);
     const age = daysSinceJalali(row.created_at);
     const overdue = !row.cancelled_at && !row.returned_at && !complete && age !== null && age > config.overdueDays;
+    // فقط برای ردیف‌های جاری (نه لغو/عودت‌شده) معنا دارد - نشان می‌دهد
+    // همین الان عملاً منتظر کدام واحد است، برای نمایش در ستون «وضعیت»
+    const blockingSectionRaw =
+      !row.cancelled_at && !row.returned_at && !complete ? store.currentBlockingSection(row) : null;
+    const blockingSection = blockingSectionRaw
+      ? { ...blockingSectionRaw, displayTitle: sectionDisplayTitle(blockingSectionRaw) }
+      : null;
 
     // فیلدهایی که همین کاربر می‌تواند مستقیم از همین فهرست (بدون رفتن به صفحه‌ی
     // جزئیات) ویرایش کند - شماره درخواست کالا و فیلدهای فقط‌خواندنی هیچ‌وقت
@@ -66,7 +83,7 @@ router.get('/', (req, res) => {
       }
     }
 
-    return { ...row, isComplete: complete, isOverdue: overdue, editableFieldNames };
+    return { ...row, isComplete: complete, isOverdue: overdue, blockingSection, editableFieldNames };
   });
 
   const distinctValues = {};
@@ -95,9 +112,18 @@ router.get('/', (req, res) => {
 // آمار روی هر بار باز شدن فهرست نیست) و هم دید کلی از دید کار روزمره جدا باشد
 router.get('/stats', (req, res) => {
   const user = req.session.user;
+  const overdueRows = store.getOverdueRows().map((item) => ({
+    ...item,
+    blockingSection: { ...item.blockingSection, displayTitle: sectionDisplayTitle(item.blockingSection) },
+  }));
   res.render('stats', {
     user,
     stats: store.getDashboardStats(),
+    overdueRows,
+    cancelledReturnedList: store.getCancelledReturnedList(),
+    volumeByMonth: store.getVolumeByMonth(),
+    executorSplit: store.getPurchaseExecutorSplit(),
+    overdueDays: config.overdueDays,
   });
 });
 
