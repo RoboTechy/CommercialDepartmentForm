@@ -78,21 +78,24 @@ router.get('/', (req, res) => {
   });
 });
 
+function escapeCsv(val) {
+  const str = (val ?? '').toString();
+  return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+function rowStatusLabel(row) {
+  return row.cancelled_at ? 'لغو شده' : row.returned_at ? 'عودت به درخواست‌کننده' : 'جاری';
+}
+
 router.get('/export.csv', (req, res) => {
   const filters = buildFiltersFromQuery(req.query);
   const rows = store.listRows(filters);
   const fields = allFields();
 
-  const escapeCsv = (val) => {
-    const str = (val ?? '').toString();
-    return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-  };
-
   const headerRow = ['ردیف', 'وضعیت', ...fields.map((f) => f.label)];
   const lines = [headerRow.map(escapeCsv).join(',')];
   for (const row of rows) {
-    const status = row.cancelled_at ? 'لغو شده' : row.returned_at ? 'عودت به درخواست‌کننده' : 'جاری';
-    lines.push([row.id, status, ...fields.map((f) => row[f.name] || '')].map(escapeCsv).join(','));
+    lines.push([row.id, rowStatusLabel(row), ...fields.map((f) => row[f.name] || '')].map(escapeCsv).join(','));
   }
 
   const filename = `prt-export-${todayJalaliDate().replace(/\//g, '-')}.csv`;
@@ -474,19 +477,23 @@ router.get('/logs', (req, res) => {
   res.render('logs', { logs, filters, fields: allFields(), sections, user: req.session.user });
 });
 
+function buildDurationReportParams(query) {
+  return {
+    startField: query.startField || '',
+    endField: query.endField || '',
+    status: query.status || '',
+    purchaseExecutor: query.purchaseExecutor || '',
+    requesterDept: query.requesterDept || '',
+    createdFrom: query.createdFrom || '',
+    createdTo: query.createdTo || '',
+  };
+}
+
 router.get('/reports/duration', (req, res) => {
   const dateFields = allFields().filter((f) => f.type === 'jalali-date');
   const purchaseExecutorField = allFields().find((f) => f.name === 'purchase_executor');
 
-  const params = {
-    startField: req.query.startField || '',
-    endField: req.query.endField || '',
-    status: req.query.status || '',
-    purchaseExecutor: req.query.purchaseExecutor || '',
-    requesterDept: req.query.requesterDept || '',
-    createdFrom: req.query.createdFrom || '',
-    createdTo: req.query.createdTo || '',
-  };
+  const params = buildDurationReportParams(req.query);
 
   let report = null;
   let error = null;
@@ -505,6 +512,34 @@ router.get('/reports/duration', (req, res) => {
     error,
     todayJalali: todayJalaliDate(),
   });
+});
+
+router.get('/reports/duration/export.csv', (req, res) => {
+  const params = buildDurationReportParams(req.query);
+  const report = params.startField && params.endField ? store.getDurationReport(params) : null;
+  if (!report) {
+    req.flash('error', 'برای خروجی گرفتن، ابتدا فیلدهای «از» و «تا» را انتخاب و گزارش را بسازید.');
+    return res.redirect('/reports/duration');
+  }
+
+  const startLabel = (allFields().find((f) => f.name === params.startField) || {}).label || 'تاریخ شروع';
+  const endLabel = (allFields().find((f) => f.name === params.endField) || {}).label || 'تاریخ پایان';
+
+  const headerRow = ['ردیف', 'وضعیت', 'شماره درخواست کالا', 'شرح کالا', startLabel, endLabel, 'مدت (روز)'];
+  const lines = [headerRow.map(escapeCsv).join(',')];
+  for (const item of report.items) {
+    const row = item.row;
+    lines.push(
+      [row.id, rowStatusLabel(row), row.request_no, row.item_description, row[params.startField], row[params.endField], item.days]
+        .map(escapeCsv)
+        .join(',')
+    );
+  }
+
+  const filename = `prt-duration-report-${todayJalaliDate().replace(/\//g, '-')}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send('﻿' + lines.join('\r\n'));
 });
 
 module.exports = router;

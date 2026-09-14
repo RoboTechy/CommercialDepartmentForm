@@ -68,6 +68,11 @@
     <% } %>
 
     <% if (report) { %>
+      <div class="page-header no-print">
+        <h2>نتایج گزارش</h2>
+        <button type="button" class="btn" onclick="window.location.href = '/reports/duration/export.csv' + window.location.search">خروجی CSV</button>
+      </div>
+
       <div class="stats-row no-print">
         <div class="stat-card">
           <span class="stat-value"><%= report.count %></span>
