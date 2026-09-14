@@ -390,7 +390,22 @@ textarea { min-height: 84px; resize: vertical; }
 .nav-link { color: var(--ink-500); font-size: 14px; text-decoration: none; font-weight: 700; transition: color 0.15s ease; }
 .nav-link:hover { color: var(--brand-600); }
 
-.table-scroll { overflow-x: auto; background: var(--card-bg); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+.table-scroll {
+  overflow-x: auto;
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  /* نوار اسکرول پیش‌فرض مرورگر خیلی نازک/کم‌رنگ است و چون اسکرول عمودی
+     فهرست اصلی داخل همین کادر (نه کل صفحه) اتفاق می‌افتد، بدون یک نوار
+     اسکرول واضح به نظر می‌رسد اسکرول در جای دیگری (مثلاً نزدیک هدر) رخ
+     می‌دهد؛ این استایل آن را پررنگ و قابل‌تشخیص می‌کند */
+  scrollbar-width: auto;
+  scrollbar-color: var(--ink-300) var(--ink-100);
+}
+.table-scroll::-webkit-scrollbar { width: 12px; height: 12px; }
+.table-scroll::-webkit-scrollbar-track { background: var(--ink-100); border-radius: var(--radius-md); }
+.table-scroll::-webkit-scrollbar-thumb { background: var(--ink-300); border-radius: 100px; border: 2px solid var(--ink-100); }
+.table-scroll::-webkit-scrollbar-thumb:hover { background: var(--ink-500); }
 .sheet-table { min-width: 1400px; }
 .sheet-table th, .sheet-table td { white-space: nowrap; }
 .sheet-table td { white-space: normal; max-width: 220px; }
