@@ -52,6 +52,16 @@ function canEditRequesterRow(user, row) {
   return user.groups.includes(dept.group);
 }
 
+// آیا کاربر می‌تواند یک بخش خاص را روی یک ردیف مشخص ویرایش کند - هم مجوز
+// گروهی/دپارتمانی را چک می‌کند و هم قفل‌های وضعیتی ردیف (حذف‌شده/لغوشده/
+// عودت‌داده‌شده) را؛ محل واحد این منطق تا در همه‌جا (نمای جزئیات ردیف، ثبت
+// تغییرات هر بخش، ویرایش درجا از فهرست اصلی) یکسان اعمال شود.
+function canEditSectionForRow(user, row, sectionKey) {
+  if (row.deleted_at || row.cancelled_at) return false;
+  if (row.returned_at && sectionKey !== 'tech_operator') return false;
+  return sectionKey === 'tech_operator' ? canEditRequesterRow(user, row) : canEditSection(user, sectionKey);
+}
+
 // لغو درخواست: هم درخواست‌کننده‌ی همان دپارتمان (سازنده‌ی درخواست) و هم ادمین -
 // طبق همان محدودیت بالا (فقط دپارتمان خودش)
 function canCancelRow(user, row) {
@@ -72,6 +82,7 @@ module.exports = {
   isLocalAdmin,
   canEditSection,
   canEditRequesterRow,
+  canEditSectionForRow,
   canCreateRows,
   canCancelRow,
   canReturnToTechOffice,

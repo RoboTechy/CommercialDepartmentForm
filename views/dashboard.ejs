@@ -131,11 +131,21 @@
                 </td>
                 <% sections.forEach(function(section) { %>
                   <% section.fields.forEach(function(field, idx) { %>
-                    <td class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %>">
+                    <% var isEditable = row.editableFieldNames.indexOf(field.name) !== -1; %>
+                    <td class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %><%= isEditable ? ' cell-editable' : '' %>"
+                        <% if (isEditable) { %>
+                          data-editable="1"
+                          data-row-id="<%= row.id %>"
+                          data-field="<%= field.name %>"
+                          data-type="<%= field.type %>"
+                          data-required="<%= field.required ? '1' : '' %>"
+                          <% if (field.type === 'select') { %>data-options="<%= field.options.join('|') %>"<% } %>
+                          title="دابل‌کلیک برای ویرایش سریع"
+                        <% } %>>
                       <% if (field.name === 'request_no' && row[field.name]) { %>
                         <a href="/rows/<%= row.id %>"><%= row[field.name] %></a>
                       <% } else { %>
-                        <%= row[field.name] || '-' %>
+                        <span class="cell-value"><%= row[field.name] || '-' %></span>
                       <% } %>
                     </td>
                   <% }) %>

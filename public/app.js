@@ -240,3 +240,127 @@ document.addEventListener('click', function (e) {
   window.addEventListener('resize', positionPopup);
   window.addEventListener('scroll', positionPopup, true);
 })();
+
+// --- ویرایش درجا (inline) یک فیلد از روی فهرست اصلی - با دابل‌کلیک روی هر
+// سلولی که کاربر اجازه‌ی ویرایشش را دارد (سرور از قبل مشخص کرده کدام
+// سلول‌ها؛ به td.cell-editable نگاه کنید) ---
+(function () {
+  function renderCellValue(td, text) {
+    td.innerHTML = '';
+    var span = document.createElement('span');
+    span.className = 'cell-value';
+    span.textContent = text || '-';
+    td.appendChild(span);
+  }
+
+  function saveInlineEdit(td, newValue, oldValue, oldDisplayText) {
+    newValue = (newValue || '').trim();
+    if (newValue === (oldValue || '').trim()) {
+      renderCellValue(td, oldDisplayText);
+      return;
+    }
+
+    function doSave() {
+      fetch('/rows/' + td.dataset.rowId + '/fields/' + td.dataset.field, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'value=' + encodeURIComponent(newValue),
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.ok) {
+            renderCellValue(td, data.value);
+          } else {
+            alert(data.error || 'ثبت تغییر ناموفق بود.');
+            renderCellValue(td, oldDisplayText);
+          }
+        })
+        .catch(function () {
+          alert('خطا در برقراری ارتباط با سرور. تغییر ثبت نشد.');
+          renderCellValue(td, oldDisplayText);
+        });
+    }
+
+    if (td.dataset.field === 'purchase_request_no' && newValue) {
+      fetch('/api/check-purchase-request-no?value=' + encodeURIComponent(newValue) + '&excludeId=' + encodeURIComponent(td.dataset.rowId))
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          var matches = data.rows || [];
+          if (!matches.length) return doSave();
+          var msg =
+            'این شماره قبلاً در ردیف(های) زیر ثبت شده است:\n' +
+            matches.map(function (r) { return '#' + r.id + ' (شماره درخواست کالا: ' + (r.requestNo || '—') + ')'; }).join('\n') +
+            '\n\nآیا مطمئن هستید می‌خواهید همین‌طور ثبت کنید؟';
+          if (window.confirm(msg)) doSave();
+          else renderCellValue(td, oldDisplayText);
+        })
+        .catch(doSave);
+    } else {
+      doSave();
+    }
+  }
+
+  function startInlineEdit(td) {
+    if (td.querySelector('.inline-edit-input')) return;
+    var valueSpan = td.querySelector('.cell-value');
+    var oldDisplayText = valueSpan ? valueSpan.textContent : td.textContent.trim();
+    var oldValue = oldDisplayText === '-' ? '' : oldDisplayText;
+    var fieldType = td.dataset.type;
+    var input;
+
+    if (fieldType === 'select') {
+      input = document.createElement('select');
+      var emptyOpt = document.createElement('option');
+      emptyOpt.value = '';
+      emptyOpt.textContent = '— انتخاب کنید —';
+      input.appendChild(emptyOpt);
+      (td.dataset.options ? td.dataset.options.split('|') : []).forEach(function (opt) {
+        var o = document.createElement('option');
+        o.value = opt;
+        o.textContent = opt;
+        if (opt === oldValue) o.selected = true;
+        input.appendChild(o);
+      });
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+      if (fieldType === 'jalali-date') input.classList.add('jalali-date-text');
+      input.value = oldValue;
+    }
+    input.className += ' inline-edit-input';
+
+    td.innerHTML = '';
+    td.appendChild(input);
+    input.focus();
+    if (input.select) input.select();
+
+    var finished = false;
+    function finish(save) {
+      if (finished) return;
+      finished = true;
+      if (save) saveInlineEdit(td, input.value, oldValue, oldDisplayText);
+      else renderCellValue(td, oldDisplayText);
+    }
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+    if (fieldType === 'select' || fieldType === 'jalali-date') {
+      input.addEventListener('change', function () { finish(true); });
+    }
+    input.addEventListener('blur', function () {
+      setTimeout(function () {
+        if (finished) return;
+        // اگر تقویم شمسی هنوز باز است، صبر می‌کنیم (رویداد change خودش کار را تمام می‌کند)
+        if (fieldType === 'jalali-date' && document.querySelector('.jalali-cal-popup')) return;
+        finish(true);
+      }, 200);
+    });
+  }
+
+  document.addEventListener('dblclick', function (e) {
+    var td = e.target.closest('td.cell-editable');
+    if (td) startInlineEdit(td);
+  });
+})();

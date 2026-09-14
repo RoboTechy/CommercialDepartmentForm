@@ -2,11 +2,10 @@ const express = require('express');
 const router = express.Router();
 const store = require('../store');
 const config = require('../config');
-const { sections, findSection, allFields, requesterDepartments } = require('../sections');
+const { sections, findSection, findField, allFields, requesterDepartments } = require('../sections');
 const {
   requireLogin,
-  canEditSection,
-  canEditRequesterRow,
+  canEditSectionForRow,
   canCreateRows,
   isAdmin,
   isLocalAdmin,
@@ -40,7 +39,21 @@ router.get('/', (req, res) => {
     const complete = store.isRowComplete(row);
     const age = daysSinceJalali(row.created_at);
     const overdue = !row.cancelled_at && !row.returned_at && !complete && age !== null && age > config.overdueDays;
-    return { ...row, isComplete: complete, isOverdue: overdue };
+
+    // فیلدهایی که همین کاربر می‌تواند مستقیم از همین فهرست (بدون رفتن به صفحه‌ی
+    // جزئیات) ویرایش کند - شماره درخواست کالا و فیلدهای فقط‌خواندنی هیچ‌وقت
+    // اینجا نیستند (اولی لینک مستقیم به صفحه‌ی جزئیات دارد، دومی اصلاً قابل
+    // ویرایش نیست)
+    const editableFieldNames = [];
+    for (const section of sections) {
+      if (!canEditSectionForRow(user, row, section.key)) continue;
+      for (const field of section.fields) {
+        if (field.name === 'request_no' || field.readOnly) continue;
+        editableFieldNames.push(field.name);
+      }
+    }
+
+    return { ...row, isComplete: complete, isOverdue: overdue, editableFieldNames };
   });
 
   const distinctValues = {};
@@ -185,11 +198,7 @@ router.get('/rows/:id', (req, res) => {
   }
   const sectionsView = sections.map((section) => ({
     ...section,
-    canEdit:
-      !row.deleted_at &&
-      !row.cancelled_at &&
-      !(row.returned_at && section.key !== 'tech_operator') &&
-      (section.key === 'tech_operator' ? canEditRequesterRow(user, row) : canEditSection(user, section.key)),
+    canEdit: canEditSectionForRow(user, row, section.key),
   }));
   res.render('row', {
     row,
@@ -339,12 +348,8 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
     return res.status(404).render('not-found', { message: 'این ردیف هنوز ثبت نهایی نشده است.' });
   }
 
-  const canEditThisSection = sectionKey === 'tech_operator' ? canEditRequesterRow(user, row) : canEditSection(user, sectionKey);
-  if (!canEditThisSection) {
-    const sectionsView = sections.map((s) => ({
-      ...s,
-      canEdit: s.key === 'tech_operator' ? canEditRequesterRow(user, row) : canEditSection(user, s.key),
-    }));
+  if (!canEditSectionForRow(user, row, sectionKey)) {
+    const sectionsView = sections.map((s) => ({ ...s, canEdit: canEditSectionForRow(user, row, s.key) }));
     const deniedMessage =
       sectionKey === 'tech_operator'
         ? `شما مجاز به تکمیل «${section.title}» نیستید. این ردیف متعلق به دپارتمان «${row.requester_dept || '-'}» است و فقط پرسنل همان دپارتمان (یا ادمین) می‌توانند ویرایشش کنند.`
@@ -390,6 +395,64 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
   store.updateSection(id, sectionKey, values, user);
   req.flash('message', `«${section.title}» با موفقیت به‌روزرسانی شد.`);
   res.redirect(`/rows/${id}`);
+});
+
+// ویرایش درجا (inline) یک فیلد تکی مستقیم از روی فهرست اصلی - بدون نیاز به
+// رفتن به فرم کامل بخش. همان قوانین قفل‌شدگی/مجوز و همان تابع store.updateSection
+// (پس همان لاگ تاریخچه) با فرم معمولی استفاده می‌شود؛ فقط مقدار همان یک فیلد
+// عوض می‌شود و بقیه‌ی فیلدهای آن بخش دست‌نخورده می‌مانند. پاسخ JSON است چون
+// این مسیر با fetch از جاوااسکریپت صدا زده می‌شود، نه با ارسال فرم معمولی.
+router.post('/rows/:id/fields/:fieldName', (req, res) => {
+  const user = req.session.user;
+  const row = store.getRow(req.params.id);
+  if (!row) return res.status(404).json({ ok: false, error: 'ردیف یافت نشد.' });
+
+  const found = findField(req.params.fieldName);
+  if (!found) return res.status(404).json({ ok: false, error: 'فیلد نامعتبر است.' });
+  const { section, field } = found;
+
+  if (field.name === 'request_no') {
+    return res.status(400).json({ ok: false, error: 'شماره درخواست کالا از همین‌جا قابل ویرایش نیست؛ روی خودش کلیک کنید.' });
+  }
+  if (field.readOnly) {
+    return res.status(400).json({ ok: false, error: 'این فیلد فقط‌خواندنی است و خودکار محاسبه می‌شود.' });
+  }
+  if (!row.published_at) {
+    return res.status(404).json({ ok: false, error: 'این ردیف هنوز ثبت نهایی نشده است.' });
+  }
+  if (row.deleted_at) {
+    return res.status(404).json({ ok: false, error: 'این ردیف حذف شده است.' });
+  }
+  if (row.cancelled_at) {
+    return res.status(400).json({ ok: false, error: 'این درخواست لغو شده است؛ برای ویرایش ابتدا لغو را بردارید.' });
+  }
+  if (!canEditSectionForRow(user, row, section.key)) {
+    return res.status(403).json({ ok: false, error: `شما مجاز به ویرایش «${field.label}» نیستید.` });
+  }
+
+  let value = (req.body.value || '').toString().trim();
+  if (field.type === 'jalali-date' && value) {
+    const normalized = normalizeJalaliDate(value);
+    if (normalized === null) {
+      return res.status(400).json({ ok: false, error: 'تاریخ شمسی معتبر نیست (فرمت درست: 1403/05/12).' });
+    }
+    value = normalized;
+  }
+  if (field.type === 'select' && value && !field.options.includes(value)) {
+    return res.status(400).json({ ok: false, error: 'مقدار انتخاب‌شده معتبر نیست.' });
+  }
+  if (field.required && !value) {
+    return res.status(400).json({ ok: false, error: `«${field.label}» نمی‌تواند خالی باشد.` });
+  }
+
+  // بقیه‌ی فیلدهای همان بخش دست‌نخورده می‌مانند - فقط همین یکی عوض می‌شود
+  const values = {};
+  for (const f of section.fields) {
+    values[f.name] = f.name === field.name ? value : row[f.name] || '';
+  }
+  const updated = store.updateSection(row.id, section.key, values, user);
+
+  res.json({ ok: true, value: updated[field.name] || '-' });
 });
 
 router.get('/rows/:id/history', (req, res) => {
