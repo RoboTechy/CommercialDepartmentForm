@@ -25,6 +25,23 @@
       </div>
     <% } %>
 
+    <%
+      // بخش‌های یکتا بر اساس رنگ (warehouse_1 و warehouse_2 هر دو رنگ
+      // «warehouse» دارند و فقط یک‌بار به‌عنوان یک گروه نمایش داده می‌شوند)
+      var uniqueGroups = [];
+      sections.forEach(function(section) {
+        if (!uniqueGroups.some(function(g) { return g.color === section.color; })) {
+          uniqueGroups.push(section);
+        }
+      });
+    %>
+    <div class="group-toggle no-print" id="column-group-toggle" data-default-group="<%= defaultColumnGroup %>">
+      <button type="button" class="btn btn-sm group-toggle-btn" data-group="">همه‌ی ستون‌ها</button>
+      <% uniqueGroups.forEach(function(section) { %>
+        <button type="button" class="btn btn-sm group-toggle-btn section-<%= section.color %>" data-group="<%= section.color %>">فقط «<%= section.title %>»</button>
+      <% }) %>
+    </div>
+
     <form method="get" action="/" class="filter-form">
       <div class="filter-actions no-print">
         <button type="submit" class="btn btn-primary btn-sm">اعمال فیلتر</button>
@@ -98,7 +115,7 @@
                   <% } else if (row.isComplete) { %>
                     <span class="status-badge status-active">تکمیل شده</span>
                   <% } else if (row.blockingSection) { %>
-                    <span class="status-badge section-<%= row.blockingSection.color %>" title="هنوز کامل نشده - منتظر تکمیل توسط «<%= row.blockingSection.displayTitle %>»">در انتظار «<%= row.blockingSection.displayTitle %>»</span>
+                    <span class="status-badge badge-tint-<%= row.blockingSection.color %>" title="هنوز کامل نشده - منتظر تکمیل توسط «<%= row.blockingSection.displayTitle %>»">در انتظار «<%= row.blockingSection.displayTitle %>»</span>
                   <% } else { %>
                     <span class="status-badge status-active">جاری</span>
                   <% } %>

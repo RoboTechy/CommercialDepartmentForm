@@ -591,3 +591,36 @@ document.addEventListener('click', function (e) {
     });
   });
 })();
+
+// --- دکمه‌های «فقط ستون‌های خودم را نشان بده» بالای فهرست اصلی - فقط
+// چه ستون‌هایی از همان جدول دیده می‌شوند را (با CSS) کنترل می‌کند، به
+// فیلتر واقعی/داده‌ی سرور کاری ندارد. انتخاب کاربر در localStorage
+// نگه داشته می‌شود تا دفعه‌ی بعد هم یادش بماند؛ اگر چیزی ذخیره نشده
+// باشد، پیش‌فرض هوشمند سمت سرور (دپارتمان خود کاربر) استفاده می‌شود ---
+(function () {
+  var toggle = document.getElementById('column-group-toggle');
+  var table = document.querySelector('.sheet-table');
+  if (!toggle || !table) return;
+  var STORAGE_KEY = 'prt-dashboard-column-group';
+  var GROUP_COLORS = ['tech_operator', 'warehouse', 'commercial'];
+
+  function applyGroup(group) {
+    GROUP_COLORS.forEach(function (c) { table.classList.remove('group-' + c); });
+    if (group) table.classList.add('group-' + group);
+    toggle.querySelectorAll('.group-toggle-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.group === group);
+    });
+  }
+
+  toggle.querySelectorAll('.group-toggle-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var group = btn.dataset.group;
+      applyGroup(group);
+      try { localStorage.setItem(STORAGE_KEY, group); } catch (e) {}
+    });
+  });
+
+  var saved = null;
+  try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+  applyGroup(saved !== null ? saved : toggle.dataset.defaultGroup || '');
+})();

@@ -30,6 +30,19 @@ function sectionDisplayTitle(section) {
   return section.title;
 }
 
+// دپارتمانی که این کاربر عملاً به آن تعلق دارد - برای پیش‌فرض هوشمند دکمه‌ی
+// «فقط ستون‌های خودم» در فهرست اصلی. برخلاف canEditSection که ادمین را در
+// همه‌جا مجاز می‌داند، اینجا فقط عضویت گروهی واقعی مهم است؛ ادمین/ادمین
+// محلی/کاربری که عضو هیچ گروهی نیست، پیش‌فرضش «نمایش همه» (رشته‌ی خالی) است
+function userHomeSectionColor(user) {
+  if (isAdmin(user) || isLocalAdmin(user)) return '';
+  for (const section of sections) {
+    const groups = Array.isArray(section.group) ? section.group : [section.group];
+    if (groups.some((g) => user.groups.includes(g))) return section.color;
+  }
+  return '';
+}
+
 function isSectionComplete(row, section) {
   const fields = store.fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly));
   return fields.every((f) => (row[f.name] || '').toString().trim() !== '');
@@ -104,6 +117,7 @@ router.get('/', (req, res) => {
     distinctValues,
     overdueDays: config.overdueDays,
     myDraftRows: store.listDraftRowsForUser(user.username),
+    defaultColumnGroup: userHomeSectionColor(user),
   });
 });
 
