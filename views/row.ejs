@@ -134,40 +134,88 @@
       <div class="alert alert-error no-print"><%= error[0] %></div>
     <% } %>
 
-    <% sectionsView.forEach(function(section) { %>
-      <section class="card section-card section-<%= section.color %>">
-        <div class="section-header">
-          <h2><%= section.title %></h2>
-        </div>
+    <%
+      // عنوان نمایشی متمایز برای دو بخشی که هر دو «انبار کارفرما» نام دارند
+      // (warehouse_1 و warehouse_2 - طبق sections.js عمداً به دو بلوک تقسیم
+      // شده‌اند تا بازرگانی غدیر بینشان بیاید) - فقط برای نمایش در نوار
+      // مراحل/آکاردئون، در خود sections.js چیزی تغییر نکرده
+      function displayTitle(section) {
+        if (section.key === 'warehouse_2') return section.title + ' — ارسال نامه';
+        return section.title;
+      }
+      // اولین بخشی که هنوز کامل نیست، به‌صورت پیش‌فرض باز است (مرحله‌ی
+      // «فعال»)؛ اگر همه کامل بودند، آخرین بخش باز می‌ماند. توجه: این فقط
+      // حالت باز/بسته‌ی پیش‌فرض آکاردئون را تعیین می‌کند - هیچ بخشی قفل یا
+      // غیرقابل‌کلیک نیست و هر بخش دقیقاً با همان مجوز قبلی (section.canEdit)
+      // قابل مشاهده/ویرایش است؛ کاربر آزاد است هر بخشی را باز/بسته کند.
+      var activeIdx = sectionsView.findIndex(function(s) { return !s.isComplete; });
+      if (activeIdx === -1) activeIdx = sectionsView.length - 1;
+    %>
 
-        <% if (section.canEdit) { %>
-          <form method="post" action="/rows/<%= row.id %>/sections/<%= section.key %>" class="section-form no-print" data-section-key="<%= section.key %>" data-row-id="<%= row.id %>">
-            <% section.fields.forEach(function(field) { %>
-              <%- include('partials/field-input', { field: field, value: row[field.name] || '', todayJalali: todayJalali }) %>
-            <% }) %>
-            <button type="submit" class="btn btn-primary">ثبت / بروزرسانی «<%= section.title %>»</button>
-          </form>
-          <div class="readonly-fields print-only">
-            <% section.fields.forEach(function(field) { %>
-              <div class="ro-field">
-                <span class="ro-label"><%= field.label %>:</span>
-                <span class="ro-value"><%= row[field.name] || '-' %></span>
+    <div class="stepper no-print">
+      <% sectionsView.forEach(function(section, idx) { %>
+        <div class="step <%= section.isComplete ? 'done' : (idx === activeIdx ? 'active' : '') %>">
+          <div class="step-line"></div>
+          <div class="step-dot"><%= section.isComplete ? '✓' : (idx + 1) %></div>
+          <div class="step-label"><%= displayTitle(section) %></div>
+        </div>
+      <% }) %>
+    </div>
+
+    <div class="acc" id="row-accordion">
+      <% sectionsView.forEach(function(section, idx) { %>
+        <% var state = section.isComplete ? 'state-done' : (idx === activeIdx ? 'state-active' : 'state-future'); %>
+        <section class="card section-card acc-item section-<%= section.color %> <%= state %><%= idx === activeIdx ? ' open' : '' %>">
+          <button type="button" class="acc-head">
+            <span class="acc-head-left">
+              <span class="acc-badge"><%= section.isComplete ? '✓' : (idx + 1) %></span>
+              <span>
+                <h2 class="acc-title"><%= displayTitle(section) %></h2>
+                <span class="acc-sub">
+                  <% if (!section.canEdit) { %>
+                    🔒 فقط پرسنل «<%= section.title %>»<% if (isAdmin) { %> یا مدیر سیستم<% } %> می‌توانند این بخش را ویرایش کنند
+                  <% } else if (section.isComplete) { %>
+                    تکمیل شده
+                  <% } else { %>
+                    در انتظار تکمیل
+                  <% } %>
+                </span>
+              </span>
+            </span>
+            <span class="acc-chevron">▾</span>
+          </button>
+
+          <div class="acc-body">
+            <% if (section.canEdit) { %>
+              <form method="post" action="/rows/<%= row.id %>/sections/<%= section.key %>" class="section-form no-print" data-section-key="<%= section.key %>" data-row-id="<%= row.id %>">
+                <% section.fields.forEach(function(field) { %>
+                  <%- include('partials/field-input', { field: field, value: row[field.name] || '', todayJalali: todayJalali }) %>
+                <% }) %>
+                <button type="submit" class="btn btn-primary">ثبت / بروزرسانی «<%= section.title %>»</button>
+              </form>
+              <div class="readonly-fields print-only">
+                <% section.fields.forEach(function(field) { %>
+                  <div class="ro-field">
+                    <span class="ro-label"><%= field.label %>:</span>
+                    <span class="ro-value"><%= row[field.name] || '-' %></span>
+                  </div>
+                <% }) %>
               </div>
-            <% }) %>
-          </div>
-        <% } else { %>
-          <div class="readonly-fields">
-            <% section.fields.forEach(function(field) { %>
-              <div class="ro-field">
-                <span class="ro-label"><%= field.label %>:</span>
-                <span class="ro-value"><%= row[field.name] || '-' %></span>
+            <% } else { %>
+              <div class="readonly-fields">
+                <% section.fields.forEach(function(field) { %>
+                  <div class="ro-field">
+                    <span class="ro-label"><%= field.label %>:</span>
+                    <span class="ro-value"><%= row[field.name] || '-' %></span>
+                  </div>
+                <% }) %>
+                <p class="muted small no-print">🔒 شما مجاز به ویرایش این بخش نیستید (فقط پرسنل «<%= section.title %>»<% if (isAdmin) { %> یا مدیر سیستم<% } %>).</p>
               </div>
-            <% }) %>
-            <p class="muted small no-print">🔒 شما مجاز به ویرایش این بخش نیستید (فقط پرسنل «<%= section.title %>»<% if (isAdmin) { %> یا مدیر سیستم<% } %>).</p>
+            <% } %>
           </div>
-        <% } %>
-      </section>
-    <% }) %>
+        </section>
+      <% }) %>
+    </div>
   </main>
 </body>
 </html>

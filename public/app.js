@@ -530,3 +530,38 @@ document.addEventListener('click', function (e) {
   if (scrollHost) scrollHost.addEventListener('scroll', closePopup);
   window.addEventListener('resize', closePopup);
 })();
+
+// --- آکاردئون بخش‌های صفحه‌ی جزئیات ردیف - فقط باز/بسته کردن نمایشی؛ هیچ
+// بخشی غیرقابل‌کلیک نیست (مجوز/قفل واقعی هر بخش هم‌چنان سمت سرور و در
+// خود section.canEdit تعیین می‌شود، این فقط UI باز/بسته‌شدن است) ---
+(function () {
+  var accordion = document.getElementById('row-accordion');
+  if (!accordion) return;
+
+  accordion.querySelectorAll('.acc-item').forEach(function (item) {
+    var head = item.querySelector('.acc-head');
+    head.addEventListener('click', function () {
+      var wasOpen = item.classList.contains('open');
+      accordion.querySelectorAll('.acc-item.open').forEach(function (other) {
+        if (other !== item) other.classList.remove('open');
+      });
+      item.classList.toggle('open', !wasOpen);
+    });
+  });
+
+  // کلیک روی یک نقطه‌ی نوار مراحل، همان بخش را در آکاردئون باز و به آن اسکرول می‌کند
+  var steps = document.querySelectorAll('.stepper .step');
+  var items = accordion.querySelectorAll('.acc-item');
+  steps.forEach(function (step, idx) {
+    step.style.cursor = 'pointer';
+    step.addEventListener('click', function () {
+      var item = items[idx];
+      if (!item) return;
+      accordion.querySelectorAll('.acc-item.open').forEach(function (other) {
+        if (other !== item) other.classList.remove('open');
+      });
+      item.classList.add('open');
+      item.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+})();

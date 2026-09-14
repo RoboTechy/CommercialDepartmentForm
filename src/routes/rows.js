@@ -16,6 +16,14 @@ const { normalizeJalaliDate, todayJalaliDate, daysSinceJalali } = require('../ja
 
 router.use(requireLogin);
 
+// آیا این بخش (فقط برای نمایش - تعیین می‌کند آکاردئون پیش‌فرض باز/بسته باشد
+// و نشان تیک بخورد یا نه) پر شده؟ همان قاعده‌ای که برای آمار داشبورد استفاده
+// می‌شود (همه‌ی فیلدهای غیر-فقط‌خواندنی پر باشند)؛ هیچ مجوز/قفلی از این
+// محاسبه نتیجه نمی‌شود - فقط یک نشانه‌ی بصری است.
+function isSectionComplete(row, section) {
+  return section.fields.filter((f) => !f.readOnly).every((f) => (row[f.name] || '').toString().trim() !== '');
+}
+
 function buildFiltersFromQuery(query) {
   const filters = {};
   for (const field of allFields()) {
@@ -212,6 +220,7 @@ router.get('/rows/:id', (req, res) => {
   const sectionsView = sections.map((section) => ({
     ...section,
     canEdit: canEditSectionForRow(user, row, section.key),
+    isComplete: isSectionComplete(row, section),
   }));
   res.render('row', {
     row,
@@ -362,7 +371,11 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
   }
 
   if (!canEditSectionForRow(user, row, sectionKey)) {
-    const sectionsView = sections.map((s) => ({ ...s, canEdit: canEditSectionForRow(user, row, s.key) }));
+    const sectionsView = sections.map((s) => ({
+      ...s,
+      canEdit: canEditSectionForRow(user, row, s.key),
+      isComplete: isSectionComplete(row, s),
+    }));
     const deniedMessage =
       sectionKey === 'tech_operator'
         ? `شما مجاز به تکمیل «${section.title}» نیستید. این ردیف متعلق به دپارتمان «${row.requester_dept || '-'}» است و فقط پرسنل همان دپارتمان (یا ادمین) می‌توانند ویرایشش کنند.`
