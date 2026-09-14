@@ -9,6 +9,7 @@ const {
   canCreateRows,
   isAdmin,
   isLocalAdmin,
+  isManagement,
   canCancelRow,
   canReturnToTechOffice,
 } = require('../middleware');
@@ -113,6 +114,7 @@ router.get('/', (req, res) => {
     user,
     canCreateRows: canCreateRows(user),
     isLocalAdmin: isLocalAdmin(user),
+    isManagement: isManagement(user),
     todayJalali: todayJalaliDate(),
     distinctValues,
     overdueDays: config.overdueDays,
@@ -631,6 +633,21 @@ router.get('/reports/duration/export.csv', (req, res) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send('﻿' + lines.join('\r\n'));
+});
+
+// گزارش‌های مدیریتی (زمان‌بندی/تحلیلی) - فقط برای اعضای گروه
+// PRT-Management (و ادمین)؛ بقیه‌ی کاربران حتی لینکش را هم در ناوبری
+// نمی‌بینند (partials/nav.ejs) و مستقیم هم که بیایند 403 می‌گیرند
+router.get('/reports/management', (req, res) => {
+  const user = req.session.user;
+  if (!isManagement(user)) {
+    return res.status(403).render('not-found', { message: 'این گزارش فقط برای اعضای مدیریت در دسترس است.' });
+  }
+  res.render('management-report', {
+    user,
+    stageStats: store.getManagementStageStats(),
+    priorityStats: store.getManagementPriorityStats(),
+  });
 });
 
 module.exports = router;

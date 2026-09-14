@@ -1,0 +1,102 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+  <main class="container container-wide">
+    <div class="page-header no-print">
+      <h1>گزارش‌های مدیریتی</h1>
+      <a href="/" class="btn">بازگشت به فهرست</a>
+    </div>
+    <p class="muted small">
+      این صفحه فقط برای اعضای گروه مدیریت قابل مشاهده است. اگر بازه‌ی دیگری غیر از این‌ها لازم دارید،
+      <a href="/reports/duration">ابزار گزارش‌ساز</a> هر جفت فیلد تاریخی دلخواهی را قبول می‌کند.
+    </p>
+
+    <% [stageStats.warehouse1, stageStats.commercial, stageStats.warehouse2, stageStats.fullCycle].forEach(function(stage) { %>
+      <section class="report-section">
+        <h2><%= stage.label %></h2>
+        <div class="stats-row no-print">
+          <div class="stat-card">
+            <span class="stat-value"><%= stage.count %></span>
+            <span class="stat-label">تعداد ردیف محاسبه‌شده</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value"><%= stage.avg !== null ? stage.avg.toFixed(1) : '—' %></span>
+            <span class="stat-label">میانگین (روز)</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value"><%= stage.median !== null ? stage.median.toFixed(1) : '—' %></span>
+            <span class="stat-label">میانه (روز)</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value"><%= stage.min !== null ? stage.min.toFixed(1) : '—' %></span>
+            <span class="stat-label">حداقل (روز)</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value"><%= stage.max !== null ? stage.max.toFixed(1) : '—' %></span>
+            <span class="stat-label">حداکثر (روز)</span>
+          </div>
+        </div>
+
+        <% if (!stage.slowest.length) { %>
+          <p class="muted">هیچ ردیفی با هر دو تاریخ لازم پیدا نشد.</p>
+        <% } else { %>
+          <p class="muted small">۱۰ ردیف کندترین:</p>
+          <div class="table-scroll">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>ردیف</th>
+                  <th>شماره درخواست کالا</th>
+                  <th>شرح کالا</th>
+                  <th>اولویت</th>
+                  <th>مدت (روز)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% stage.slowest.forEach(function(item) { %>
+                  <tr>
+                    <td><a href="/rows/<%= item.row.id %>">#<%= item.row.id %></a></td>
+                    <td><%= item.row.request_no %></td>
+                    <td><%= item.row.item_description %></td>
+                    <td><%= item.row.priority %></td>
+                    <td><%= item.days.toFixed(1) %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </section>
+    <% }) %>
+
+    <section class="report-section">
+      <h2>کل چرخه به تفکیک اولویت - آیا اولویت بالاتر واقعاً سریع‌تر پردازش می‌شود؟</h2>
+      <% if (!priorityStats.some(function(p) { return p.count > 0; })) { %>
+        <p class="muted">هنوز داده‌ای برای نمایش نیست.</p>
+      <% } else { %>
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>اولویت</th>
+                <th>تعداد ردیف تکمیل‌شده</th>
+                <th>میانگین (روز)</th>
+                <th>میانه (روز)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% priorityStats.forEach(function(p) { %>
+                <tr>
+                  <td><%= p.priority %></td>
+                  <td><%= p.count %></td>
+                  <td><%= p.avg !== null ? p.avg.toFixed(1) : '—' %></td>
+                  <td><%= p.median !== null ? p.median.toFixed(1) : '—' %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </main>
+</body>
+</html>

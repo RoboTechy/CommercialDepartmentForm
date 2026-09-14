@@ -12,6 +12,13 @@ function isAdmin(user) {
   return user.groups.includes(config.ldap.groups.admin);
 }
 
+// دسترسی به گزارش‌های مدیریتی (/reports/management) - مثل بقیه‌ی مجوزها،
+// ادمین همیشه دسترسی دارد؛ در غیر این صورت فقط عضو گروه PRT-Management
+function isManagement(user) {
+  if (isAdmin(user)) return true;
+  return user.groups.includes(config.ldap.groups.management);
+}
+
 // ادمین محلی (break-glass): مستقل از LDAP، فقط برای مواقع قطعی ارتباط با
 // Active Directory. تغییراتش لاگ نمی‌شود و اجازه‌ی حذف (نرم) ردیف را دارد.
 function isLocalAdmin(user) {
@@ -80,6 +87,7 @@ module.exports = {
   requireLogin,
   isAdmin,
   isLocalAdmin,
+  isManagement,
   canEditSection,
   canEditRequesterRow,
   canEditSectionForRow,

@@ -10,6 +10,9 @@
         <a href="/stats" class="btn">📊 آمار</a>
         <a href="/logs" class="btn">تاریخچه‌ی کامل تغییرات</a>
         <a href="/reports/duration" class="btn">ابزار گزارش‌ساز</a>
+        <% if (isManagement) { %>
+          <a href="/reports/management" class="btn">گزارش‌های مدیریتی</a>
+        <% } %>
         <% if (isLocalAdmin) { %>
           <a href="/rows/deleted" class="btn">ردیف‌های حذف‌شده</a>
         <% } %>

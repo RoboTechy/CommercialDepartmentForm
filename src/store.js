@@ -671,6 +671,108 @@ function getDurationReport({ startField, endField, purchaseExecutor, requesterDe
   };
 }
 
+// کمکی مشترک برای گزارش‌های مدیریتی زیر: مدت‌زمان بین دو مقدار تاریخ
+// (که با توابع getStart/getEnd از روی هر ردیف استخراج می‌شوند - نه لزوماً
+// یک «فیلد» ثابت، مثلاً می‌تواند created_at یا حتی یک مقدار محاسبه‌شده
+// از audit_log باشد) را برای مجموعه‌ای از ردیف‌ها حساب می‌کند
+function computeDurationStats(rows, getStart, getEnd) {
+  const items = [];
+  for (const row of rows) {
+    const startVal = getStart(row);
+    const endVal = getEnd(row);
+    if (!startVal || !endVal) continue;
+    const days = daysBetweenJalali(startVal, endVal);
+    if (days === null || days < 0) continue;
+    items.push({ row, days });
+  }
+  items.sort((a, b) => b.days - a.days);
+  const sortedDays = items.map((i) => i.days).sort((a, b) => a - b);
+  const count = sortedDays.length;
+  return {
+    count,
+    avg: count ? sortedDays.reduce((sum, d) => sum + d, 0) / count : null,
+    median: median(sortedDays),
+    min: count ? sortedDays[0] : null,
+    max: count ? sortedDays[count - 1] : null,
+    slowest: items.slice(0, 10),
+  };
+}
+
+// گزارش‌های تحلیلی/زمان‌بندی مخصوص مدیریت (فقط گروه PRT-Management) -
+// میانگین/میانه و «کندترین ردیف‌ها»ی هر مرحله از فرایند.
+//
+// نکته‌ی مهم درباره‌ی این بازه‌ها: چون فیلدهای هر بخش لزوماً یک نقطه‌ی
+// پایانِ تمیز و یکتا ندارند (مثلاً «انبار کارفرما» در مرحله‌ی ۱ چهار فیلد
+// دارد)، این بازه‌ها بر اساس نزدیک‌ترین فیلد معنادار در فرایند واقعی
+// انتخاب شده‌اند - از «تحویل/ارجاع به مرحله‌ی بعد» به‌عنوان نقطه‌ی پایان
+// همان مرحله استفاده شده. اگر بازه‌ی دقیق‌تر یا دیگری مد نظر است،
+// «ابزار گزارش‌ساز» (/reports/duration) هر جفت فیلد تاریخی دلخواهی را
+// قبول می‌کند.
+function getManagementStageStats() {
+  const activeRows = db.all(`SELECT * FROM rows WHERE deleted_at = '' AND published_at != ''`);
+  const notCancelledReturned = activeRows.filter((row) => !row.cancelled_at && !row.returned_at);
+
+  const lastChangeRows = db.all('SELECT row_id, MAX(changed_at) AS last_changed FROM audit_log GROUP BY row_id');
+  const lastChangeByRow = new Map(lastChangeRows.map((r) => [r.row_id, r.last_changed]));
+
+  return {
+    warehouse1: {
+      label: 'انبار کارفرما (مرحله ۱) - از رسیدن درخواست به انبار تا ارجاع به بازرگانی',
+      ...computeDurationStats(
+        activeRows,
+        (r) => r.delivery_to_warehouse_date,
+        (r) => r.referred_to_commercial_date
+      ),
+    },
+    commercial: {
+      label: 'بازرگانی غدیر - از ارجاع تا صدور مجوز پرداخت (فقط مجری خرید «سایت»؛ برای تهران/برنا این فیلد اصلاً پر نمی‌شود)',
+      ...computeDurationStats(
+        activeRows,
+        (r) => r.referred_to_commercial_date,
+        (r) => r.payment_auth_issued_date
+      ),
+    },
+    warehouse2: {
+      label: 'انبار کارفرما (مرحله ۲ - ارسال نامه) - از ثبت درخواست تا ارسال نامه‌ی نهایی',
+      ...computeDurationStats(
+        activeRows,
+        (r) => r.created_at,
+        (r) => r.dispatch_date
+      ),
+    },
+    fullCycle: {
+      label: 'کل چرخه - از ثبت درخواست تا تکمیل کامل (آخرین تغییر ثبت‌شده روی ردیف)',
+      ...computeDurationStats(
+        notCancelledReturned.filter((row) => isRowComplete(row)),
+        (r) => r.created_at,
+        (r) => lastChangeByRow.get(r.id)
+      ),
+    },
+  };
+}
+
+// میانگین/میانه‌ی «کل چرخه» به تفکیک سطح اولویت - آیا درخواست‌های
+// اولویت بالاتر واقعاً سریع‌تر پردازش می‌شوند؟
+function getManagementPriorityStats() {
+  const activeRows = db.all(
+    `SELECT * FROM rows WHERE deleted_at = '' AND published_at != '' AND cancelled_at = '' AND returned_at = ''`
+  );
+  const lastChangeRows = db.all('SELECT row_id, MAX(changed_at) AS last_changed FROM audit_log GROUP BY row_id');
+  const lastChangeByRow = new Map(lastChangeRows.map((r) => [r.row_id, r.last_changed]));
+  const completedRows = activeRows.filter((row) => isRowComplete(row));
+
+  const priorityField = findSection('tech_operator').fields.find((f) => f.name === 'priority');
+  return priorityField.options.map((opt) => {
+    const rows = completedRows.filter((row) => row.priority === opt);
+    const stats = computeDurationStats(
+      rows,
+      (r) => r.created_at,
+      (r) => lastChangeByRow.get(r.id)
+    );
+    return { priority: opt, ...stats };
+  });
+}
+
 module.exports = {
   listRows,
   getRow,
@@ -697,6 +799,8 @@ module.exports = {
   getDurationReport,
   fieldsForCompletion,
   currentBlockingSection,
+  getManagementStageStats,
+  getManagementPriorityStats,
   getOverdueRows,
   getCancelledReturnedList,
   getVolumeByMonth,
