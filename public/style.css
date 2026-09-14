@@ -123,6 +123,58 @@ body {
 .container-wide { max-width: 100%; }
 .center-page { display: flex; align-items: center; justify-content: center; min-height: 80vh; }
 
+/* صفحه‌ی اصلی: فقط خود فهرست ردیف‌ها اسکرول می‌شود، نه کل صفحه - هدر بالا،
+   عنوان/دکمه‌ها، و نوار فیلتر/دکمه‌های پایین همیشه سرجایشان ثابت می‌مانند */
+body.dashboard-scroll {
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+body.dashboard-scroll .topbar { flex: 0 0 auto; }
+body.dashboard-scroll .container-wide {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 16px auto;
+  overflow: hidden;
+}
+body.dashboard-scroll .page-header,
+body.dashboard-scroll > .container-wide > .alert {
+  flex: 0 0 auto;
+}
+body.dashboard-scroll .filter-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+body.dashboard-scroll .filter-actions {
+  flex: 0 0 auto;
+}
+body.dashboard-scroll .table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+body.dashboard-scroll .sheet-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--card-bg);
+}
+@media print {
+  body.dashboard-scroll,
+  body.dashboard-scroll .container-wide,
+  body.dashboard-scroll .filter-form {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+}
+
 .card {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
@@ -215,7 +267,7 @@ textarea { min-height: 84px; resize: vertical; }
 }
 .draft-list-item label { display: flex; align-items: center; gap: 8px; font-weight: 500; }
 
-.table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: var(--radius-md); overflow: hidden; }
+.table { width: 100%; border-collapse: collapse; background: var(--card-bg); border-radius: var(--radius-md); }
 .table th, .table td { padding: 11px 14px; text-align: right; border-bottom: 1px solid var(--ink-100); font-size: 13.5px; }
 .table th { background: var(--ink-100); font-weight: 800; color: var(--ink-900); }
 .table tbody tr:hover { background: #fafaff; }
