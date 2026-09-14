@@ -364,3 +364,133 @@ document.addEventListener('click', function (e) {
     if (td) startInlineEdit(td);
   });
 })();
+
+// --- باکس تاریخچه هنگام هاور روی یک سلول از فهرست اصلی (به‌جز شماره
+// درخواست کالا/خرید) - نشان می‌دهد چه کسی، چه زمانی، از چه مقداری به چه
+// مقداری این فیلد را تغییر داده؛ محل نمایش باکس (چپ/راست/بالا/پایین
+// نشانگر ماوس) بر اساس فضای خالی اطراف سلول خودکار تعیین می‌شود ---
+(function () {
+  var popup = null;
+  var currentCell = null;
+  var showTimer = null;
+  var hideTimer = null;
+  var cache = {};
+
+  function closePopup() {
+    if (popup) {
+      popup.remove();
+      popup = null;
+    }
+    currentCell = null;
+  }
+
+  function escapeHtml(s) {
+    var div = document.createElement('div');
+    div.textContent = s == null ? '' : String(s);
+    return div.innerHTML;
+  }
+
+  function formatEntry(e) {
+    var oldV = e.oldValue ? escapeHtml(e.oldValue) : '<span class="hist-empty-val">—</span>';
+    var newV = e.newValue ? escapeHtml(e.newValue) : '<span class="hist-empty-val">—</span>';
+    return (
+      '<div class="hist-entry">' +
+      '<div class="hist-meta">' + escapeHtml(e.changedByDisplay) + ' · ' + escapeHtml(e.changedAt) + '</div>' +
+      '<div class="hist-change">' + oldV + '<span class="hist-arrow">→</span>' + newV + '</div>' +
+      '</div>'
+    );
+  }
+
+  function positionPopup(cell) {
+    if (!popup) return;
+    var rect = cell.getBoundingClientRect();
+    var pw = popup.offsetWidth;
+    var ph = popup.offsetHeight;
+    var margin = 10;
+    var spaceRight = window.innerWidth - rect.right;
+    var spaceLeft = rect.left;
+
+    // اول سعی می‌کند کنار سلول (چپ یا راست، هرکدام فضای بیشتری دارد) جا شود
+    var left;
+    if (spaceLeft >= pw + margin || spaceLeft >= spaceRight) {
+      left = rect.left - pw - margin;
+    } else {
+      left = rect.right + margin;
+    }
+    left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+
+    var top = rect.top;
+    if (top + ph > window.innerHeight - 8) {
+      top = rect.bottom - ph;
+    }
+    top = Math.max(8, Math.min(top, window.innerHeight - ph - 8));
+
+    popup.style.left = left + 'px';
+    popup.style.top = top + 'px';
+  }
+
+  function renderPopup(cell, entries) {
+    if (currentCell !== cell) return;
+    closePopup();
+    popup = document.createElement('div');
+    popup.className = 'cell-history-popup';
+    var html = '<div class="hist-title">' + escapeHtml(cell.dataset.fieldLabel) + '</div>';
+    if (!entries.length) {
+      html += '<div class="hist-empty">هنوز تغییری روی این فیلد ثبت نشده است.</div>';
+    } else {
+      html += entries.map(formatEntry).join('');
+    }
+    if (cell.classList.contains('cell-editable')) {
+      html += '<div class="hist-hint">برای ویرایش سریع، روی سلول دابل‌کلیک کنید</div>';
+    }
+    popup.innerHTML = html;
+    document.body.appendChild(popup);
+    positionPopup(cell);
+  }
+
+  function loadHistory(cell) {
+    var key = cell.dataset.rowId + ':' + cell.dataset.field;
+    if (cache[key]) {
+      renderPopup(cell, cache[key]);
+      return;
+    }
+    fetch('/rows/' + cell.dataset.rowId + '/fields/' + cell.dataset.field + '/history')
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        cache[key] = data.entries || [];
+        renderPopup(cell, cache[key]);
+      })
+      .catch(function () {});
+  }
+
+  document.addEventListener('mouseover', function (e) {
+    if (popup && popup.contains(e.target)) {
+      clearTimeout(hideTimer);
+      return;
+    }
+    var cell = e.target.closest('td.has-history');
+    if (!cell || cell === currentCell) return;
+    clearTimeout(hideTimer);
+    clearTimeout(showTimer);
+    currentCell = cell;
+    showTimer = setTimeout(function () {
+      if (currentCell === cell) loadHistory(cell);
+    }, 300);
+  });
+
+  document.addEventListener('mouseout', function (e) {
+    var leavingCell = e.target.closest('td.has-history');
+    var leavingPopup = popup && popup.contains(e.target);
+    if (!leavingCell && !leavingPopup) return;
+    var related = e.relatedTarget;
+    if (related && (related.closest && (related.closest('td.has-history') === currentCell || (popup && popup.contains(related))))) {
+      return;
+    }
+    clearTimeout(showTimer);
+    hideTimer = setTimeout(closePopup, 150);
+  });
+
+  var scrollHost = document.getElementById('rows-table-scroll');
+  if (scrollHost) scrollHost.addEventListener('scroll', closePopup);
+  window.addEventListener('resize', closePopup);
+})();

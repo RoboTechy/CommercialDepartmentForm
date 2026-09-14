@@ -30,7 +30,7 @@
         <button type="submit" class="btn btn-primary btn-sm">اعمال فیلتر</button>
         <a href="/" class="btn btn-sm">پاک کردن فیلترها</a>
       </div>
-      <div class="table-scroll">
+      <div class="table-scroll" id="rows-table-scroll">
         <table class="table sheet-table">
           <thead>
             <tr>
@@ -102,15 +102,18 @@
                 <% sections.forEach(function(section) { %>
                   <% section.fields.forEach(function(field, idx) { %>
                     <% var isEditable = row.editableFieldNames.indexOf(field.name) !== -1; %>
-                    <td class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %><%= isEditable ? ' cell-editable' : '' %>"
-                        <% if (isEditable) { %>
-                          data-editable="1"
+                    <% var hasHistory = field.name !== 'request_no' && field.name !== 'purchase_request_no'; %>
+                    <td class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %><%= isEditable ? ' cell-editable' : '' %><%= hasHistory ? ' has-history' : '' %>"
+                        <% if (hasHistory || isEditable) { %>
                           data-row-id="<%= row.id %>"
                           data-field="<%= field.name %>"
+                        <% } %>
+                        <% if (hasHistory) { %>data-field-label="<%= field.label %>"<% } %>
+                        <% if (isEditable) { %>
+                          data-editable="1"
                           data-type="<%= field.type %>"
                           data-required="<%= field.required ? '1' : '' %>"
                           <% if (field.type === 'select') { %>data-options="<%= field.options.join('|') %>"<% } %>
-                          title="دابل‌کلیک برای ویرایش سریع"
                         <% } %>>
                       <% if (field.name === 'request_no' && row[field.name]) { %>
                         <a href="/rows/<%= row.id %>"><%= row[field.name] %></a>
@@ -128,10 +131,6 @@
             <% }) %>
           </tbody>
         </table>
-      </div>
-      <div class="filter-actions no-print">
-        <button type="submit" class="btn btn-primary btn-sm">اعمال فیلتر</button>
-        <a href="/" class="btn btn-sm">پاک کردن فیلترها</a>
       </div>
     </form>
 

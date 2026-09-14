@@ -352,6 +352,16 @@ function getRowHistory(rowId) {
   return db.all('SELECT * FROM audit_log WHERE row_id = @rowId ORDER BY id DESC', { '@rowId': rowId });
 }
 
+// تاریخچه‌ی فقط یک فیلد خاص از یک ردیف - برای نمایش سریع (مثلاً در یک
+// باکس کوچک هنگام هاور روی همان سلول در فهرست اصلی) بدون بار زدن کل
+// تاریخچه‌ی ردیف
+function getFieldHistory(rowId, fieldKey) {
+  return db.all(
+    'SELECT * FROM audit_log WHERE row_id = @rowId AND field_key = @fieldKey ORDER BY id DESC',
+    { '@rowId': rowId, '@fieldKey': fieldKey }
+  );
+}
+
 // حذف نرم: ردیف واقعاً از دیتابیس پاک نمی‌شود، فقط از فهرست اصلی/آمار/جستجو
 // پنهان می‌شود و قابل بازیابی می‌ماند. این اکشن خودش در audit_log ثبت نمی‌شود
 // (فقط روی خود ردیف مشخص می‌شود چه کسی و چه زمانی حذفش کرده).
@@ -573,6 +583,7 @@ module.exports = {
   discardDraftRow,
   updateSection,
   getRowHistory,
+  getFieldHistory,
   searchLogs,
   softDeleteRow,
   restoreRow,

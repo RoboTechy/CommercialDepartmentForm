@@ -475,6 +475,24 @@ router.get('/rows/:id/history', (req, res) => {
   res.render('history', { row, history, sections, user: req.session.user });
 });
 
+// تاریخچه‌ی یک فیلد تکی به‌صورت JSON - برای باکس کوچک هاور روی سلول در
+// فهرست اصلی (بدون رفتن به صفحه‌ی جزئیات/تاریخچه‌ی کامل)
+router.get('/rows/:id/fields/:fieldName/history', (req, res) => {
+  const row = store.getRow(req.params.id);
+  if (!row) return res.status(404).json({ entries: [] });
+  if (!findField(req.params.fieldName)) return res.status(404).json({ entries: [] });
+
+  const history = store.getFieldHistory(row.id, req.params.fieldName);
+  res.json({
+    entries: history.map((h) => ({
+      changedAt: h.changed_at,
+      changedByDisplay: h.changed_by_display,
+      oldValue: h.old_value,
+      newValue: h.new_value,
+    })),
+  });
+});
+
 router.get('/logs', (req, res) => {
   const filters = {
     user: req.query.user || '',
