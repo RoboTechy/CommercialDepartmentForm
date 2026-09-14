@@ -270,6 +270,7 @@ document.addEventListener('click', function (e) {
         .then(function (data) {
           if (data.ok) {
             renderCellValue(td, data.value);
+            if (window.PRT_invalidateHistoryCache) window.PRT_invalidateHistoryCache(td.dataset.rowId, td.dataset.field);
           } else {
             alert(data.error || 'ثبت تغییر ناموفق بود.');
             renderCellValue(td, oldDisplayText);
@@ -365,16 +366,26 @@ document.addEventListener('click', function (e) {
   });
 })();
 
-// --- باکس تاریخچه هنگام هاور روی یک سلول از فهرست اصلی (به‌جز شماره
-// درخواست کالا/خرید) - نشان می‌دهد چه کسی، چه زمانی، از چه مقداری به چه
-// مقداری این فیلد را تغییر داده؛ محل نمایش باکس (چپ/راست/بالا/پایین
-// نشانگر ماوس) بر اساس فضای خالی اطراف سلول خودکار تعیین می‌شود ---
+// --- باکس تاریخچه روی یک سلول از فهرست اصلی (به‌جز شماره درخواست کالا/خرید
+// و فیلدهای فقط‌خواندنی) - نشان می‌دهد چه کسی، چه زمانی، از چه مقداری به چه
+// مقداری این فیلد را تغییر داده؛ محل نمایش باکس (چپ/راست/بالا/پایین) بر
+// اساس فضای خالی اطراف سلول خودکار تعیین می‌شود. روی دستگاه‌های با موس
+// (دسکتاپ) با هاور باز می‌شود؛ روی لمسی (موبایل/تبلت) با یک تب باز/بسته
+// می‌شود - دابل‌تب هم‌چنان مخصوص ویرایش سریع می‌ماند (mousedown/dblclick
+// جدا از این بخش است) ---
 (function () {
   var popup = null;
   var currentCell = null;
   var showTimer = null;
   var hideTimer = null;
   var cache = {};
+  var supportsHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  // اگر بعد از ویرایش درجای یک فیلد، کاربر دوباره همان سلول را هاور/تب کند،
+  // نباید تاریخچه‌ی قدیمیِ کش‌شده (بدون آخرین تغییر) نشان داده شود
+  window.PRT_invalidateHistoryCache = function (rowId, field) {
+    delete cache[rowId + ':' + field];
+  };
 
   function closePopup() {
     if (popup) {
@@ -431,7 +442,13 @@ document.addEventListener('click', function (e) {
 
   function renderPopup(cell, entries) {
     if (currentCell !== cell) return;
-    closePopup();
+    // توجه: عمداً closePopup() صدا زده نمی‌شود، چون آن تابع currentCell را هم
+    // null می‌کند و باعث می‌شود بعد از رندر شدن، حالت "سلول جاری باز است"
+    // گم شود (و مثلاً تب دوم روی موبایل به‌جای بستن، دوباره باز کند)
+    if (popup) {
+      popup.remove();
+      popup = null;
+    }
     popup = document.createElement('div');
     popup.className = 'cell-history-popup';
     var html = '<div class="hist-title">' + escapeHtml(cell.dataset.fieldLabel) + '</div>';
@@ -463,32 +480,51 @@ document.addEventListener('click', function (e) {
       .catch(function () {});
   }
 
-  document.addEventListener('mouseover', function (e) {
-    if (popup && popup.contains(e.target)) {
+  if (supportsHover) {
+    document.addEventListener('mouseover', function (e) {
+      if (popup && popup.contains(e.target)) {
+        clearTimeout(hideTimer);
+        return;
+      }
+      var cell = e.target.closest('td.has-history');
+      if (!cell || cell === currentCell) return;
       clearTimeout(hideTimer);
-      return;
-    }
-    var cell = e.target.closest('td.has-history');
-    if (!cell || cell === currentCell) return;
-    clearTimeout(hideTimer);
-    clearTimeout(showTimer);
-    currentCell = cell;
-    showTimer = setTimeout(function () {
-      if (currentCell === cell) loadHistory(cell);
-    }, 300);
-  });
+      clearTimeout(showTimer);
+      currentCell = cell;
+      showTimer = setTimeout(function () {
+        if (currentCell === cell) loadHistory(cell);
+      }, 300);
+    });
 
-  document.addEventListener('mouseout', function (e) {
-    var leavingCell = e.target.closest('td.has-history');
-    var leavingPopup = popup && popup.contains(e.target);
-    if (!leavingCell && !leavingPopup) return;
-    var related = e.relatedTarget;
-    if (related && (related.closest && (related.closest('td.has-history') === currentCell || (popup && popup.contains(related))))) {
-      return;
-    }
-    clearTimeout(showTimer);
-    hideTimer = setTimeout(closePopup, 150);
-  });
+    document.addEventListener('mouseout', function (e) {
+      var leavingCell = e.target.closest('td.has-history');
+      var leavingPopup = popup && popup.contains(e.target);
+      if (!leavingCell && !leavingPopup) return;
+      var related = e.relatedTarget;
+      if (related && (related.closest && (related.closest('td.has-history') === currentCell || (popup && popup.contains(related))))) {
+        return;
+      }
+      clearTimeout(showTimer);
+      hideTimer = setTimeout(closePopup, 150);
+    });
+  } else {
+    // دستگاه لمسی: یک تب باز/بسته می‌کند (دابل‌تب هم‌چنان برای ویرایش سریع
+    // آزاد می‌ماند، چون اینجا با click کار می‌کنیم نه dblclick)
+    document.addEventListener('click', function (e) {
+      if (popup && popup.contains(e.target)) return;
+      var cell = e.target.closest('td.has-history');
+      if (!cell) {
+        closePopup();
+        return;
+      }
+      if (cell === currentCell && popup) {
+        closePopup();
+        return;
+      }
+      currentCell = cell;
+      loadHistory(cell);
+    });
+  }
 
   var scrollHost = document.getElementById('rows-table-scroll');
   if (scrollHost) scrollHost.addEventListener('scroll', closePopup);

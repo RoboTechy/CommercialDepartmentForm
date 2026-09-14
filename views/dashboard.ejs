@@ -102,7 +102,7 @@
                 <% sections.forEach(function(section) { %>
                   <% section.fields.forEach(function(field, idx) { %>
                     <% var isEditable = row.editableFieldNames.indexOf(field.name) !== -1; %>
-                    <% var hasHistory = field.name !== 'request_no' && field.name !== 'purchase_request_no'; %>
+                    <% var hasHistory = !field.readOnly && field.name !== 'request_no' && field.name !== 'purchase_request_no'; %>
                     <td class="section-<%= section.color %><%= idx === section.fields.length - 1 ? ' section-boundary' : '' %><%= isEditable ? ' cell-editable' : '' %><%= hasHistory ? ' has-history' : '' %>"
                         <% if (hasHistory || isEditable) { %>
                           data-row-id="<%= row.id %>"
