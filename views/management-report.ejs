@@ -10,6 +10,56 @@
       <a href="/reports/duration">ابزار گزارش‌ساز</a> هر جفت فیلد تاریخی دلخواهی را قبول می‌کند.
     </p>
 
+    <div class="chart-row no-print">
+      <div class="chart-card">
+        <h3>مقایسه‌ی مراحل - میانگین زمان (روز)</h3>
+        <% if (!stageChart.some(function(s) { return s.count > 0; })) { %>
+          <p class="chart-empty">هنوز داده‌ای برای نمایش نیست.</p>
+        <% } else { %>
+          <div class="bar-chart" role="img" aria-label="نمودار میله‌ای مقایسه‌ی میانگین زمان مراحل انبار مرحله یک، بازرگانی و انبار مرحله دو">
+            <% stageChart.forEach(function(item) { %>
+              <div class="bar-row">
+                <div class="bar-row-label"><%= item.label %></div>
+                <div class="bar-track">
+                  <div class="bar-fill"
+                       tabindex="0"
+                       style="width: <%= item.widthPct %>%; background: <%= item.color %>;"
+                       data-label="<%= item.label %>"
+                       data-value="<%= item.avg !== null ? item.avg.toFixed(1) + ' روز (میانگین)' : 'داده‌ای موجود نیست' %>"
+                       data-detail="<%= item.count ? ('میانه: ' + item.median.toFixed(1) + ' · حداقل: ' + item.min.toFixed(1) + ' · حداکثر: ' + item.max.toFixed(1) + ' · تعداد: ' + item.count) : '' %>"></div>
+                </div>
+                <div class="bar-row-value"><%= item.avg !== null ? item.avg.toFixed(1) : '—' %><span class="unit">روز</span></div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+
+      <div class="chart-card">
+        <h3>کل چرخه به تفکیک اولویت - میانگین زمان (روز)</h3>
+        <% if (!priorityChart.some(function(p) { return p.count > 0; })) { %>
+          <p class="chart-empty">هنوز داده‌ای برای نمایش نیست.</p>
+        <% } else { %>
+          <div class="bar-chart" role="img" aria-label="نمودار میله‌ای میانگین زمان کل چرخه به تفکیک سطح اولویت از A++ تا D">
+            <% priorityChart.forEach(function(item) { %>
+              <div class="bar-row">
+                <div class="bar-row-label"><%= item.label %></div>
+                <div class="bar-track">
+                  <div class="bar-fill"
+                       tabindex="0"
+                       style="width: <%= item.widthPct %>%; background: <%= item.color %>;"
+                       data-label="اولویت <%= item.label %>"
+                       data-value="<%= item.avg !== null ? item.avg.toFixed(1) + ' روز (میانگین)' : 'داده‌ای موجود نیست' %>"
+                       data-detail="<%= item.count ? ('میانه: ' + item.median.toFixed(1) + ' · حداقل: ' + item.min.toFixed(1) + ' · حداکثر: ' + item.max.toFixed(1) + ' · تعداد: ' + item.count) : '' %>"></div>
+                </div>
+                <div class="bar-row-value"><%= item.avg !== null ? item.avg.toFixed(1) : '—' %><span class="unit">روز</span></div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
     <% [stageStats.warehouse1, stageStats.commercial, stageStats.warehouse2, stageStats.fullCycle].forEach(function(stage) { %>
       <section class="report-section">
         <h2><%= stage.label %></h2>
@@ -98,5 +148,10 @@
       <% } %>
     </section>
   </main>
+  <div id="chart-tooltip" class="chart-tooltip" role="tooltip" hidden>
+    <span class="tt-label"></span>
+    <span class="tt-value"></span>
+    <span class="tt-detail"></span>
+  </div>
 </body>
 </html>

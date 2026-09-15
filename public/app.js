@@ -624,3 +624,49 @@ document.addEventListener('click', function (e) {
   try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
   applyGroup(saved !== null ? saved : toggle.dataset.defaultGroup || '');
 })();
+
+// --- نمودارهای میله‌ای صفحه‌ی گزارش‌های مدیریتی - لایه‌ی هاور/فوکوس: مقدار
+// همیشه کنار خود میله هم دیده می‌شود (تولتیپ چیزی را قایم نمی‌کند)، اینجا
+// فقط جزئیات بیشتر (میانه/حداقل/حداکثر/تعداد) روی هاور یا فوکوس کیبورد
+// نمایش داده می‌شود. مقادیر از data-* با textContent درج می‌شوند (نه
+// innerHTML) چون این‌ها می‌توانند از دادهٔ ردیف‌ها بیایند ---
+(function () {
+  var tooltip = document.getElementById('chart-tooltip');
+  var bars = document.querySelectorAll('.bar-fill[data-value]');
+  if (!tooltip || !bars.length) return;
+  var ttLabel = tooltip.querySelector('.tt-label');
+  var ttValue = tooltip.querySelector('.tt-value');
+  var ttDetail = tooltip.querySelector('.tt-detail');
+
+  function showFor(bar, x, y) {
+    ttLabel.textContent = bar.dataset.label || '';
+    ttValue.textContent = bar.dataset.value || '';
+    ttDetail.textContent = bar.dataset.detail || '';
+    tooltip.hidden = false;
+    positionAt(x, y);
+  }
+
+  function positionAt(x, y) {
+    var pad = 14;
+    var rect = tooltip.getBoundingClientRect();
+    var left = x + pad;
+    if (left + rect.width > window.innerWidth - pad) left = x - rect.width - pad;
+    var top = y - rect.height - pad;
+    if (top < pad) top = y + pad;
+    tooltip.style.left = Math.max(pad, left) + 'px';
+    tooltip.style.top = Math.max(pad, top) + 'px';
+  }
+
+  function hide() { tooltip.hidden = true; }
+
+  bars.forEach(function (bar) {
+    bar.addEventListener('pointerenter', function (e) { showFor(bar, e.clientX, e.clientY); });
+    bar.addEventListener('pointermove', function (e) { if (!tooltip.hidden) positionAt(e.clientX, e.clientY); });
+    bar.addEventListener('pointerleave', hide);
+    bar.addEventListener('focus', function () {
+      var r = bar.getBoundingClientRect();
+      showFor(bar, r.left + r.width / 2, r.top);
+    });
+    bar.addEventListener('blur', hide);
+  });
+})();

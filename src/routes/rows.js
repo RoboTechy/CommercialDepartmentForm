@@ -41,6 +41,10 @@ function userHomeSectionColor(user) {
     const groups = Array.isArray(section.group) ? section.group : [section.group];
     if (groups.some((g) => user.groups.includes(g))) return section.color;
   }
+  // عضو گروه مدیریت که در هیچ واحد عملیاتی‌ای عضو نیست: پیش‌فرض فقط ستون‌های
+  // «درخواست‌کننده» - چون این چیزی است که مدیریت معمولاً برای نگاه کلی لازم
+  // دارد؛ خودش می‌تواند با کلیک روی دکمه‌ها انبار/بازرگانی را هم ببیند
+  if (isManagement(user)) return 'tech_operator';
   return '';
 }
 
@@ -635,6 +639,23 @@ router.get('/reports/duration/export.csv', (req, res) => {
   res.send('﻿' + lines.join('\r\n'));
 });
 
+// رمپ‌های رنگی «ترتیبی» (ordinal) - یک فام واحد با روشنایی یکنواخت، اعتبارسنجی‌شده
+// با اسکریپت validate_palette.js (هم شش‌گام و هم سه‌گام همه‌ی چک‌ها را پاس کردند:
+// یکنواختی روشنایی، فاصله‌ی کافی پله‌ها، کنتراست انتهای روشن، فام واحد)
+const STAGE_CHART_COLORS = ['#8c78ec', '#6c53e3', '#5640cf'];
+const PRIORITY_CHART_COLORS = ['#a8a2ff', '#9088f0', '#7970d5', '#6357ba', '#4e3fa0', '#3a2786'];
+
+// آماده‌سازی داده‌ی نمودار میله‌ای: عرض هر میله نسبت به بیشینه‌ی میانگین‌ها،
+// با یک کف کوچک تا میله‌های خیلی کوچک هم قابل دیدن بمانند
+function buildBarChartItems(entries, colors) {
+  const maxAvg = Math.max(0, ...entries.map((e) => (e.avg !== null ? e.avg : 0)));
+  return entries.map((entry, i) => ({
+    ...entry,
+    color: colors[i % colors.length],
+    widthPct: entry.avg === null || maxAvg === 0 ? 0 : Math.max(4, Math.round((entry.avg / maxAvg) * 100)),
+  }));
+}
+
 // گزارش‌های مدیریتی (زمان‌بندی/تحلیلی) - فقط برای اعضای گروه
 // PRT-Management (و ادمین)؛ بقیه‌ی کاربران حتی لینکش را هم در ناوبری
 // نمی‌بینند (partials/nav.ejs) و مستقیم هم که بیایند 403 می‌گیرند
@@ -643,10 +664,28 @@ router.get('/reports/management', (req, res) => {
   if (!isManagement(user)) {
     return res.status(403).render('not-found', { message: 'این گزارش فقط برای اعضای مدیریت در دسترس است.' });
   }
+  const stageStats = store.getManagementStageStats();
+  const priorityStats = store.getManagementPriorityStats();
+
+  const stageChart = buildBarChartItems(
+    [
+      { ...stageStats.warehouse1, key: 'warehouse1', label: 'انبار (مرحله ۱)' },
+      { ...stageStats.commercial, key: 'commercial', label: 'بازرگانی غدیر' },
+      { ...stageStats.warehouse2, key: 'warehouse2', label: 'انبار (مرحله ۲ - ارسال نامه)' },
+    ],
+    STAGE_CHART_COLORS
+  );
+  const priorityChart = buildBarChartItems(
+    priorityStats.map((p) => ({ ...p, key: p.priority, label: p.priority })),
+    PRIORITY_CHART_COLORS
+  );
+
   res.render('management-report', {
     user,
-    stageStats: store.getManagementStageStats(),
-    priorityStats: store.getManagementPriorityStats(),
+    stageStats,
+    priorityStats,
+    stageChart,
+    priorityChart,
   });
 });
 

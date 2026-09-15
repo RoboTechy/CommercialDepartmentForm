@@ -191,6 +191,69 @@ h2 { margin: 0; font-size: 17px; font-weight: 800; color: var(--ink-900); }
 .report-section > .muted.small { margin-bottom: 14px; }
 .report-section .table-scroll { margin-top: 8px; }
 
+/* نمودارهای میله‌ای افقی صفحه‌ی گزارش‌های مدیریتی - رنگ‌بندی ترتیبی
+   (یک فام، پله‌های روشنایی یکنواخت) با اسکریپت اعتبارسنج دیتاویز پاس شده */
+.chart-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 8px; }
+.chart-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  padding: 18px 20px 14px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--ink-200);
+  flex: 1 1 380px;
+  min-width: 0;
+}
+.chart-card h3 { margin: 0 0 14px; font-size: 14.5px; font-weight: 800; color: var(--ink-900); }
+.bar-chart { display: flex; flex-direction: column; gap: 10px; }
+.bar-row { display: grid; grid-template-columns: 128px 1fr 68px; align-items: center; gap: 10px; }
+.bar-row-label { font-size: 12.5px; color: var(--ink-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track {
+  position: relative;
+  height: 22px;
+  background: var(--ink-100);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bar-fill {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  bottom: 0;
+  /* گرد فقط در انتهای داده (سمت مقابل خط پایه)، گوشه‌ی کنار خط پایه گونیا */
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-start-end-radius: 4px;
+  border-end-end-radius: 4px;
+  transition: filter 0.12s;
+  cursor: default;
+}
+.bar-row:hover .bar-fill,
+.bar-fill:focus-visible {
+  filter: brightness(1.08);
+  outline: none;
+}
+.bar-row-value { font-size: 12.5px; font-weight: 700; color: var(--ink-900); font-variant-numeric: tabular-nums; text-align: start; }
+.bar-row-value .unit { font-weight: 500; color: var(--ink-500); font-size: 11px; margin-inline-start: 2px; }
+.chart-empty { color: var(--ink-500); font-size: 13px; padding: 10px 0; }
+
+.chart-tooltip {
+  position: fixed;
+  z-index: 60;
+  background: var(--ink-900);
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 12px;
+  line-height: 1.7;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  max-width: 240px;
+  transform: translate(0, -8px);
+}
+.chart-tooltip[hidden] { display: none; }
+.chart-tooltip .tt-value { font-weight: 800; font-size: 13.5px; display: block; }
+.chart-tooltip .tt-label { color: var(--ink-300); display: block; margin-bottom: 2px; }
+
 label { display: block; margin-bottom: 14px; font-size: 13.5px; font-weight: 700; color: var(--ink-700); }
 .field-hint { display: inline-block; margin-inline-start: 6px; font-size: 12px; font-weight: 400; color: var(--ink-500); }
 input, textarea, select {
