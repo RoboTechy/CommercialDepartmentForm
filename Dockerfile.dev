@@ -1,0 +1,26 @@
+# =====================================================
+# Development Dockerfile with Hot Module Replacement (HMR)
+# =====================================================
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy dependency definitions
+COPY package.json ./
+COPY bun.lock* package-lock.json* ./
+
+# Install dependencies
+RUN npm install --legacy-peer-deps
+
+# Copy project files
+COPY . .
+
+# Expose Vite dev server port
+EXPOSE 3000
+
+# Set environment to development
+ENV NODE_ENV=development
+
+# Start Vite dev server accessible across Docker network
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
