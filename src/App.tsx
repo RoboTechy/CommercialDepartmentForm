@@ -10,6 +10,8 @@ import { DurationReportView } from './components/DurationReportView';
 import { ManagementReportView } from './components/ManagementReportView';
 import { DeletedRowsView } from './components/DeletedRowsView';
 import { AuditLogsView } from './components/AuditLogsView';
+import { WorkflowPipelineView } from './components/WorkflowPipelineView';
+import { VendorsDirectoryView } from './components/VendorsDirectoryView';
 import { HistoryDrawer } from './components/HistoryDrawer';
 import { CancelReasonModal } from './components/CancelReasonModal';
 import { ReturnReasonModal } from './components/ReturnReasonModal';
@@ -47,6 +49,10 @@ const MainLayout: React.FC = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardView />;
+      case 'workflow_pipeline':
+        return <WorkflowPipelineView />;
+      case 'vendors':
+        return <VendorsDirectoryView />;
       case 'new_request':
         return <NewRequestView />;
       case 'drafts':

@@ -12,7 +12,9 @@ import {
   KeyRound,
   FileEdit,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Kanban,
+  Building2
 } from 'lucide-react';
 import { requesterDepartments } from '../data/exactSections';
 
@@ -23,6 +25,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     setSelectedRowId, 
     rows, 
     getDraftRows, 
+    vendors,
     currentUser, 
     canCreateRows, 
     isAdmin,
@@ -77,6 +80,42 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             </div>
             <span className="font-mono text-[11px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 tabular-nums border border-slate-700">
               {publishedCount}
+            </span>
+          </button>
+
+          {/* Workflow Pipeline (گردش کار چند مرحله‌ای) */}
+          <button
+            onClick={() => handleNav('workflow_pipeline')}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+              activeTab === 'workflow_pipeline'
+                ? 'bg-blue-600/20 text-blue-400 font-semibold border border-blue-500/30'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Kanban className="w-4 h-4 text-cyan-400" />
+              <span>تابلوی خط لوله گردش‌کار</span>
+            </div>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold">
+              پایپ‌لاین
+            </span>
+          </button>
+
+          {/* Vendors & RFQ Directory (ویژگی ۱) */}
+          <button
+            onClick={() => handleNav('vendors')}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+              activeTab === 'vendors'
+                ? 'bg-emerald-600/20 text-emerald-400 font-semibold border border-emerald-500/30'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Building2 className="w-4 h-4 text-emerald-400" />
+              <span>بانک اطلاعات تأمین‌کنندگان</span>
+            </div>
+            <span className="font-mono text-[11px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 tabular-nums border border-slate-700">
+              {vendors.length}
             </span>
           </button>
 

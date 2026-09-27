@@ -1,8 +1,32 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { DbRow, AuditLogEntry, UserSession, ActiveTab, RequesterDept } from '../types';
-import { INITIAL_DB_ROWS, INITIAL_AUDIT_LOGS, SAMPLE_USERS } from '../data/mockDatabaseData';
+import { 
+  DbRow, 
+  AuditLogEntry, 
+  UserSession, 
+  ActiveTab, 
+  RequesterDept, 
+  Vendor, 
+  Quotation, 
+  ApprovalRecord, 
+  WorkflowStageId 
+} from '../types';
+import { 
+  INITIAL_DB_ROWS, 
+  INITIAL_AUDIT_LOGS, 
+  SAMPLE_USERS, 
+  INITIAL_VENDORS, 
+  INITIAL_QUOTATIONS, 
+  INITIAL_APPROVALS 
+} from '../data/mockDatabaseData';
 import { sections, findSection, allFields, requesterDepartments, isPaymentAuthWaived, FieldDef } from '../data/exactSections';
 import { nowJalaliDateTime, daysSinceJalali, daysBetweenJalali } from '../utils/exactJalaali';
+import { 
+  canAdvanceWorkflow, 
+  generateDigitalSignature, 
+  createDefaultApprovals, 
+  canUserApproveStep, 
+  inferStageFromRow 
+} from '../utils/workflowEngine';
 import { 
   resolveRequesterDept, 
   isFieldSetComplete, 
@@ -19,6 +43,9 @@ const STORAGE_KEYS = {
   DB_ROWS: 'commercial_exact_db_rows_v3',
   AUDIT_LOGS: 'commercial_exact_audit_logs_v3',
   USER: 'commercial_exact_user_v3',
+  VENDORS: 'commercial_exact_vendors_v3',
+  QUOTATIONS: 'commercial_exact_quotations_v3',
+  APPROVALS: 'commercial_exact_approvals_v3',
 };
 
 const OVERDUE_DAYS = 3;
@@ -37,6 +64,9 @@ interface FilterState {
 interface ExactDatabaseContextType {
   rows: DbRow[];
   auditLogs: AuditLogEntry[];
+  vendors: Vendor[];
+  quotations: Quotation[];
+  approvals: ApprovalRecord[];
   currentUser: UserSession | null;
   allUsers: UserSession[];
   activeTab: ActiveTab;
@@ -82,6 +112,25 @@ interface ExactDatabaseContextType {
   returnToTechOffice: (rowId: number, reason: string) => void;
   unreturnFromTechOffice: (rowId: number) => void;
 
+  // RFQ & Vendor Management (ویژگی ۱)
+  addVendor: (vendor: Omit<Vendor, 'id'>) => Vendor;
+  updateVendor: (id: string, updates: Partial<Vendor>) => void;
+  deleteVendor: (id: string) => void;
+  addQuotation: (quote: Omit<Quotation, 'id' | 'createdAt' | 'createdBy'>) => Quotation;
+  selectWinningQuotation: (quoteId: string) => void;
+  deleteQuotation: (quoteId: string) => void;
+  getRowQuotations: (rowId: number) => Quotation[];
+
+  // Multi-level Approvals & Digital Signature (ویژگی ۴)
+  approveStep: (approvalId: string, comment?: string) => { success: boolean; message?: string };
+  rejectStep: (approvalId: string, reason: string) => void;
+  getRowApprovals: (rowId: number) => ApprovalRecord[];
+  canUserApprove: (approval: ApprovalRecord) => boolean;
+
+  // Multi-Stage Workflow Pipeline (گردش کار چند مرحله‌ای)
+  advanceWorkflow: (rowId: number) => { success: boolean; message?: string };
+  setWorkflowStage: (rowId: number, stage: WorkflowStageId) => void;
+
   // Queries & Analytics
   getRow: (id: number) => DbRow | undefined;
   getRowHistory: (rowId: number) => AuditLogEntry[];
@@ -118,6 +167,33 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
       return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
     } catch {
       return INITIAL_AUDIT_LOGS;
+    }
+  });
+
+  const [vendors, setVendors] = useState<Vendor[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.VENDORS);
+      return saved ? JSON.parse(saved) : INITIAL_VENDORS;
+    } catch {
+      return INITIAL_VENDORS;
+    }
+  });
+
+  const [quotations, setQuotations] = useState<Quotation[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.QUOTATIONS);
+      return saved ? JSON.parse(saved) : INITIAL_QUOTATIONS;
+    } catch {
+      return INITIAL_QUOTATIONS;
+    }
+  });
+
+  const [approvals, setApprovals] = useState<ApprovalRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.APPROVALS);
+      return saved ? JSON.parse(saved) : INITIAL_APPROVALS;
+    } catch {
+      return INITIAL_APPROVALS;
     }
   });
 
@@ -164,6 +240,18 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(auditLogs));
   }, [auditLogs]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.VENDORS, JSON.stringify(vendors));
+  }, [vendors]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.QUOTATIONS, JSON.stringify(quotations));
+  }, [quotations]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.APPROVALS, JSON.stringify(approvals));
+  }, [approvals]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(currentUser));
@@ -270,8 +358,197 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   const resetToPrinstineData = () => {
     setRows(INITIAL_DB_ROWS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
+    setVendors(INITIAL_VENDORS);
+    setQuotations(INITIAL_QUOTATIONS);
+    setApprovals(INITIAL_APPROVALS);
     localStorage.removeItem(STORAGE_KEYS.DB_ROWS);
     localStorage.removeItem(STORAGE_KEYS.AUDIT_LOGS);
+    localStorage.removeItem(STORAGE_KEYS.VENDORS);
+    localStorage.removeItem(STORAGE_KEYS.QUOTATIONS);
+    localStorage.removeItem(STORAGE_KEYS.APPROVALS);
+  };
+
+  // RFQ & Vendor Operations (ویژگی ۱)
+  const addVendor = (vendorData: Omit<Vendor, 'id'>): Vendor => {
+    const id = `VND-${String(vendors.length + 1).padStart(3, '0')}`;
+    const newVendor: Vendor = { ...vendorData, id };
+    setVendors(prev => [newVendor, ...prev]);
+    return newVendor;
+  };
+
+  const updateVendor = (id: string, updates: Partial<Vendor>) => {
+    setVendors(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v));
+  };
+
+  const deleteVendor = (id: string) => {
+    setVendors(prev => prev.filter(v => v.id !== id));
+  };
+
+  const addQuotation = (quoteData: Omit<Quotation, 'id' | 'createdAt' | 'createdBy'>): Quotation => {
+    const id = `QT-${Date.now().toString().slice(-6)}`;
+    const newQuote: Quotation = {
+      ...quoteData,
+      id,
+      createdAt: nowJalaliDateTime(),
+      createdBy: currentUser ? currentUser.displayName : 'کاربر بازرگانی',
+      status: 'pending',
+    };
+    setQuotations(prev => [newQuote, ...prev]);
+
+    // Update row estimated cost if it's the first quote
+    setRows(prev => prev.map(r => {
+      if (r.id === quoteData.rowId && !r.total_estimated_amount) {
+        return {
+          ...r,
+          total_estimated_amount: newQuote.totalPrice,
+        };
+      }
+      return r;
+    }));
+
+    return newQuote;
+  };
+
+  const selectWinningQuotation = (quoteId: string) => {
+    const quote = quotations.find(q => q.id === quoteId);
+    if (!quote) return;
+
+    setQuotations(prev => prev.map(q => {
+      if (q.rowId === quote.rowId) {
+        return { ...q, status: q.id === quoteId ? 'selected' : 'rejected' };
+      }
+      return q;
+    }));
+
+    // Update target row with winning vendor and total estimated amount
+    setRows(prev => prev.map(r => {
+      if (r.id === quote.rowId) {
+        return {
+          ...r,
+          selected_quote_id: quote.id,
+          selected_vendor_name: quote.vendorName,
+          total_estimated_amount: quote.totalPrice,
+          workflow_stage: r.workflow_stage === 'commercial_rfq' ? 'financial_approval' : r.workflow_stage,
+        };
+      }
+      return r;
+    }));
+  };
+
+  const deleteQuotation = (quoteId: string) => {
+    setQuotations(prev => prev.filter(q => q.id !== quoteId));
+  };
+
+  const getRowQuotations = (rowId: number): Quotation[] => {
+    return quotations.filter(q => q.rowId === rowId);
+  };
+
+  // Multi-level Approvals & Digital Signature (ویژگی ۴)
+  const getRowApprovals = (rowId: number): ApprovalRecord[] => {
+    const list = approvals.filter(a => a.rowId === rowId);
+    if (list.length > 0) return list;
+    const row = rows.find(r => r.id === rowId);
+    if (row) {
+      const generated = createDefaultApprovals(rowId, row.priority, row.total_estimated_amount || 0);
+      setApprovals(prev => [...prev, ...generated]);
+      return generated;
+    }
+    return [];
+  };
+
+  const canUserApprove = (approval: ApprovalRecord): boolean => {
+    if (!currentUser) return false;
+    return canUserApproveStep(currentUser, approval);
+  };
+
+  const approveStep = (approvalId: string, comment?: string): { success: boolean; message?: string } => {
+    if (!currentUser) return { success: false, message: 'کاربر وارد سیستم نشده است.' };
+    const approval = approvals.find(a => a.id === approvalId);
+    if (!approval) return { success: false, message: 'مرحله تایید یافت نشد.' };
+
+    if (!canUserApproveStep(currentUser, approval)) {
+      return { success: false, message: 'شما دسترسی مجاز برای امضا و تایید این مرحله را ندارید.' };
+    }
+
+    const signature = generateDigitalSignature(approval.rowId, currentUser.username, approval.roleKey);
+    const now = nowJalaliDateTime();
+
+    setApprovals(prev => prev.map(a => {
+      if (a.id === approvalId) {
+        return {
+          ...a,
+          status: 'approved',
+          approvedByUsername: currentUser.username,
+          approvedByDisplay: currentUser.displayName,
+          approvedAt: now,
+          digitalSignatureHash: signature,
+          comment: comment || a.comment,
+        };
+      }
+      return a;
+    }));
+
+    // Update row status
+    const rowApprovals = approvals.map(a => a.id === approvalId ? { ...a, status: 'approved' as const } : a).filter(a => a.rowId === approval.rowId);
+    const allApproved = rowApprovals.every(a => a.status === 'approved');
+    setRows(prev => prev.map(r => {
+      if (r.id === approval.rowId) {
+        return {
+          ...r,
+          approvals_status: allApproved ? 'approved' : 'partially_approved',
+          workflow_stage: allApproved && r.workflow_stage === 'financial_approval' ? 'final_dispatch' : r.workflow_stage,
+        };
+      }
+      return r;
+    }));
+
+    return { success: true };
+  };
+
+  const rejectStep = (approvalId: string, reason: string) => {
+    if (!currentUser) return;
+    const approval = approvals.find(a => a.id === approvalId);
+    if (!approval) return;
+    const now = nowJalaliDateTime();
+
+    setApprovals(prev => prev.map(a => {
+      if (a.id === approvalId) {
+        return {
+          ...a,
+          status: 'rejected',
+          approvedByUsername: currentUser.username,
+          approvedByDisplay: currentUser.displayName,
+          approvedAt: now,
+          rejectionReason: reason,
+        };
+      }
+      return a;
+    }));
+
+    setRows(prev => prev.map(r => r.id === approval.rowId ? { ...r, approvals_status: 'rejected' } : r));
+  };
+
+  // Multi-Stage Workflow Pipeline (گردش کار چند مرحله‌ای)
+  const advanceWorkflow = (rowId: number): { success: boolean; message?: string } => {
+    const row = rows.find(r => r.id === rowId);
+    if (!row) return { success: false, message: 'ردیف یافت نشد.' };
+    if (!currentUser) return { success: false, message: 'ابتدا وارد سامانه شوید.' };
+
+    const rowApprovals = approvals.filter(a => a.rowId === rowId);
+    const check = canAdvanceWorkflow(row, currentUser, rowApprovals);
+    if (!check.allowed) {
+      return { success: false, message: check.reason };
+    }
+
+    if (check.nextStage) {
+      setRows(prev => prev.map(r => r.id === rowId ? { ...r, workflow_stage: check.nextStage } : r));
+      return { success: true };
+    }
+    return { success: false, message: 'مرحله بعدی تعیین نشده است.' };
+  };
+
+  const setWorkflowStage = (rowId: number, stage: WorkflowStageId) => {
+    setRows(prev => prev.map(r => r.id === rowId ? { ...r, workflow_stage: stage } : r));
   };
 
   const getRow = (id: number): DbRow | undefined => {
@@ -337,9 +614,15 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
       returned_by_display: '',
       return_reason: '',
       published_at: publishedAt,
+      workflow_stage: 'tech_request',
+      approvals_status: 'pending',
     };
 
     setRows(prev => [newRow, ...prev]);
+
+    // Initialize default approvals pipeline
+    const initialApps = createDefaultApprovals(nextId, newRow.priority, 0);
+    setApprovals(prev => [...initialApps, ...prev]);
 
     // Insert audit entries
     const auditEntries: AuditLogEntry[] = [];
@@ -356,8 +639,8 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
           field_label: field.label,
           old_value: '',
           new_value: String(val),
-          changed_by_username: currentUser.username,
-          changed_by_display: currentUser.displayName,
+          changed_by_username: currentUser ? currentUser.username : 'admin',
+          changed_by_display: currentUser ? currentUser.displayName : 'کاربر سیستم',
           changed_at: createdAt,
         });
       }
@@ -727,6 +1010,9 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
       value={{
         rows,
         auditLogs,
+        vendors,
+        quotations,
+        approvals,
         currentUser,
         allUsers: SAMPLE_USERS,
         activeTab,
@@ -763,6 +1049,19 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
         uncancelRow,
         returnToTechOffice,
         unreturnFromTechOffice,
+        addVendor,
+        updateVendor,
+        deleteVendor,
+        addQuotation,
+        selectWinningQuotation,
+        deleteQuotation,
+        getRowQuotations,
+        approveStep,
+        rejectStep,
+        getRowApprovals,
+        canUserApprove,
+        advanceWorkflow,
+        setWorkflowStage,
         getRow,
         getRowHistory,
         findDuplicateRequestNo,

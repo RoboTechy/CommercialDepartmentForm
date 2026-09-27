@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useExactDb } from '../context/ExactDatabaseContext';
 import { sections, isPaymentAuthWaived, FieldDef } from '../data/exactSections';
+import { WorkflowStepper } from './WorkflowStepper';
+import { RfqQuotationsView } from './RfqQuotationsView';
+import { MultiLevelApprovalsView } from './MultiLevelApprovalsView';
 import { 
   ArrowRight, 
   Save, 
@@ -11,10 +14,14 @@ import {
   AlertTriangle, 
   XCircle, 
   CheckCircle2, 
-  RotateCcw,
-  AlertCircle,
-  Clock,
-  Check
+  RotateCcw, 
+  AlertCircle, 
+  Clock, 
+  Check, 
+  Building2, 
+  PenTool, 
+  FileSpreadsheet, 
+  Layers 
 } from 'lucide-react';
 import { todayJalaliDate } from '../utils/exactJalaali';
 
@@ -32,10 +39,13 @@ export const RowDetailView: React.FC = () => {
     uncancelRow,
     unreturnFromTechOffice,
     canCancelRow,
-    canReturnToTechOffice
+    canReturnToTechOffice,
+    quotations,
+    approvals
   } = useExactDb();
 
   const row = selectedRowId ? getRow(selectedRowId) : undefined;
+  const [activeSubTab, setActiveSubTab] = useState<'sections' | 'rfq' | 'approvals'>('sections');
 
   // Local state for field values to allow smooth typing and save per section
   const [formState, setFormState] = useState<Record<string, string>>(() => {
@@ -195,49 +205,110 @@ export const RowDetailView: React.FC = () => {
         </div>
       </div>
 
-      {/* Cancellation / Return Banner */}
-      {isCancelled && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs space-y-1">
-          <div className="font-bold flex items-center gap-1.5">
-            <XCircle className="w-4 h-4 text-rose-400" />
-            <span>این درخواست لغو شده است و فیلدهای آن قفل هستند:</span>
-          </div>
-          <p className="pr-5 text-rose-300">دلیل لغو: {row.cancel_reason}</p>
-          <p className="pr-5 text-[11px] text-rose-400/80">توسط {row.cancelled_by_display} در {row.cancelled_at}</p>
-        </div>
+      {/* Multi-Stage Workflow Stepper */}
+      <WorkflowStepper row={row} />
+
+      {/* Sub-Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
+        <button
+          onClick={() => setActiveSubTab('sections')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+            activeSubTab === 'sections'
+              ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-xs'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          <span>فرم‌ها و مشخصات ۴گانه انبار و بازرگانی</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('rfq')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all relative cursor-pointer ${
+            activeSubTab === 'rfq'
+              ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 shadow-xs'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <Building2 className="w-4 h-4 text-emerald-400" />
+          <span>استعلام قیمت و پیش‌فاکتورها (RFQ)</span>
+          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            {quotations.filter((q) => q.rowId === row.id).length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('approvals')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all relative cursor-pointer ${
+            activeSubTab === 'approvals'
+              ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-xs'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <PenTool className="w-4 h-4 text-purple-400" />
+          <span>تأییدات مالی و مدیریتی (امضای دیجیتال)</span>
+          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+            {approvals.filter((a) => a.rowId === row.id && a.status === 'approved').length} از {approvals.filter((a) => a.rowId === row.id).length || 3}
+          </span>
+        </button>
+      </div>
+
+      {/* Tab: RFQ Quotations */}
+      {activeSubTab === 'rfq' && (
+        <RfqQuotationsView row={row} />
       )}
 
-      {isReturned && (
-        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1">
-          <div className="font-bold flex items-center gap-1.5">
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-            <span>این درخواست توسط انبار کارفرما عودت داده شده است:</span>
-          </div>
-          <p className="pr-5 text-amber-300">دلیل عودت: {row.return_reason || 'نقص در اطلاعات'}</p>
-          <p className="pr-5 text-[11px] text-amber-400/80">
-            فقط بخش درخواست‌کننده ({row.requester_dept}) جهت رفع نقص قابل ویرایش است. سایر بخش‌ها قفل هستند.
-          </p>
-        </div>
+      {/* Tab: Multi-level Approvals */}
+      {activeSubTab === 'approvals' && (
+        <MultiLevelApprovalsView row={row} />
       )}
 
-      {/* 4 Commercial Sections */}
-      <div className="space-y-5">
-        {sections.map((section, sIdx) => {
-          const canEdit = canEditSectionForRow(row, section.key);
-          const isSaving = savingSection === section.key;
+      {/* Tab: 4 Commercial Sections */}
+      {activeSubTab === 'sections' && (
+        <>
+          {/* Cancellation / Return Banner */}
+          {isCancelled && (
+            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <XCircle className="w-4 h-4 text-rose-400" />
+                <span>این درخواست لغو شده است و فیلدهای آن قفل هستند:</span>
+              </div>
+              <p className="pr-5 text-rose-300">دلیل لغو: {row.cancel_reason}</p>
+              <p className="pr-5 text-[11px] text-rose-400/80">توسط {row.cancelled_by_display} در {row.cancelled_at}</p>
+            </div>
+          )}
 
-          const getSectionHeaderColor = () => {
-            if (section.key === 'tech_operator') return 'bg-blue-500/10 border-blue-500/20 text-blue-300';
-            if (section.key === 'commercial') return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300';
-            return 'bg-amber-500/10 border-amber-500/20 text-amber-300';
-          };
+          {isReturned && (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <span>این درخواست توسط انبار کارفرما عودت داده شده است:</span>
+              </div>
+              <p className="pr-5 text-amber-300">دلیل عودت: {row.return_reason || 'نقص در اطلاعات'}</p>
+              <p className="pr-5 text-[11px] text-amber-400/80">
+                فقط بخش درخواست‌کننده ({row.requester_dept}) جهت رفع نقص قابل ویرایش است. سایر بخش‌ها قفل هستند.
+              </p>
+            </div>
+          )}
 
-          return (
-            <div key={section.key} className="bg-slate-900/90 rounded-2xl border border-slate-800 shadow-sm overflow-hidden">
-              
-              {/* Section Header */}
-              <div className={`p-4 border-b flex items-center justify-between ${getSectionHeaderColor()}`}>
-                <div className="flex items-center gap-2.5">
+          {/* 4 Commercial Sections */}
+          <div className="space-y-5">
+            {sections.map((section, sIdx) => {
+              const canEdit = canEditSectionForRow(row, section.key);
+              const isSaving = savingSection === section.key;
+
+              const getSectionHeaderColor = () => {
+                if (section.key === 'tech_operator') return 'bg-blue-500/10 border-blue-500/20 text-blue-300';
+                if (section.key === 'commercial') return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300';
+                return 'bg-amber-500/10 border-amber-500/20 text-amber-300';
+              };
+
+              return (
+                <div key={section.key} className="bg-slate-900/90 rounded-2xl border border-slate-800 shadow-sm overflow-hidden">
+                  
+                  {/* Section Header */}
+                  <div className={`p-4 border-b flex items-center justify-between ${getSectionHeaderColor()}`}>
+                    <div className="flex items-center gap-2.5">
                   <span className="w-6 h-6 rounded-full bg-slate-800 text-slate-200 flex items-center justify-center font-bold text-xs shadow-xs font-mono border border-slate-700">
                     {sIdx + 1}
                   </span>
@@ -385,6 +456,8 @@ export const RowDetailView: React.FC = () => {
           );
         })}
       </div>
+      </>
+      )}
 
     </div>
   );

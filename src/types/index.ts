@@ -54,6 +54,75 @@ export interface DbRow {
   return_reason: string;
 
   published_at: string; // Empty string if draft
+
+  // Workflow, RFQ & Approvals extensions
+  workflow_stage?: WorkflowStageId;
+  total_estimated_amount?: number;
+  selected_vendor_name?: string;
+  selected_quote_id?: string;
+  approvals_status?: 'none' | 'pending' | 'partially_approved' | 'approved' | 'rejected';
+}
+
+export type WorkflowStageId = 
+  | 'tech_request'       // ۱. ثبت و ارسال درخواست اولیه دفتر فنی
+  | 'warehouse_review'   // ۲. بررسی و ثبت در انبار کارفرما (بلوک ۱)
+  | 'commercial_rfq'     // ۳. استعلام قیمت و مقایسه تأمین‌کنندگان (بازرگانی)
+  | 'financial_approval' // ۴. تأییدات مالی و مدیریتی چندمرحله‌ای
+  | 'final_dispatch'     // ۵. اعزام، ترخیص و تحویل نهایی انبار کارفرما (بلوک ۲)
+  | 'completed';         // ۶. تحویل قطعی و مختومه
+
+export interface Vendor {
+  id: string;
+  name: string;
+  category: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  city: string;
+  rating: number; // 1-5
+  grade: 'A' | 'B' | 'C';
+  status: 'active' | 'suspended';
+  address?: string;
+  economicCode?: string;
+  notes?: string;
+}
+
+export interface Quotation {
+  id: string;
+  rowId: number;
+  vendorId: string;
+  vendorName: string;
+  quoteNumber: string;
+  quoteDate: string; // YYYY/MM/DD
+  validUntil: string;
+  unitPrice: number; // Toman
+  quantity: number;
+  totalPrice: number;
+  deliveryDays: number;
+  paymentTerms: string;
+  warranty: string;
+  status: 'pending' | 'selected' | 'rejected';
+  notes?: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export type ApprovalRoleKey = 'tech_lead' | 'commercial_lead' | 'finance_lead' | 'executive_ceo';
+
+export interface ApprovalRecord {
+  id: string;
+  rowId: number;
+  roleKey: ApprovalRoleKey;
+  stepNumber: number;
+  title: string;
+  requiredRoleName: string;
+  status: 'pending' | 'approved' | 'rejected' | 'skipped';
+  approvedByUsername?: string;
+  approvedByDisplay?: string;
+  approvedAt?: string;
+  digitalSignatureHash?: string;
+  rejectionReason?: string;
+  comment?: string;
 }
 
 // Exact column structure of table `audit_log`
@@ -80,6 +149,8 @@ export interface UserSession {
 
 export type ActiveTab = 
   | 'dashboard'
+  | 'workflow_pipeline'
+  | 'vendors'
   | 'new_request'
   | 'drafts'
   | 'row_detail'

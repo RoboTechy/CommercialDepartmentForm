@@ -4,7 +4,8 @@ import { nowJalaliDateTime, daysBetweenJalali, daysSinceJalali } from '../utils/
 
 const OVERDUE_DAYS = 3;
 
-export function resolveRequesterDept(user: UserSession): RequesterDept | '' {
+export function resolveRequesterDept(user: UserSession | null | undefined): RequesterDept | '' {
+  if (!user) return '';
   const match = requesterDepartments.find((d) => user.groups.includes(d.group));
   return match ? match.label : '';
 }

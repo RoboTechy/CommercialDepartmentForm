@@ -17,7 +17,8 @@ import {
   History,
   Building2,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  Kanban
 } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
@@ -75,6 +76,24 @@ export const DashboardView: React.FC = () => {
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
             پیگیری مراحل بین دفتر فنی/عمران/آی‌تی، انبار کارفرما و بازرگانی غدیر
           </p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setActiveTab('workflow_pipeline')}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+          >
+            <Kanban className="w-4 h-4 text-blue-400" />
+            <span>تابلوی خط لوله (Kanban)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('vendors')}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+          >
+            <Building2 className="w-4 h-4 text-emerald-400" />
+            <span>وندور لیست و استعلام قیمت</span>
+          </button>
         </div>
       </div>
 
