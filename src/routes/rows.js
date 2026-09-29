@@ -1,7 +1,9 @@
 const express = require('express');
+const multer = require('multer');
 const router = express.Router();
 const store = require('../store');
 const config = require('../config');
+const excelImport = require('../excelImport');
 const { sections, findSection, findField, allFields, requesterDepartments, isPaymentAuthWaived } = require('../sections');
 const {
   requireLogin,
@@ -14,6 +16,13 @@ const {
   canReturnToTechOffice,
 } = require('../middleware');
 const { normalizeJalaliDate, todayJalaliDate, daysSinceJalali } = require('../jalaali');
+
+// فقط در حافظه نگه‌داشته می‌شود (نه دیسک) - فایل بلافاصله پس از پردازش دور
+// ریخته می‌شود، هیچ‌وقت روی سرور ذخیره نمی‌ماند
+const importUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
 
 router.use(requireLogin);
 
@@ -124,6 +133,8 @@ router.get('/', (req, res) => {
     overdueDays: config.overdueDays,
     myDraftRows: store.listDraftRowsForUser(user.username),
     defaultColumnGroup: userHomeSectionColor(user),
+    message: req.flash('message'),
+    error: req.flash('error'),
   });
 });
 
@@ -186,30 +197,118 @@ router.get('/rows/new', (req, res) => {
   });
 });
 
+// دانلود قالب اکسل ایمپورت - ستون‌ها دقیقاً مطابق فیلدهای فرم تک‌ردیفی
+router.get('/rows/import/template', async (req, res) => {
+  const user = req.session.user;
+  if (!canCreateRows(user)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به ایجاد ردیف جدید نیستید (فقط درخواست‌کننده).' });
+  }
+  try {
+    const workbook = await excelImport.buildTemplateWorkbook();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    // نام فایل فارسی است - هدر HTTP کاراکتر غیر-ASCII را مستقیم قبول
+    // نمی‌کند، پس طبق RFC 5987 هم یک نام ساده‌ی جایگزین (filename=) و هم
+    // نام واقعی رمزگذاری‌شده (filename*=UTF-8'') را می‌فرستیم
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="import-template.xlsx"; filename*=UTF-8''${encodeURIComponent('قالب-ایمپورت-درخواست-کالا.xlsx')}`
+    );
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('ساخت قالب اکسل با خطا مواجه شد:', err);
+    res.status(500).render('not-found', { message: 'ساخت فایل قالب اکسل با خطا مواجه شد.' });
+  }
+});
+
+router.get('/rows/import', (req, res) => {
+  const user = req.session.user;
+  if (!canCreateRows(user)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به ایجاد ردیف جدید نیستید (فقط درخواست‌کننده).' });
+  }
+  // با هر بار باز کردن مجدد صفحه‌ی آپلود (یعنی «اصلاح و آپلود دوباره»)،
+  // هر داده‌ی معلق از آپلود قبلی که هنوز تایید نشده دور ریخته می‌شود
+  delete req.session.pendingImport;
+  res.render('import-rows', { user, error: req.flash('error') });
+});
+
+router.post('/rows/import', importUpload.single('file'), async (req, res) => {
+  const user = req.session.user;
+  if (!canCreateRows(user)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به ایجاد ردیف جدید نیستید (فقط درخواست‌کننده).' });
+  }
+  if (!req.file) {
+    req.flash('error', 'فایلی انتخاب نشده بود.');
+    return res.redirect('/rows/import');
+  }
+  if (!/\.xlsx$/i.test(req.file.originalname || '')) {
+    req.flash('error', 'فقط فایل با پسوند xlsx پذیرفته می‌شود.');
+    return res.redirect('/rows/import');
+  }
+
+  let result;
+  try {
+    result = await excelImport.parseImportFile(req.file.buffer);
+  } catch (err) {
+    console.error('خواندن فایل اکسل ایمپورت با خطا مواجه شد:', err);
+    req.flash('error', 'خواندن این فایل ممکن نشد. مطمئن شوید فایل یک اکسل (xlsx) سالم و مطابق قالب است.');
+    return res.redirect('/rows/import');
+  }
+
+  if (result.headerError) {
+    req.flash('error', result.headerError);
+    return res.redirect('/rows/import');
+  }
+  if (!result.validRows.length && !result.invalidRows.length) {
+    req.flash('error', 'هیچ ردیف داده‌ای در فایل پیدا نشد.');
+    return res.redirect('/rows/import');
+  }
+
+  // فقط ردیف‌های سالم موقتاً روی سشن نگه داشته می‌شوند تا اگر کاربر «ثبت
+  // ردیف‌های سالم» را زد، دوباره لازم نباشد فایل را آپلود کند
+  req.session.pendingImport = {
+    createdByUsername: user.username,
+    rows: result.validRows.map((r) => r.values),
+  };
+
+  res.render('import-preview', {
+    user,
+    validCount: result.validRows.length,
+    invalidRows: result.invalidRows,
+  });
+});
+
+router.post('/rows/import/confirm', (req, res) => {
+  const user = req.session.user;
+  if (!canCreateRows(user)) {
+    return res.status(403).render('not-found', { message: 'شما مجاز به ایجاد ردیف جدید نیستید (فقط درخواست‌کننده).' });
+  }
+  const pending = req.session.pendingImport;
+  if (!pending || pending.createdByUsername !== user.username || !pending.rows.length) {
+    req.flash('error', 'داده‌ای برای ثبت پیدا نشد؛ لطفاً دوباره فایل اکسل را آپلود کنید.');
+    return res.redirect('/rows/import');
+  }
+
+  const createdIds = pending.rows.map((values) => store.createRow(values, user).id);
+  store.finalizeDraftRows(user, createdIds);
+  delete req.session.pendingImport;
+
+  req.flash('message', `${createdIds.length} ردیف با موفقیت از فایل اکسل ثبت شد.`);
+  res.redirect('/');
+});
+
 router.post('/rows', (req, res) => {
   const user = req.session.user;
   if (!canCreateRows(user)) {
     return res.status(403).render('not-found', { message: 'شما مجاز به ایجاد ردیف جدید نیستید (فقط درخواست‌کننده).' });
   }
 
-  const section = findSection('tech_operator');
-  const values = {};
-  for (const field of section.fields) {
-    let value = (req.body[field.name] || '').toString().trim();
-    if (field.type === 'jalali-date' && value) {
-      const normalized = normalizeJalaliDate(value);
-      if (normalized === null) {
-        req.flash('error', `مقدار «${field.label}» یک تاریخ شمسی معتبر نیست (فرمت درست: 1403/05/12).`);
-        return res.redirect('/rows/new');
-      }
-      value = normalized;
-    }
-    values[field.name] = value;
-  }
-
-  const missingLabels = section.fields.filter((f) => f.required && !values[f.name]).map((f) => f.label);
-  if (missingLabels.length) {
-    req.flash('error', `تکمیل این فیلدها الزامی است: ${missingLabels.join('، ')}`);
+  // همان اعتبارسنجی‌ای که برای فایل اکسل هم استفاده می‌شود (excelImport.js)
+  // - یک منبع مشترک برای قواعد الزامی‌بودن/فرمت تاریخ شمسی/عضویت در
+  // گزینه‌های مجاز، تا فرم تکی و ایمپورت گروهی هیچ‌وقت از هم جدا نیفتند
+  const { values, errors } = excelImport.validateRowValues(req.body);
+  if (errors.length) {
+    req.flash('error', errors.join(' — '));
     return res.redirect('/rows/new');
   }
 

@@ -162,12 +162,20 @@ body {
    خودش overflow-y را هم به‌طور خودکار «auto» حساب می‌کند (نمی‌شود با
    گذاشتن overflow-y:visible/clip این رفتار را دور زد) - و همین باعث
    می‌شود position:sticky روی هر عنصر داخلش (چه خود <thead> چه تک‌تک
-   <th>ها) فقط نسبت به همان جدول بچسبد، نه نسبت به کل صفحه؛ راه‌حل درستش
-   یا کنار گذاشتن اسکرول افقی مستقل جدول است یا شبیه‌سازی sticky با
-   جاوااسکریپت (هر دو ریسک/پیچیدگی اضافه دارند) - برای همین فعلاً کنار
-   گذاشته شد تا این باگ اسکرول کاملاً و مطمئن رفع شود؛ الان کل صفحه (هدر،
-   فیلترها، و جدول) مثل هر صفحه‌ی دیگر سایت یک‌جا و معمولی اسکرول می‌شود؛
-   فقط نوار برند بالا (.topbar) با sticky ثابت می‌ماند */
+   <th>ها) فقط نسبت به همان جدول بچسبد، نه نسبت به کل صفحه؛ برای همین
+   کنار گذاشته شد تا این باگ اسکرول کاملاً و مطمئن رفع شود و کل صفحه
+   (هدر، فیلترها، و جدول) مثل هر صفحه‌ی دیگر سایت یک‌جا و معمولی اسکرول
+   شود.
+   بعداً برای فریز کردن مجدد سرستون‌ها، به‌جای sticky واقعی، یک «هدر
+   شناور» با جاوااسکریپت شبیه‌سازی شد (public/app.js): دو ردیف اول هدر
+   واقعی (عنوان گروه‌ها + عنوان فیلدها - نه ردیف فیلترها، چون آن ردیف
+   input/select واقعی دارد و کپی‌اش باعث ارسال دوباره‌ی همان name در فرم
+   می‌شود) در یک .shadow-header با position:fixed کپی می‌شود؛ فقط وقتی
+   هدر واقعی از بالای صفحه رد شده نمایش داده می‌شود، عرض هر ستونش دقیقاً
+   با اندازه‌گیری ستون واقعی هماهنگ می‌ماند، و اسکرول افقی‌اش با
+   .table-scroll سینک می‌شود. این روش هیچ‌کدام از دو مشکل بالا را
+   برنمی‌گرداند چون خود صفحه هنوز معمولی/بدون قفل اسکرول می‌شود؛ فقط یک
+   کپی تصویری از هدر روی آن شناور می‌ماند. */
 
 .card {
   background: var(--card-bg);
@@ -414,6 +422,27 @@ textarea { min-height: 84px; resize: vertical; }
 .table-scroll::-webkit-scrollbar-track { background: var(--ink-100); border-radius: var(--radius-md); }
 .table-scroll::-webkit-scrollbar-thumb { background: var(--ink-300); border-radius: 100px; border: 2px solid var(--ink-100); }
 .table-scroll::-webkit-scrollbar-thumb:hover { background: var(--ink-500); }
+
+/* هدر شناور جدول اصلی - کپی تصویری (نه واقعی/تعاملی) دو ردیف اول هدر،
+   فقط وقتی هدر واقعی از بالای صفحه رد شده نمایش داده می‌شود
+   (public/app.js). عرض/موقعیت با جاوااسکریپت تنظیم می‌شود؛ اینجا فقط
+   ظاهر پایه و پنهان/نمایان شدن. */
+.shadow-header {
+  position: fixed;
+  z-index: 45;
+  overflow: hidden;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-md);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.shadow-header.visible { visibility: visible; opacity: 1; }
+.shadow-header table { table-layout: fixed; border-collapse: collapse; }
+@media print {
+  .shadow-header { display: none !important; }
+}
+
 .sheet-table { min-width: 1400px; }
 .sheet-table th, .sheet-table td { white-space: nowrap; }
 .sheet-table td { white-space: normal; max-width: 220px; }

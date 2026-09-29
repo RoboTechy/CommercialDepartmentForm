@@ -1,7 +1,10 @@
 <%- include('partials/head') %>
 <%- include('partials/nav', { user }) %>
   <main class="container">
-    <h1>افزودن ردیف جدید (درخواست‌کننده)</h1>
+    <div class="page-header no-print">
+      <h1>افزودن ردیف جدید (درخواست‌کننده)</h1>
+      <a href="/rows/import" class="btn">📥 ثبت گروهی با اکسل</a>
+    </div>
     <% if (error && error.length) { %>
       <div class="alert alert-error"><%= error[0] %></div>
     <% } %>

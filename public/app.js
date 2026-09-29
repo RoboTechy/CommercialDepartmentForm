@@ -670,3 +670,197 @@ document.addEventListener('click', function (e) {
     bar.addEventListener('blur', hide);
   });
 })();
+
+// --- هدر شناور جدول اصلی - چون sticky واقعی روی هدر جدول به‌خاطر
+// overflow-x:auto روی .table-scroll (که overflow-y را هم اجباراً auto
+// می‌کند) فقط نسبت به همان جدول می‌چسبد نه کل صفحه (به کامنت بالای
+// .table-scroll در style.css مراجعه کنید)، اینجا یک کپی تصویری از دو
+// ردیف اول هدر واقعی (عنوان گروه‌ها + عنوان فیلدها) در یک نوار
+// position:fixed ساخته می‌شود که فقط وقتی هدر واقعی از بالای صفحه رد شده
+// نمایش داده می‌شود. ردیف سوم هدر (فیلترها) عمداً کپی نمی‌شود چون
+// input/select واقعی دارد و کپی‌اش باعث ارسال دوباره‌ی همان name در فرم
+// فیلتر می‌شود ---
+(function () {
+  var tableScroll = document.getElementById('rows-table-scroll');
+  var table = tableScroll && tableScroll.querySelector('table.sheet-table');
+  var topbar = document.querySelector('.topbar');
+  if (!tableScroll || !table) return;
+
+  var realRows = table.querySelectorAll('thead tr');
+  if (realRows.length < 2) return;
+  var realTitleRows = [realRows[0], realRows[1]];
+
+  // توجه: با table-layout:fixed، مرورگر عرض هر ستون را فقط از روی ردیف
+  // اول جدول تعیین می‌کند - و چون ردیف اول همین‌جا colspan دارد (عنوان
+  // گروه‌ها)، گذاشتن width روی تک‌تک <th>های ردیف دوم (عنوان فیلدها) هیچ
+  // اثری ندارد (مرورگر عرض هر colspan را بین زیرستون‌هایش به‌طور مساوی
+  // تقسیم می‌کند، نه طبق چیزی که ما خواستیم). راه‌حل درست طبق مشخصات CSS:
+  // <colgroup><col style="width">... - این همیشه در اولویت است.
+  // پیچیدگی اضافه: ستون‌های id/وضعیت/عملیات با rowspan در ردیف اول
+  // هستند و اصلاً سلولی در ردیف دوم ندارند (چون ردیف دوم را هم اشغال
+  // کرده‌اند)، پس شبکه‌ی واقعی ستون‌ها این‌طور است: هر سلول rowspan-دار در
+  // ردیف اول خودش دقیقاً یک ستون شبکه است (عرضش از خودش اندازه‌گیری
+  // می‌شود)، و هر سلول colspan-دار در ردیف اول (عنوان گروه، بدون rowspan)
+  // N ستون شبکه است که عرض هرکدام را باید از N سلول متناظر در ردیف دوم
+  // (به ترتیب) گرفت - دقیقاً همان چیزی که حلقه‌ی زیر می‌سازد
+  // توجه مهم دیگر: کلاس group-X (که دکمه‌ی «فقط ستون‌های خودم» روی جدول
+  // اصلی می‌گذارد و باعث می‌شود CSS با display:none چند ستون را پنهان
+  // کند) را عمداً هیچ‌وقت روی جدول شناور نمی‌گذاریم - آزمایش مستقیم نشان
+  // داد وقتی چند ستون پیاپی در ردیف دوم display:none دارند، کروم عرض
+  // ستون‌های *بعد از* آن‌ها را به‌اشتباه صفر حساب می‌کند (حتی وقتی <col>
+  // آن‌ها عرض درست دارد) - یک باگ/محدودیت واقعی در پیاده‌سازی
+  // table-layout:fixed، نه چیزی که با تنظیمات دیگر رفع شود. چون عرض هر
+  // ستون این‌جا از قبل با <col style="width:0"> صفر می‌شود، پنهان‌کردن
+  // دوباره‌ی سلول‌ها با display:none اصلاً لازم نیست - همان عرض صفر کافی
+  // است که آن ستون در شناور دیده نشود
+  function baseTableClassName(cls) {
+    return cls
+      .split(/\s+/)
+      .filter(function (c) { return c && !/^group-/.test(c); })
+      .join(' ');
+  }
+
+  var shadow = document.createElement('div');
+  shadow.className = 'shadow-header';
+  var shadowTable = document.createElement('table');
+  shadowTable.className = baseTableClassName(table.className);
+
+  // ردیف‌ها را اول کلون می‌کنیم (قبل از ساخت colgroup) چون برای هر ستون
+  // هم باید سلول واقعی (برای اندازه‌گیری عرض) و هم سلول کلون‌شده‌ی متناظر
+  // در شناور (برای پنهان‌کردن محتوایش وقتی آن ستون صفر است) را کنار هم
+  // نگه داریم - ایندکس فرزندان بین ردیف اصلی و کلونش دقیقاً یکی است
+  var shadowThead = document.createElement('thead');
+  var shadowRows = realTitleRows.map(function (row) {
+    var clone = row.cloneNode(true);
+    clone.querySelectorAll('[rowspan]').forEach(function (cell) {
+      if (parseInt(cell.getAttribute('rowspan'), 10) > 2) cell.setAttribute('rowspan', '2');
+    });
+    shadowThead.appendChild(clone);
+    return clone;
+  });
+
+  var colgroup = document.createElement('colgroup');
+  var cols = []; // [{ col, measureFrom, shadowCell }]
+  var sectionHeaders = []; // [{ shadowCell, entries }] - برای عنوان گروه‌ها (colspan)
+  var row1Cells = realTitleRows[1].children;
+  var shadowRow1Cells = shadowRows[1].children;
+  var row1Idx = 0;
+  Array.prototype.forEach.call(realTitleRows[0].children, function (cell, cellIdx) {
+    var rowspan = parseInt(cell.getAttribute('rowspan') || '1', 10);
+    var colspan = parseInt(cell.getAttribute('colspan') || '1', 10);
+    var shadowHeaderCell = shadowRows[0].children[cellIdx];
+    if (rowspan > 1) {
+      var col = document.createElement('col');
+      colgroup.appendChild(col);
+      cols.push({ col: col, measureFrom: cell, shadowCell: shadowHeaderCell });
+    } else {
+      var entriesForThisHeader = [];
+      for (var k = 0; k < colspan; k++) {
+        var leafCell = row1Cells[row1Idx];
+        var shadowLeafCell = shadowRow1Cells[row1Idx];
+        row1Idx++;
+        var col2 = document.createElement('col');
+        colgroup.appendChild(col2);
+        var entry = { col: col2, measureFrom: leafCell, shadowCell: shadowLeafCell, lastWidth: 0 };
+        cols.push(entry);
+        entriesForThisHeader.push(entry);
+      }
+      sectionHeaders.push({ shadowCell: shadowHeaderCell, entries: entriesForThisHeader });
+    }
+  });
+  shadowTable.appendChild(colgroup);
+  shadowTable.appendChild(shadowThead);
+  shadow.appendChild(shadowTable);
+  document.body.appendChild(shadow);
+
+  function syncColumnWidths() {
+    // با table-layout:fixed، اگر عرض خود جدول را صریحاً ندهیم، چون
+    // شناور داخل .shadow-header با overflow:hidden است (که عرضش را برابر
+    // دید فعلی/viewport جدول اصلی می‌گذاریم، نه کل جدول)، مرورگر عرض
+    // ستون‌ها را متناسب با همان عرض کوچک‌تر از نو تقسیم می‌کند و همه‌ی
+    // مقادیر <col> را نادیده می‌گیرد؛ باید عرض کل جدول را هم صریحاً برابر
+    // مجموع عرض واقعی همه‌ی ستون‌ها بگذاریم تا اسکرول افقی داخل نوار
+    // شناور معنا پیدا کند
+    var total = 0;
+    cols.forEach(function (entry) {
+      var w = entry.measureFrom.getBoundingClientRect().width;
+      entry.col.style.width = w + 'px';
+      entry.lastWidth = w;
+      // پنهان‌کردن محتوای سلول‌های ستون صفرعرض با visibility (نه
+      // display:none) - چون display:none روی چند سلول پیاپی همان باگ
+      // کروم بالا را دوباره برمی‌گرداند؛ visibility:hidden جای ستون را
+      // در چیدمان دست‌نخورده نگه می‌دارد (که چون خودِ عرض ستون صفر است
+      // اهمیتی ندارد) ولی متن سرریزشده‌ی nowrap را هم نامرئی می‌کند
+      entry.shadowCell.style.visibility = w < 0.5 ? 'hidden' : '';
+      total += w;
+    });
+    sectionHeaders.forEach(function (sh) {
+      var allHidden = sh.entries.every(function (e) { return e.lastWidth < 0.5; });
+      sh.shadowCell.style.visibility = allHidden ? 'hidden' : '';
+    });
+    shadowTable.style.width = total + 'px';
+  }
+
+  function positionShadow() {
+    var rect = tableScroll.getBoundingClientRect();
+    var topbarH = topbar ? topbar.getBoundingClientRect().height : 0;
+    shadow.style.top = topbarH + 'px';
+    shadow.style.left = rect.left + 'px';
+    shadow.style.width = rect.width + 'px';
+  }
+
+  function syncScrollLeft() {
+    shadow.scrollLeft = tableScroll.scrollLeft;
+  }
+
+  function updateVisibility() {
+    var topbarH = topbar ? topbar.getBoundingClientRect().height : 0;
+    var realTop = realTitleRows[0].getBoundingClientRect().top;
+    shadow.classList.toggle('visible', realTop < topbarH);
+  }
+
+  function refreshAll() {
+    syncColumnWidths();
+    positionShadow();
+    syncScrollLeft();
+    updateVisibility();
+  }
+
+  var ticking = false;
+  function onWindowScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () {
+      positionShadow();
+      updateVisibility();
+      ticking = false;
+    });
+  }
+
+  tableScroll.addEventListener('scroll', syncScrollLeft);
+  window.addEventListener('scroll', onWindowScroll, { passive: true });
+  window.addEventListener('resize', refreshAll);
+
+  // اگر دکمه‌ی «فقط ستون‌های خودم» (column-group-toggle) کلاس group-X را
+  // روی جدول واقعی عوض کند، چند ستون واقعی display:none می‌شوند و بقیه
+  // جا باز می‌کنند - عرض‌های ستون‌های شناور باید دوباره اندازه‌گیری شود
+  // (کلاس group-X خودش هیچ‌وقت روی جدول شناور گذاشته نمی‌شود؛ به کامنت
+  // بالای baseTableClassName مراجعه کنید). اندازه‌گیری را به دو
+  // requestAnimationFrame بعد موکول می‌کنیم (نه بلافاصله داخل خود
+  // callback): تجربه نشان داد اندازه‌گیری همان لحظه‌ی تغییر کلاس گاهی
+  // هنوز عرض نهایی بعد از reflow را نشان نمی‌دهد
+  var classObserver = new MutationObserver(function () {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(refreshAll);
+    });
+  });
+  classObserver.observe(table, { attributes: true, attributeFilter: ['class'] });
+
+  refreshAll();
+  // اندازه‌گیری مجدد بعد از لود کامل فونت وب (ممکن است عرض متن‌ها را کمی
+  // جابه‌جا کند) - هم از طریق رویداد فونت، هم یک تلاش دیرهنگام برای اطمینان
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(refreshAll);
+  }
+  setTimeout(refreshAll, 300);
+})();

@@ -1,0 +1,64 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+  <main class="container">
+    <div class="page-header no-print">
+      <h1>بررسی فایل اکسل قبل از ثبت</h1>
+    </div>
+
+    <div class="stats-row no-print">
+      <div class="stat-card">
+        <span class="stat-value"><%= validCount %></span>
+        <span class="stat-label">ردیف سالم (آماده‌ی ثبت)</span>
+      </div>
+      <div class="stat-card <%= invalidRows.length ? 'stat-card-cancelled' : '' %>">
+        <span class="stat-value"><%= invalidRows.length %></span>
+        <span class="stat-label">ردیف دارای مشکل</span>
+      </div>
+    </div>
+
+    <% if (invalidRows.length) { %>
+      <div class="alert alert-error no-print">
+        <%= invalidRows.length %> ردیف از فایل شما مشکل دارند و ثبت نخواهند شد
+        (شماره‌ی ردیف‌ها همان شماره‌ی ردیف در خود فایل اکسل است).
+      </div>
+      <div class="table-scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>ردیف اکسل</th>
+              <th>مشکل</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% invalidRows.forEach(function(r) { %>
+              <tr>
+                <td>#<%= r.excelRow %></td>
+                <td><%= r.errors.join(' — ') %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+
+    <div class="card">
+      <% if (validCount > 0 && invalidRows.length > 0) { %>
+        <p>می‌خواهید همین حالا <strong><%= validCount %></strong> ردیف سالم ثبت شود، یا فایل را اصلاح کرده و دوباره آپلود کنید؟</p>
+      <% } else if (validCount > 0) { %>
+        <p>همه‌ی <strong><%= validCount %></strong> ردیف فایل سالم هستند و آماده‌ی ثبت‌اند.</p>
+      <% } else { %>
+        <p>هیچ ردیف سالمی برای ثبت وجود ندارد؛ لطفاً فایل را اصلاح کرده و دوباره آپلود کنید.</p>
+      <% } %>
+
+      <div class="actions">
+        <% if (validCount > 0) { %>
+          <form method="post" action="/rows/import/confirm" style="display:inline">
+            <button type="submit" class="btn btn-primary">ثبت همین حالا <%= validCount %> ردیف سالم</button>
+          </form>
+        <% } %>
+        <a href="/rows/import" class="btn">اصلاح و آپلود دوباره</a>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

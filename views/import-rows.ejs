@@ -1,0 +1,40 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+  <main class="container">
+    <div class="page-header no-print">
+      <h1>ثبت گروهی درخواست کالا از اکسل</h1>
+      <a href="/rows/new" class="btn">فرم تک‌ردیفی</a>
+    </div>
+    <% if (error && error.length) { %>
+      <div class="alert alert-error"><%= error[0] %></div>
+    <% } %>
+
+    <div class="card">
+      <p>
+        هر ردیف از فایل اکسل، دقیقاً یک درخواست کالای جدید ثبت می‌کند - درست مثل تکمیل فرم تک‌ردیفی،
+        فقط به تعداد ردیف‌های اکسل یک‌جا. ستون‌های فایل باید دقیقاً با نام فیلدهای همین فرم مطابقت داشته باشند.
+      </p>
+      <p>
+        <a href="/rows/import/template" class="btn">⬇ دانلود قالب اکسل</a>
+      </p>
+      <ul class="muted small" style="padding-inline-start: 20px; line-height: 2;">
+        <li>ابتدا قالب را دانلود کنید، ردیف نمونه را حذف/جایگزین کنید و اطلاعات واقعی را وارد کنید.</li>
+        <li>تمام ستون‌ها برای هر ردیف الزامی هستند.</li>
+        <li>تاریخ‌ها باید متن شمسی باشند (مثلاً 1403/05/12)، نه تاریخ اکسل.</li>
+        <li>دپارتمان درخواست‌کننده در فایل نیست؛ خودکار از عضویت گروهی شما تعیین می‌شود.</li>
+        <li>بعد از آپلود، ابتدا همه‌ی ردیف‌ها بررسی می‌شوند؛ اگر ردیفی مشکل داشته باشد با ذکر شماره‌ی ردیف اکسل نشان داده می‌شود
+          و می‌توانید انتخاب کنید که همین حالا ردیف‌های سالم ثبت شوند یا فایل را اصلاح و دوباره آپلود کنید.</li>
+      </ul>
+    </div>
+
+    <form method="post" action="/rows/import" enctype="multipart/form-data" class="card">
+      <label>
+        فایل اکسل (xlsx)
+        <input type="file" name="file" accept=".xlsx" required />
+      </label>
+      <button type="submit" class="btn btn-primary">آپلود و بررسی فایل</button>
+      <a href="/" class="btn">انصراف</a>
+    </form>
+  </main>
+</body>
+</html>

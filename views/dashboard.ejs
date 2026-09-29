@@ -6,6 +6,7 @@
       <div class="actions">
         <% if (canCreateRows) { %>
           <a href="/rows/new" class="btn btn-primary">+ افزودن ردیف جدید</a>
+          <a href="/rows/import" class="btn">📥 ایمپورت از اکسل</a>
         <% } %>
         <a href="/stats" class="btn">📊 آمار</a>
         <a href="/logs" class="btn">تاریخچه‌ی کامل تغییرات</a>
@@ -20,6 +21,13 @@
         <button type="button" class="btn" onclick="window.print()">چاپ نتایج</button>
       </div>
     </div>
+
+    <% if (message && message.length) { %>
+      <div class="alert alert-success no-print"><%= message[0] %></div>
+    <% } %>
+    <% if (error && error.length) { %>
+      <div class="alert alert-error no-print"><%= error[0] %></div>
+    <% } %>
 
     <% if (myDraftRows && myDraftRows.length) { %>
       <div class="alert alert-info no-print">
