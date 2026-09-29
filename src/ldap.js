@@ -22,7 +22,15 @@ function escapeFilterValue(value) {
 }
 
 function createClient() {
-  return ldap.createClient({ url: config.ldap.url, connectTimeout: 5000, timeout: 5000 });
+  const client = ldap.createClient({ url: config.ldap.url, connectTimeout: 5000, timeout: 5000 });
+  // بدون این listener، وقتی سرور LDAP در دسترس نباشد (مثلاً ECONNREFUSED)،
+  // ldapjs یک رویداد 'error' خام روی خود کلاینت منتشر می‌کند که چون
+  // شنونده‌ای ندارد طبق قرارداد EventEmitter کل فرآیند Node را crash
+  // می‌کند - دقیقاً همان لحظه‌ای که ارتباط با AD قطع شده و باید فقط پیام
+  // خطای معمول (که در authenticate() توسط تلاش برای bind گرفته می‌شود) به
+  // کاربر برگردد، نه از کار افتادن کل سرویس برای همه‌ی کاربران
+  client.on('error', () => {});
+  return client;
 }
 
 function bindAsync(client, dn, password) {

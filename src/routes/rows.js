@@ -16,6 +16,7 @@ const {
   canReturnToTechOffice,
 } = require('../middleware');
 const { normalizeJalaliDate, todayJalaliDate, daysSinceJalali } = require('../jalaali');
+const { buildFiltersFromQuery, escapeCsv, rowStatusLabel } = require('../reportFilters');
 
 // فقط در حافظه نگه‌داشته می‌شود (نه دیسک) - فایل بلافاصله پس از پردازش دور
 // ریخته می‌شود، هیچ‌وقت روی سرور ذخیره نمی‌ماند
@@ -60,22 +61,6 @@ function userHomeSectionColor(user) {
 function isSectionComplete(row, section) {
   const fields = store.fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly));
   return fields.every((f) => (row[f.name] || '').toString().trim() !== '');
-}
-
-function buildFiltersFromQuery(query) {
-  const filters = {};
-  for (const field of allFields()) {
-    if (field.type === 'jalali-date') {
-      if (query[`${field.name}_from`]) filters[`${field.name}_from`] = query[`${field.name}_from`];
-      if (query[`${field.name}_to`]) filters[`${field.name}_to`] = query[`${field.name}_to`];
-    } else if (query[field.name]) {
-      filters[field.name] = query[field.name];
-    }
-  }
-  if (query.status) filters.status = query.status;
-  if (query.incompleteDept) filters.incompleteDept = query.incompleteDept;
-  if (query.incompleteRequesterDept) filters.incompleteRequesterDept = query.incompleteRequesterDept;
-  return filters;
 }
 
 router.get('/', (req, res) => {
@@ -157,15 +142,6 @@ router.get('/stats', (req, res) => {
     overdueDays: config.overdueDays,
   });
 });
-
-function escapeCsv(val) {
-  const str = (val ?? '').toString();
-  return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-}
-
-function rowStatusLabel(row) {
-  return row.cancelled_at ? 'لغو شده' : row.returned_at ? 'عودت به درخواست‌کننده' : 'جاری';
-}
 
 router.get('/export.csv', (req, res) => {
   const filters = buildFiltersFromQuery(req.query);

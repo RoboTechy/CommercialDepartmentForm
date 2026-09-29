@@ -9,6 +9,7 @@ const { scheduleDailyBackup } = require('./src/backup');
 const authRoutes = require('./src/routes/auth');
 const rowRoutes = require('./src/routes/rows');
 const apiRoutes = require('./src/routes/api');
+const reportApiRoutes = require('./src/routes/reportApi');
 
 const app = express();
 
@@ -30,6 +31,11 @@ app.use(
 app.use(flash());
 
 app.use('/', authRoutes);
+// API گزارش‌گیری برای برنامه‌های دیگر (HTTP Basic Auth مخصوص به خودش،
+// بدون کوکی/سشن) - باید قبل از apiRoutes و rowRoutes مانت شود، چون هر دوی
+// آن‌ها router.use(requireLogin) دارند که (چون هر دو هم روی مسیر / مانت
+// شده‌اند) مسیرهای /api/reports/* را زودتر با ریدایرکت به /login می‌گرفت
+app.use('/', reportApiRoutes);
 app.use('/', apiRoutes);
 app.use('/', rowRoutes);
 
