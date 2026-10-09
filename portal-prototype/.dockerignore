@@ -1,0 +1,14 @@
+# Docker Ignore file
+node_modules
+npm-debug.log
+yarn-error.log
+dist
+.git
+.gitignore
+.env.local
+.env.*.local
+.DS_Store
+*.swp
+*.bak
+public/commercial-portal-source.zip
+coverage
