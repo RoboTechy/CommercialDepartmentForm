@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useExactDb } from '../context/ExactDatabaseContext';
+import { DEMO_MODE } from '../config';
 import { 
   Building2, 
   ShieldCheck, 
@@ -17,8 +18,8 @@ export const LoginPage: React.FC = () => {
   const { login, allUsers } = useExactDb();
 
   const [authMode, setAuthMode] = useState<'ldap' | 'local'>('local');
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin');
+  const [username, setUsername] = useState(DEMO_MODE ? 'admin' : '');
+  const [password, setPassword] = useState(DEMO_MODE ? 'admin' : '');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -73,8 +74,8 @@ export const LoginPage: React.FC = () => {
               type="button"
               onClick={() => {
                 setAuthMode('local');
-                setUsername('admin');
-                setPassword('admin');
+                setUsername(DEMO_MODE ? 'admin' : '');
+                setPassword(DEMO_MODE ? 'admin' : '');
                 setErrorMessage(null);
               }}
               className={`flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg transition-all ${
@@ -91,8 +92,8 @@ export const LoginPage: React.FC = () => {
               type="button"
               onClick={() => {
                 setAuthMode('ldap');
-                setUsername('soleimani');
-                setPassword('ldap1234');
+                setUsername(DEMO_MODE ? 'soleimani' : '');
+                setPassword(DEMO_MODE ? 'ldap1234' : '');
                 setErrorMessage(null);
               }}
               className={`flex items-center justify-center gap-2 py-2 text-xs font-semibold rounded-lg transition-all ${
@@ -151,7 +152,8 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick credentials hint */}
+            {/* Quick credentials hint (فقط دمو) */}
+            {DEMO_MODE && (
             <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-[11px] space-y-1 text-slate-400">
               {authMode === 'local' ? (
                 <div className="flex items-center gap-1.5 text-blue-400">
@@ -165,6 +167,7 @@ export const LoginPage: React.FC = () => {
                 </div>
               )}
             </div>
+            )}
 
             <button
               type="submit"
@@ -183,6 +186,7 @@ export const LoginPage: React.FC = () => {
           </form>
 
           {/* Quick Select Domain User for Demo */}
+          {DEMO_MODE && (
           <div className="mt-6 pt-5 border-t border-slate-800">
             <div className="text-[11px] font-semibold text-slate-400 mb-2 flex items-center justify-between">
               <span>تست سریع کاربران سازمانی:</span>
@@ -208,13 +212,15 @@ export const LoginPage: React.FC = () => {
               ))}
             </div>
           </div>
+          )}
 
         </div>
 
-        {/* Footer info */}
-        <div className="text-center mt-6 text-xs text-slate-500 font-mono">
-          Security Protocol: TLS 1.3 | LDAPv3 / SASL
-        </div>
+        {DEMO_MODE && (
+          <div className="text-center mt-6 text-xs text-amber-400/80">
+            نسخه‌ی نمایشی (دمو): احراز هویت شبیه‌سازی‌شده است و داده‌ها فقط در همین مرورگر ذخیره می‌شوند.
+          </div>
+        )}
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import {
   ApprovalRoleKey 
 } from '../types';
 import { sections } from '../data/exactSections';
+import { GROUPS } from '../config';
 
 export interface StageDefinition {
   id: WorkflowStageId;
@@ -32,7 +33,7 @@ export const WORKFLOW_STAGES: StageDefinition[] = [
     borderColor: 'border-blue-500',
     description: 'مشخصات اولیه کالا، تعداد، محل مصرف و زمان تحویل به انبار کارفرما',
     ownerDepartment: 'دفتر فنی / دپارتمان متقاضی',
-    allowedGroups: ['tech_operator', 'PRT-Civil', 'PRT-IT', 'tech_lead', 'formadmin'],
+    allowedGroups: [GROUPS.techOperator, GROUPS.civil, GROUPS.it, GROUPS.techLead, GROUPS.admin],
   },
   {
     id: 'warehouse_review',
@@ -44,7 +45,7 @@ export const WORKFLOW_STAGES: StageDefinition[] = [
     borderColor: 'border-amber-500',
     description: 'بررسی موجودی انبار، تخصیص شماره درخواست خرید و تحویل به کارشناس',
     ownerDepartment: 'انبار کارفرما (بلوک ۱)',
-    allowedGroups: ['warehouse', 'formadmin'],
+    allowedGroups: [GROUPS.warehouse, GROUPS.admin],
   },
   {
     id: 'commercial_rfq',
@@ -56,7 +57,7 @@ export const WORKFLOW_STAGES: StageDefinition[] = [
     borderColor: 'border-emerald-500',
     description: 'دریافت پیش‌فاکتورها، مقایسه قیمت و شرایط تحویل و تعیین مجری خرید',
     ownerDepartment: 'بازرگانی غدیر',
-    allowedGroups: ['commercial', 'formadmin'],
+    allowedGroups: [GROUPS.commercial, GROUPS.admin],
   },
   {
     id: 'financial_approval',
@@ -66,9 +67,9 @@ export const WORKFLOW_STAGES: StageDefinition[] = [
     badgeColor: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
     bgColor: 'bg-purple-600',
     borderColor: 'border-purple-500',
-    description: 'امضای دیجیتال سرپرست فنی، رئیس بازرگانی، مدیر مالی و مدیرعامل',
+    description: 'تأیید سرپرست فنی، رئیس بازرگانی، مدیر مالی و مدیرعامل',
     ownerDepartment: 'مدیریت و مالی',
-    allowedGroups: ['finance', 'executive', 'PRT-Management', 'tech_lead', 'formadmin'],
+    allowedGroups: [GROUPS.finance, GROUPS.executive, GROUPS.techLead, GROUPS.admin],
   },
   {
     id: 'final_dispatch',
@@ -80,7 +81,7 @@ export const WORKFLOW_STAGES: StageDefinition[] = [
     borderColor: 'border-cyan-500',
     description: 'ثبت شماره نامه رسمی، مجوز خروج و ارسال قطعی به سایت پروژه',
     ownerDepartment: 'انبار کارفرما (بلوک ۲)',
-    allowedGroups: ['warehouse', 'formadmin'],
+    allowedGroups: [GROUPS.warehouse, GROUPS.admin],
   },
   {
     id: 'completed',
@@ -92,7 +93,7 @@ export const WORKFLOW_STAGES: StageDefinition[] = [
     borderColor: 'border-teal-500',
     description: 'کالا تحویل واحد متقاضی گردیده و پرونده مختومه شد',
     ownerDepartment: 'اتمام چرخه',
-    allowedGroups: ['formadmin', 'PRT-Management'],
+    allowedGroups: [GROUPS.admin],
   },
 ];
 
@@ -118,16 +119,6 @@ export function inferStageFromRow(row: DbRow): WorkflowStageId {
     return 'warehouse_review';
   }
   return 'tech_request';
-}
-
-export function generateDigitalSignature(rowId: number, username: string, roleKey: string): string {
-  const chars = '0123456789ABCDEF';
-  let hash = '';
-  for (let i = 0; i < 12; i++) {
-    hash += chars[Math.floor(Math.random() * chars.length)];
-  }
-  const year = new Date().getFullYear();
-  return `DSIG-${year}-${roleKey.toUpperCase()}-${hash}`;
 }
 
 export function createDefaultApprovals(rowId: number, priority: PriorityLevel, estimatedAmount: number = 0): ApprovalRecord[] {
@@ -177,19 +168,20 @@ export function createDefaultApprovals(rowId: number, priority: PriorityLevel, e
   return list;
 }
 
+// گروه PRT-Management در طراحی اصلی فقط به گزارش‌ها دسترسی دارد و حق تأیید/تغییر ندارد.
 export function canUserApproveStep(user: UserSession, approval: ApprovalRecord): boolean {
-  if (user.isLocalAdmin || user.groups.includes('formadmin')) {
+  if (user.isLocalAdmin || user.groups.includes(GROUPS.admin)) {
     return true;
   }
   switch (approval.roleKey) {
     case 'tech_lead':
-      return user.groups.includes('tech_lead') || user.groups.includes('tech_operator') || user.groups.includes('PRT-Management');
+      return user.groups.includes(GROUPS.techLead);
     case 'commercial_lead':
-      return user.groups.includes('commercial') || user.groups.includes('PRT-Management');
+      return user.groups.includes(GROUPS.commercial);
     case 'finance_lead':
-      return user.groups.includes('finance') || user.groups.includes('PRT-Management');
+      return user.groups.includes(GROUPS.finance);
     case 'executive_ceo':
-      return user.groups.includes('executive') || user.groups.includes('PRT-Management');
+      return user.groups.includes(GROUPS.executive);
     default:
       return false;
   }
@@ -214,6 +206,11 @@ export function canAdvanceWorkflow(
   }
 
   const nextStage = WORKFLOW_STAGES[currentIndex + 1].id;
+
+  const stageDef = WORKFLOW_STAGES[currentIndex];
+  if (!user.isLocalAdmin && !stageDef.allowedGroups.some((g) => user.groups.includes(g))) {
+    return { allowed: false, reason: 'شما مجاز به ارتقای این مرحله از گردش‌کار نیستید.' };
+  }
 
   // Validation rules per transition
   if (currentStage === 'tech_request') {
@@ -242,7 +239,7 @@ export function canAdvanceWorkflow(
       return { allowed: false, reason: 'یکی از مراحل تأیید رد شده است. امکان ارتقا وجود ندارد.' };
     }
     if (hasPending && rowApprovals.length > 0) {
-      return { allowed: false, reason: 'تمامی مراحل تأیید چندمرحله‌ای (امضای دیجیتال) هنوز تکمیل نشده است.' };
+      return { allowed: false, reason: 'تمامی مراحل تأیید چندمرحله‌ای هنوز تکمیل نشده است.' };
     }
   }
 

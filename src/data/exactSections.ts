@@ -1,4 +1,5 @@
 import { DbRow, RequesterDept } from '../types';
+import { GROUPS } from '../config';
 
 export interface FieldDef {
   name: keyof DbRow;
@@ -21,9 +22,9 @@ export interface SectionDef {
 }
 
 export const requesterDepartments: { label: RequesterDept; group: string }[] = [
-  { label: 'دفتر فنی', group: 'tech_operator' },
-  { label: 'عمران', group: 'PRT-Civil' },
-  { label: 'آی‌تی', group: 'PRT-IT' },
+  { label: 'دفتر فنی', group: GROUPS.techOperator },
+  { label: 'عمران', group: GROUPS.civil },
+  { label: 'آی‌تی', group: GROUPS.it },
 ];
 
 export const sections: SectionDef[] = [
@@ -55,7 +56,7 @@ export const sections: SectionDef[] = [
     key: 'warehouse_1',
     title: 'انبار کارفرما',
     color: 'warehouse',
-    group: 'warehouse',
+    group: GROUPS.warehouse,
     canCreateRows: false,
     fields: [
       { name: 'purchase_request_no', label: 'شماره درخواست خرید', type: 'text' },
@@ -68,7 +69,7 @@ export const sections: SectionDef[] = [
     key: 'commercial',
     title: 'بازرگانی غدیر',
     color: 'commercial',
-    group: 'commercial',
+    group: GROUPS.commercial,
     canCreateRows: false,
     fields: [
       { name: 'referred_to_commercial_date', label: 'تاریخ ارجاع به بازرگانی', type: 'jalali-date' },
@@ -80,7 +81,7 @@ export const sections: SectionDef[] = [
     key: 'warehouse_2',
     title: 'انبار کارفرما',
     color: 'warehouse',
-    group: 'warehouse',
+    group: GROUPS.warehouse,
     canCreateRows: false,
     fields: [
       { name: 'letter_no', label: 'شماره نامه', type: 'text' },

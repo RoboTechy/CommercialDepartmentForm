@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useExactDb } from '../context/ExactDatabaseContext';
 import { PriorityLevel, ItemType, DbRow } from '../types';
+import { JalaliDateInput } from './JalaliDateInput';
 import { todayJalaliDate } from '../utils/exactJalaali';
 import { resolveRequesterDept } from '../store/exactStore';
 import { 
   FilePlus2, 
   ArrowRight, 
-  Check, 
   AlertTriangle, 
   Save, 
   AlertCircle 
@@ -21,13 +21,13 @@ export const NewRequestView: React.FC = () => {
     findDuplicateRequestNo 
   } = useExactDb();
 
-  const userDept = resolveRequesterDept(currentUser) || 'دفتر فنی';
+  const userDept = resolveRequesterDept(currentUser) || '—';
 
   const [requestNo, setRequestNo] = useState('');
   const [itemDescription, setItemDescription] = useState('');
   const [priority, setPriority] = useState<PriorityLevel>('A');
   const [totalQty, setTotalQty] = useState('');
-  const [unit, setUnit] = useState('عدد');
+  const [unit, setUnit] = useState('');
   const [usageLocation, setUsageLocation] = useState('');
   const [deliveryDate, setDeliveryDate] = useState(todayJalaliDate());
   const [itemType, setItemType] = useState<ItemType>('استاندارد');
@@ -47,49 +47,33 @@ export const NewRequestView: React.FC = () => {
     }
   };
 
-  const handleSubmit = (asDraft = false) => {
+  // هر ردیف جدید ابتدا «پیش‌نویس» است؛ در صفحه‌ی جزئیات همان ردیف می‌توان ردیف بعدی را
+  // اضافه کرد و همه‌ی (یا بعضی از) پیش‌نویس‌ها را با هم «ثبت نهایی» کرد.
+  const handleSubmit = () => {
     setErrorMessage(null);
-
-    if (!requestNo.trim()) {
-      setErrorMessage('شماره درخواست کالا الزامی است');
-      return;
-    }
-    if (!itemDescription.trim()) {
-      setErrorMessage('شرح کالا الزامی است');
-      return;
-    }
-    if (!totalQty.trim()) {
-      setErrorMessage('تعداد کل الزامی است');
-      return;
-    }
-    if (!usageLocation.trim()) {
-      setErrorMessage('محل مصرف الزامی است');
-      return;
-    }
 
     if (duplicateWarning.length > 0 && !confirmedDuplicate) {
       setErrorMessage('این شماره درخواست قبلاً ثبت شده است. اگر مطمئن هستید، گزینه تایید ردیف تکراری را بزنید.');
       return;
     }
 
-    const { row } = createRow({
-      request_no: requestNo.trim(),
-      item_description: itemDescription.trim(),
+    const { row, errors } = createRow({
+      request_no: requestNo,
+      item_description: itemDescription,
       priority,
-      total_qty: totalQty.trim(),
-      unit: unit.trim(),
-      usage_location: usageLocation.trim(),
+      total_qty: totalQty,
+      unit,
+      usage_location: usageLocation,
       delivery_to_warehouse_date: deliveryDate,
       item_type: itemType,
-      requester_dept: userDept,
-    }, asDraft);
+    });
 
-    if (asDraft) {
-      setActiveTab('drafts');
-    } else {
-      setSelectedRowId(row.id);
-      setActiveTab('row_detail');
+    if (!row) {
+      setErrorMessage(errors.join(' — '));
+      return;
     }
+    setSelectedRowId(row.id);
+    setActiveTab('row_detail');
   };
 
   return (
@@ -238,13 +222,11 @@ export const NewRequestView: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              تاریخ تحویل به انبار
+              تاریخ تحویل درخواست به انبار <span className="text-rose-400">*</span>
             </label>
-            <input
-              type="text"
+            <JalaliDateInput
               value={deliveryDate}
-              onChange={(e) => setDeliveryDate(e.target.value)}
-              placeholder="1403/00/00"
+              onChange={setDeliveryDate}
               className="w-full p-2.5 text-xs font-mono bg-slate-950/80 border border-slate-700 rounded-xl text-slate-200 focus:outline-hidden focus:border-blue-500"
             />
           </div>
@@ -268,23 +250,21 @@ export const NewRequestView: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              واحد سنجش
+              واحد <span className="text-rose-400">*</span>
             </label>
-            <select
+            <input
+              type="text"
+              list="unit-suggestions"
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
+              placeholder="عدد، کیلوگرم، لیتر، متر، بسته"
               className="w-full p-2.5 text-xs bg-slate-950/80 border border-slate-700 rounded-xl text-slate-200 focus:outline-hidden focus:border-blue-500"
-            >
-              <option value="عدد">عدد</option>
-              <option value="دستگاه">دستگاه</option>
-              <option value="متر">متر</option>
-              <option value="شاخه">شاخه</option>
-              <option value="کیلوگرم">کیلوگرم</option>
-              <option value="تن">تن</option>
-              <option value="بسته">بسته</option>
-              <option value="ست">ست</option>
-              <option value="لیتر">لیتر</option>
-            </select>
+            />
+            <datalist id="unit-suggestions">
+              {['عدد', 'دستگاه', 'متر', 'شاخه', 'کیلوگرم', 'تن', 'بسته', 'ست', 'لیتر'].map((u) => (
+                <option key={u} value={u} />
+              ))}
+            </datalist>
           </div>
 
           <div>
@@ -304,22 +284,17 @@ export const NewRequestView: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="pt-4 border-t border-slate-800 flex items-center justify-between flex-wrap gap-3">
+          <p className="text-[11px] text-slate-500 max-w-md leading-relaxed">
+            درخواست ابتدا به‌صورت پیش‌نویس ذخیره می‌شود و تا «ثبت نهایی» در فهرست مشترک (انبار و بازرگانی) دیده نمی‌شود.
+            می‌توانید چند درخواست پشت‌سرهم بسازید و همه را با هم ثبت نهایی کنید.
+          </p>
           <button
             type="button"
-            onClick={() => handleSubmit(true)}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-colors"
-          >
-            <Save className="w-4 h-4 text-amber-400" />
-            <span>ذخیره به عنوان پیش‌نویس</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSubmit(false)}
+            onClick={handleSubmit}
             className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-600/30 flex items-center gap-2 transition-all active:scale-95"
           >
-            <Check className="w-4 h-4" />
-            <span>ثبت نهایی و ارسال به انبار کارفرما</span>
+            <Save className="w-4 h-4" />
+            <span>ذخیره به‌عنوان پیش‌نویس</span>
           </button>
         </div>
 

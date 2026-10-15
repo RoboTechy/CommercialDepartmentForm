@@ -120,7 +120,6 @@ export interface ApprovalRecord {
   approvedByUsername?: string;
   approvedByDisplay?: string;
   approvedAt?: string;
-  digitalSignatureHash?: string;
   rejectionReason?: string;
   comment?: string;
 }

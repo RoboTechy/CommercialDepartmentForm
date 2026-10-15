@@ -47,10 +47,10 @@ $env:PORT="80"; docker compose up -d --build
 اگر نمی‌خواهید از compose استفاده کنید:
 
 ```bash
-# ۱. ساخت ایمیج (با Dockerfile یا Dockerfile.prod)
+# ۱. ساخت ایمیج (با Dockerfile)
 docker build -t commercial-portal .
 # یا در صورت استفاده از نام دیگر:
-docker build -f Dockerfile.prod -t commercial-portal .
+docker build -f Dockerfile -t commercial-portal .
 
 # ۲. اجرای کانتینر روی پورت 8080
 docker run -d -p 8080:80 --name commercial_portal_app commercial-portal

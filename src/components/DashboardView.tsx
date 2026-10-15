@@ -1,3 +1,4 @@
+import { ENABLE_EXTENDED_WORKFLOW } from '../config';
 import React from 'react';
 import { useExactDb } from '../context/ExactDatabaseContext';
 import { DbRow, PriorityLevel } from '../types';
@@ -38,8 +39,12 @@ export const DashboardView: React.FC = () => {
     softDeleteRow,
     canCancelRow,
     canReturnToTechOffice,
-    isAdmin
+    isAdmin,
+    isLocalAdmin,
+    getDraftRows
   } = useExactDb();
+
+  const myDrafts = getDraftRows();
 
   const filteredRows = getFilteredRows();
   const stats = getStats();
@@ -78,6 +83,7 @@ export const DashboardView: React.FC = () => {
           </p>
         </div>
 
+        {ENABLE_EXTENDED_WORKFLOW && (
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setActiveTab('workflow_pipeline')}
@@ -95,7 +101,23 @@ export const DashboardView: React.FC = () => {
             <span>وندور لیست و استعلام قیمت</span>
           </button>
         </div>
+        )}
       </div>
+
+      {/* یادآوری پیش‌نویس‌های ثبت‌نشده */}
+      {myDrafts.length > 0 && (
+        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex flex-wrap items-center justify-between gap-2">
+          <span>
+            شما {myDrafts.length} پیش‌نویس ثبت‌نشده دارید؛ تا «ثبت نهایی» در این فهرست و برای انبار/بازرگانی دیده نمی‌شوند.
+          </span>
+          <button
+            onClick={() => setActiveTab('drafts')}
+            className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 font-semibold"
+          >
+            مشاهده پیش‌نویس‌ها
+          </button>
+        </div>
+      )}
 
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -534,7 +556,7 @@ export const DashboardView: React.FC = () => {
                             <History className="w-3.5 h-3.5" />
                           </button>
 
-                          {canCancelRow(row) && (
+                          {canCancelRow(row) && !isReturned && (
                             isCancelled ? (
                               <button
                                 onClick={() => uncancelRow(row.id)}
@@ -554,7 +576,7 @@ export const DashboardView: React.FC = () => {
                             )
                           )}
 
-                          {canReturnToTechOffice && (
+                          {canReturnToTechOffice && !isCancelled && (
                             isReturned ? (
                               <button
                                 onClick={() => unreturnFromTechOffice(row.id)}
@@ -574,7 +596,7 @@ export const DashboardView: React.FC = () => {
                             )
                           )}
 
-                          {isAdmin && (
+                          {isLocalAdmin && (
                             <button
                               onClick={() => {
                                 if (window.confirm(`انتقال ردیف ${row.request_no} به سطل زباله؟`)) {

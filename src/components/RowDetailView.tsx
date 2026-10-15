@@ -24,6 +24,8 @@ import {
   Layers 
 } from 'lucide-react';
 import { todayJalaliDate } from '../utils/exactJalaali';
+import { ENABLE_EXTENDED_WORKFLOW } from '../config';
+import { JalaliDateInput } from './JalaliDateInput';
 
 export const RowDetailView: React.FC = () => {
   const { 
@@ -41,7 +43,11 @@ export const RowDetailView: React.FC = () => {
     canCancelRow,
     canReturnToTechOffice,
     quotations,
-    approvals
+    approvals,
+    findDuplicatePurchaseRequestNo,
+    getDraftRows,
+    finalizeDrafts,
+    discardDraft
   } = useExactDb();
 
   const row = selectedRowId ? getRow(selectedRowId) : undefined;
@@ -60,6 +66,8 @@ export const RowDetailView: React.FC = () => {
   });
 
   const [savingSection, setSavingSection] = useState<string | null>(null);
+  const [saveErrors, setSaveErrors] = useState<string[]>([]);
+  const [draftSelection, setDraftSelection] = useState<number[] | null>(null);
 
   if (!row) {
     return (
@@ -81,7 +89,11 @@ export const RowDetailView: React.FC = () => {
 
   const isCancelled = Boolean(row.cancelled_at);
   const isReturned = Boolean(row.returned_at);
-  const waived = isPaymentAuthWaived(row);
+  // با عوض شدن «مجری خرید» در همین فرم، بلافاصله (بدون ذخیره) فیلد مجوز پرداخت معاف می‌شود
+  const waived = isPaymentAuthWaived({ ...row, purchase_executor: (formState.purchase_executor ?? row.purchase_executor) as typeof row.purchase_executor });
+  const isDraft = !row.published_at;
+  const myDrafts = isDraft ? getDraftRows() : [];
+  const checkedDrafts = draftSelection ?? myDrafts.map((d) => d.id);
 
   const handleFieldChange = (fieldName: string, val: string) => {
     setFormState(prev => ({ ...prev, [fieldName]: val }));
@@ -90,15 +102,58 @@ export const RowDetailView: React.FC = () => {
   const handleSaveSection = (sectionKey: string) => {
     const sec = sections.find(s => s.key === sectionKey);
     if (!sec) return;
-    setSavingSection(sectionKey);
+    setSaveErrors([]);
     const sectionValues: Record<string, string> = {};
     for (const f of sec.fields) {
       sectionValues[f.name] = formState[f.name] ?? '';
     }
-    updateSection(row.id, sectionKey, sectionValues);
+
+    // هشدار (نه جلوگیری) برای شماره درخواست خرید تکراری
+    const newPurchaseNo = (sectionValues.purchase_request_no ?? '').trim();
+    if (sec.fields.some(f => f.name === 'purchase_request_no') && newPurchaseNo && newPurchaseNo !== (row.purchase_request_no || '')) {
+      const dupes = findDuplicatePurchaseRequestNo(newPurchaseNo, row.id);
+      if (dupes.length > 0) {
+        const list = dupes.map(d => `ردیف #${d.id} (درخواست کالا ${d.request_no})`).join('\n');
+        if (!window.confirm(`شماره درخواست خرید «${newPurchaseNo}» قبلاً در این ردیف‌ها ثبت شده است:\n${list}\n\nبا وجود تکرار، ثبت ادامه پیدا کند؟`)) {
+          return;
+        }
+      }
+    }
+
+    const result = updateSection(row.id, sectionKey, sectionValues);
+    if (!result.ok) {
+      setSaveErrors(result.errors);
+      return;
+    }
+    // مقدارهای یکنواخت‌شده (مثلاً تاریخ با ارقام فارسی) را در فرم نشان بده
+    if (result.values) {
+      setFormState(prev => ({ ...prev, ...result.values }));
+    }
+    setSavingSection(sectionKey);
     setTimeout(() => {
       setSavingSection(null);
     }, 600);
+  };
+
+  const handleFinalizeChecked = () => {
+    if (checkedDrafts.length === 0) return;
+    finalizeDrafts(checkedDrafts);
+    setSelectedRowId(null);
+    setActiveTab('dashboard');
+  };
+
+  const handleDiscard = (draftId: number, requestNo: string) => {
+    if (!window.confirm(`پیش‌نویس «${requestNo}» برای همیشه حذف شود؟ این کار قابل بازگشت نیست.`)) return;
+    if (!discardDraft(draftId)) return;
+    const remaining = myDrafts.filter(d => d.id !== draftId);
+    if (draftId === row.id) {
+      if (remaining.length > 0) {
+        setSelectedRowId(remaining[0].id);
+      } else {
+        setSelectedRowId(null);
+        setActiveTab('dashboard');
+      }
+    }
   };
 
   return (
@@ -163,7 +218,7 @@ export const RowDetailView: React.FC = () => {
             <span>چاپ</span>
           </button>
 
-          {canCancelRow(row) && (
+          {canCancelRow(row) && !isReturned && !isDraft && (
             isCancelled ? (
               <button
                 onClick={() => uncancelRow(row.id)}
@@ -183,7 +238,7 @@ export const RowDetailView: React.FC = () => {
             )
           )}
 
-          {canReturnToTechOffice && (
+          {canReturnToTechOffice && !isCancelled && !isDraft && (
             isReturned ? (
               <button
                 onClick={() => unreturnFromTechOffice(row.id)}
@@ -205,10 +260,73 @@ export const RowDetailView: React.FC = () => {
         </div>
       </div>
 
-      {/* Multi-Stage Workflow Stepper */}
-      <WorkflowStepper row={row} />
+      {/* پیش‌نویس: ثبت نهایی گروهی */}
+      {isDraft && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-100 space-y-3">
+          <div className="text-xs leading-relaxed">
+            <b className="text-amber-300">این ردیف پیش‌نویس است</b> و فقط شما (و ادمین) آن را می‌بینید؛ تا «ثبت نهایی» در فهرست
+            مشترک، آمار و گزارش‌ها دیده نمی‌شود. می‌توانید ردیف دیگری هم اضافه کنید و بعد موارد دلخواه را با هم ثبت نهایی کنید.
+          </div>
 
-      {/* Sub-Navigation Tabs */}
+          <ul className="divide-y divide-amber-500/10 text-xs">
+            {myDrafts.map((d) => (
+              <li key={d.id} className="py-2 flex items-center justify-between gap-3">
+                <label className="flex items-center gap-2 cursor-pointer min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={checkedDrafts.includes(d.id)}
+                    onChange={(e) =>
+                      setDraftSelection(
+                        e.target.checked ? [...checkedDrafts, d.id] : checkedDrafts.filter((x) => x !== d.id)
+                      )
+                    }
+                    className="rounded border-slate-700 bg-slate-900 text-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRowId(d.id)}
+                    className={`font-mono truncate hover:underline ${d.id === row.id ? 'text-white font-bold' : 'text-amber-200'}`}
+                  >
+                    {d.request_no}
+                  </button>
+                  <span className="text-amber-300/70 truncate">— {d.item_description}</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleDiscard(d.id, d.request_no)}
+                  className="shrink-0 text-rose-300 hover:text-rose-200 text-[11px] font-semibold"
+                >
+                  حذف این پیش‌نویس
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('new_request')}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100"
+            >
+              افزودن ردیف جدید
+            </button>
+            <button
+              type="button"
+              disabled={checkedDrafts.length === 0}
+              onClick={handleFinalizeChecked}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-40"
+            >
+              ثبت نهایی موارد تیک‌خورده ({checkedDrafts.length})
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-Stage Workflow Stepper (ماژول آزمایشی) */}
+      {ENABLE_EXTENDED_WORKFLOW && <WorkflowStepper row={row} />}
+
+      {/* Sub-Navigation Tabs (RFQ و تأییدات: ماژول آزمایشی) */}
+      {ENABLE_EXTENDED_WORKFLOW && (
       <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
         <button
           onClick={() => setActiveSubTab('sections')}
@@ -219,7 +337,7 @@ export const RowDetailView: React.FC = () => {
           }`}
         >
           <FileSpreadsheet className="w-4 h-4" />
-          <span>فرم‌ها و مشخصات ۴گانه انبار و بازرگانی</span>
+          <span>فرم‌ها و بخش‌ها</span>
         </button>
 
         <button
@@ -246,26 +364,35 @@ export const RowDetailView: React.FC = () => {
           }`}
         >
           <PenTool className="w-4 h-4 text-purple-400" />
-          <span>تأییدات مالی و مدیریتی (امضای دیجیتال)</span>
+          <span>تأییدات مالی و مدیریتی</span>
           <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
             {approvals.filter((a) => a.rowId === row.id && a.status === 'approved').length} از {approvals.filter((a) => a.rowId === row.id).length || 3}
           </span>
         </button>
       </div>
+      )}
 
       {/* Tab: RFQ Quotations */}
-      {activeSubTab === 'rfq' && (
+      {ENABLE_EXTENDED_WORKFLOW && activeSubTab === 'rfq' && (
         <RfqQuotationsView row={row} />
       )}
 
       {/* Tab: Multi-level Approvals */}
-      {activeSubTab === 'approvals' && (
+      {ENABLE_EXTENDED_WORKFLOW && activeSubTab === 'approvals' && (
         <MultiLevelApprovalsView row={row} />
       )}
 
       {/* Tab: 4 Commercial Sections */}
       {activeSubTab === 'sections' && (
         <>
+          {saveErrors.length > 0 && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs space-y-1" role="alert">
+              {saveErrors.map((e, i) => (
+                <div key={i}>{e}</div>
+              ))}
+            </div>
+          )}
+
           {/* Cancellation / Return Banner */}
           {isCancelled && (
             <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs space-y-1">
@@ -407,29 +534,17 @@ export const RowDetailView: React.FC = () => {
                           ))}
                         </select>
                       ) : field.type === 'jalali-date' ? (
-                        <div className="flex gap-1.5">
-                          <input
-                            type="text"
-                            disabled={!canEdit || field.readOnly || isPaymentWaived}
-                            value={isPaymentWaived ? '' : val}
-                            onChange={(e) => handleFieldChange(field.name, e.target.value)}
-                            placeholder={isPaymentWaived ? 'معاف از صدور مجوز' : '1403/00/00'}
-                            className={`w-full p-2.5 text-xs font-mono rounded-xl border transition-all ${
-                              !canEdit || field.readOnly || isPaymentWaived
-                                ? 'bg-slate-950/40 text-slate-500 cursor-not-allowed border-slate-800'
-                                : 'bg-slate-950/80 text-slate-200 border-slate-700 focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
-                            }`}
-                          />
-                          {canEdit && !isPaymentWaived && (
-                            <button
-                              type="button"
-                              onClick={() => handleFieldChange(field.name, todayJalaliDate())}
-                              className="px-3 py-2 text-[11px] bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-slate-300 transition-colors shrink-0 font-medium"
-                            >
-                              امروز
-                            </button>
-                          )}
-                        </div>
+                        <JalaliDateInput
+                          disabled={!canEdit || field.readOnly || isPaymentWaived}
+                          value={isPaymentWaived ? '' : val}
+                          onChange={(v) => handleFieldChange(field.name, v)}
+                          placeholder={isPaymentWaived ? 'معاف از صدور مجوز' : '1403/00/00'}
+                          className={`w-full p-2.5 text-xs font-mono rounded-xl border transition-all ${
+                            !canEdit || field.readOnly || isPaymentWaived
+                              ? 'bg-slate-950/40 text-slate-500 cursor-not-allowed border-slate-800'
+                              : 'bg-slate-950/80 text-slate-200 border-slate-700 focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                          }`}
+                        />
                       ) : (
                         <input
                           type="text"

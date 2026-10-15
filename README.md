@@ -57,10 +57,9 @@ docker compose down
     - `AuditLogsView.tsx` : لاگ‌ها و ردپای تغییرات سیستم
     - `HistoryDrawer.tsx` : کشوی نمایش تاریخچه تغییرات هر درخواست
     - `LdapUserModal.tsx` : انتخاب و تست انواع نقش‌های LDAP
-    - `SourceCodeModal.tsx` : مرورگر آنلاین فایل‌های پروژه، داکر و دیتابیس
+  - `src/config.ts` : نام گروه‌های LDAP (همان PRT-*)، مدت نشست، و پرچم‌های دمو/ماژول آزمایشی
   - `src/types/index.ts` : تعاریف تایپ‌های TypeScript داده‌ها و فیلدها
   - `src/utils/exactJalaali.ts` : توابع تبدیل و کار با تاریخ شمسی/جلالی
-  - `src/utils/downloadZip.ts` : ابزار تولید و دانلود فایل کامل پروژه
   - `src/App.tsx` : کامپوننت اصلی چیدمان
   - `src/main.tsx` : نقطه ورود برنامه
   - `src/index.css` : استایل‌های مدرن با Tailwind CSS v4 و فونت وزیرمتن

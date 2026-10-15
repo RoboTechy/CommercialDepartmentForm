@@ -22,7 +22,6 @@ import { sections, findSection, allFields, requesterDepartments, isPaymentAuthWa
 import { nowJalaliDateTime, daysSinceJalali, daysBetweenJalali } from '../utils/exactJalaali';
 import { 
   canAdvanceWorkflow, 
-  generateDigitalSignature, 
   createDefaultApprovals, 
   canUserApproveStep, 
   inferStageFromRow 
@@ -34,21 +33,29 @@ import {
   isRowComplete, 
   currentBlockingSection,
   normalizeForDuplicateCheck,
+  validateFieldValues,
   DEPARTMENTS,
   median,
   computeDurationStats
 } from '../store/exactStore';
 
+import {
+  GROUPS,
+  ALLOWED_LOGIN_GROUPS,
+  SESSION_HOURS,
+  OVERDUE_DAYS,
+  DEMO_MODE,
+  ENABLE_EXTENDED_WORKFLOW,
+} from '../config';
+
 const STORAGE_KEYS = {
   DB_ROWS: 'commercial_exact_db_rows_v3',
   AUDIT_LOGS: 'commercial_exact_audit_logs_v3',
-  USER: 'commercial_exact_user_v3',
+  USER: 'commercial_exact_session_v4',
   VENDORS: 'commercial_exact_vendors_v3',
   QUOTATIONS: 'commercial_exact_quotations_v3',
   APPROVALS: 'commercial_exact_approvals_v3',
 };
-
-const OVERDUE_DAYS = 3;
 
 interface FilterState {
   searchQuery: string;
@@ -81,6 +88,7 @@ interface ExactDatabaseContextType {
   login: (username: string, password?: string, mode?: 'ldap' | 'local') => { success: boolean; error?: string };
   logout: () => void;
   switchUser: (username: string) => void;
+  sessionExpiresAt: number | null;
 
   // Setters
   setActiveTab: (tab: ActiveTab) => void;
@@ -94,6 +102,7 @@ interface ExactDatabaseContextType {
 
   // Permission Checks (100% matching middleware.js)
   isAdmin: boolean;
+  isLocalAdmin: boolean;
   isManagement: boolean;
   canCreateRows: boolean;
   canEditSectionForRow: (row: DbRow, sectionKey: string) => boolean;
@@ -101,16 +110,16 @@ interface ExactDatabaseContextType {
   canReturnToTechOffice: boolean;
 
   // DB Actions (100% matching store.js)
-  createRow: (values: Partial<DbRow>, asDraft?: boolean) => { row: DbRow; isDuplicate: boolean };
-  updateSection: (rowId: number, sectionKey: string, values: Record<string, string>) => void;
+  createRow: (values: Partial<DbRow>) => { row: DbRow | null; errors: string[]; isDuplicate: boolean };
+  updateSection: (rowId: number, sectionKey: string, values: Record<string, string>) => { ok: boolean; errors: string[]; values?: Record<string, string> };
   finalizeDrafts: (rowIds?: number[]) => void;
-  discardDraft: (rowId: number) => void;
+  discardDraft: (rowId: number) => boolean;
   softDeleteRow: (rowId: number) => void;
   restoreRow: (rowId: number) => void;
-  cancelRow: (rowId: number, reason: string) => void;
-  uncancelRow: (rowId: number) => void;
-  returnToTechOffice: (rowId: number, reason: string) => void;
-  unreturnFromTechOffice: (rowId: number) => void;
+  cancelRow: (rowId: number, reason: string) => boolean;
+  uncancelRow: (rowId: number) => boolean;
+  returnToTechOffice: (rowId: number, reason: string) => boolean;
+  unreturnFromTechOffice: (rowId: number) => boolean;
 
   // RFQ & Vendor Management (ویژگی ۱)
   addVendor: (vendor: Omit<Vendor, 'id'>) => Vendor;
@@ -121,7 +130,7 @@ interface ExactDatabaseContextType {
   deleteQuotation: (quoteId: string) => void;
   getRowQuotations: (rowId: number) => Quotation[];
 
-  // Multi-level Approvals & Digital Signature (ویژگی ۴)
+  // Multi-level Approvals (ویژگی ۴)
   approveStep: (approvalId: string, comment?: string) => { success: boolean; message?: string };
   rejectStep: (approvalId: string, reason: string) => void;
   getRowApprovals: (rowId: number) => ApprovalRecord[];
@@ -135,6 +144,7 @@ interface ExactDatabaseContextType {
   getRow: (id: number) => DbRow | undefined;
   getRowHistory: (rowId: number) => AuditLogEntry[];
   findDuplicateRequestNo: (requestNo: string) => DbRow[];
+  findDuplicatePurchaseRequestNo: (purchaseRequestNo: string, excludeRowId?: number) => DbRow[];
   getDraftRows: () => DbRow[];
   getFilteredRows: () => DbRow[];
   getOverdueRows: () => { row: DbRow; blockingSection: any; ageDays: number }[];
@@ -197,22 +207,24 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     }
   });
 
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
+  // نشست ورود از لحظه‌ی لاگین ۲ ساعت معتبر است (نه از آخرین فعالیت) - مثل سرویس اصلی.
+  // قبلاً در نبود نشست، کاربر به‌صورت خودکار به‌عنوان ادمین وارد می‌شد؛ حالا بدون
+  // نشست معتبر همیشه صفحه‌ی ورود نمایش داده می‌شود.
+  const [session, setSession] = useState<{ user: UserSession; loginAt: number } | null>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.USER);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed === null) return null;
-        const match = SAMPLE_USERS.find(u => u.username === parsed.username);
-        if (match) return match;
-        if (parsed.username) return parsed;
-      }
-      // Default to logged-in admin
-      return SAMPLE_USERS[0];
+      if (!saved) return null;
+      const parsed = JSON.parse(saved) as { username?: string; loginAt?: number } | null;
+      if (!parsed || !parsed.username || !parsed.loginAt) return null;
+      if (Date.now() - parsed.loginAt >= SESSION_HOURS * 3600 * 1000) return null;
+      const match = SAMPLE_USERS.find((u) => u.username === parsed.username);
+      return match ? { user: match, loginAt: parsed.loginAt } : null;
     } catch {
-      return SAMPLE_USERS[0];
+      return null;
     }
   });
+  const currentUser: UserSession | null = session ? session.user : null;
+  const sessionExpiresAt = session ? session.loginAt + SESSION_HOURS * 3600 * 1000 : null;
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
@@ -254,13 +266,50 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   }, [approvals]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(currentUser));
-  }, [currentUser]);
+    try {
+      if (session) {
+        localStorage.setItem(
+          STORAGE_KEYS.USER,
+          JSON.stringify({ username: session.user.username, loginAt: session.loginAt })
+        );
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.USER);
+      }
+    } catch {
+      /* ignore quota / private-mode errors */
+    }
+  }, [session]);
 
-  // Permission evaluations
-  const isAdmin = Boolean(currentUser && (currentUser.groups.includes('formadmin') || currentUser.isLocalAdmin));
-  const isManagement = Boolean(currentUser && (isAdmin || currentUser.groups.includes('PRT-Management')));
-  const canReturnToTechOffice = Boolean(currentUser && (isAdmin || currentUser.groups.includes('warehouse')));
+  // پایان خودکار نشست بعد از SESSION_HOURS ساعت از لحظه‌ی ورود
+  useEffect(() => {
+    if (!session) return;
+    const timer = setInterval(() => {
+      if (Date.now() - session.loginAt >= SESSION_HOURS * 3600 * 1000) {
+        setSession(null);
+        setActiveTab('dashboard');
+        setSelectedRowId(null);
+      }
+    }, 15_000);
+    return () => clearInterval(timer);
+  }, [session]);
+
+  // تأییدات چندمرحله‌ای فقط در ماژول آزمایشی: برای ردیف‌های بدون رکورد تأیید، پس از رندر
+  // (نه در حین رندر) ساخته می‌شوند.
+  useEffect(() => {
+    if (!ENABLE_EXTENDED_WORKFLOW) return;
+    const missing = rows.filter((r) => r.published_at && !approvals.some((a) => a.rowId === r.id));
+    if (missing.length === 0) return;
+    setApprovals((prev) => [
+      ...prev,
+      ...missing.flatMap((r) => createDefaultApprovals(r.id, r.priority, r.total_estimated_amount || 0)),
+    ]);
+  }, [rows, approvals]);
+
+  // Permission evaluations (معادل middleware.js سرویس اصلی)
+  const isLocalAdmin = Boolean(currentUser && currentUser.isLocalAdmin);
+  const isAdmin = Boolean(currentUser && (currentUser.groups.includes(GROUPS.admin) || isLocalAdmin));
+  const isManagement = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.management)));
+  const canReturnToTechOffice = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.warehouse)));
 
   const canCreateRows = Boolean(currentUser && (isAdmin || sections.some(s => s.canCreateRows && (
     Array.isArray(s.group) ? s.group.some(g => currentUser.groups.includes(g)) : currentUser.groups.includes(s.group)
@@ -287,75 +336,79 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     if (!currentUser) return false;
     if (row.deleted_at || row.cancelled_at) return false;
     if (row.returned_at && sectionKey !== 'tech_operator') return false;
+    // پیش‌نویس هنوز در فهرست مشترک نیست: فقط سازنده‌اش (یا ادمین) می‌تواند ویرایشش کند
+    if (!row.published_at && row.created_by_username !== currentUser.username && !isAdmin) return false;
     return sectionKey === 'tech_operator' ? canEditRequesterRow(row) : canEditSection(sectionKey);
   };
 
   const canCancelRow = (row: DbRow): boolean => {
     if (!currentUser) return false;
+    if (row.deleted_at) return false;
     if (isAdmin) return true;
     const isAnyReq = requesterDepartments.some(d => currentUser.groups.includes(d.group));
     if (!isAnyReq) return false;
     return canEditRequesterRow(row);
   };
 
+  const startSession = (user: UserSession) => {
+    setSession({ user, loginAt: Date.now() });
+    setActiveTab('dashboard');
+    setSelectedRowId(null);
+  };
+
   const login = (username: string, password = '', mode: 'ldap' | 'local' = 'local'): { success: boolean; error?: string } => {
     const cleanUser = username.trim().toLowerCase();
-    const cleanPass = password.trim();
 
-    // 1. Local Administrator check (username: admin / password: admin)
-    if (cleanUser === 'admin') {
-      if (cleanPass === 'admin' || cleanPass === '') {
-        const adminUser: UserSession = SAMPLE_USERS[0];
-        setCurrentUser(adminUser);
-        return { success: true };
-      } else {
-        return { success: false, error: 'رمز عبور حساب ادمین محلی اشتباه است (رمز پیش‌فرض: admin)' };
-      }
+    // احراز هویت واقعی (LDAP / ادمین محلی) فقط با یک سرویس بک‌اند ممکن است؛ این
+    // پروژه‌ی فرانت‌اند فقط در حالت دمو ورود شبیه‌سازی‌شده دارد.
+    if (!DEMO_MODE) {
+      return { success: false, error: 'ورود واقعی نیازمند اتصال به سرویس بک‌اند (LDAP) است و در این نسخه فعال نشده است.' };
+    }
+    if (!cleanUser || !password) {
+      return { success: false, error: 'نام کاربری و کلمه عبور را وارد کنید.' };
     }
 
-    // 2. Domain / LDAP user check
-    const matchedUser = SAMPLE_USERS.find(u => u.username.toLowerCase() === cleanUser);
-    if (matchedUser) {
-      // In LDAP simulation, accept any password or exact password if provided
-      if (cleanPass.length === 0) {
-        return { success: false, error: 'لطفاً کلمه عبور دامین/اکتیو دایرکتوری را وارد نمایید.' };
+    const matched = SAMPLE_USERS.find((u) => u.username.toLowerCase() === cleanUser);
+    if (!matched) {
+      return { success: false, error: 'نام کاربری یا کلمه عبور اشتباه است.' };
+    }
+
+    if (mode === 'local') {
+      // ادمین محلی: مستقل از LDAP؛ رمز (دمو) admin
+      if (!matched.isLocalAdmin || password !== 'admin') {
+        return { success: false, error: 'نام کاربری یا رمز ادمین محلی اشتباه است.' };
       }
-      setCurrentUser(matchedUser);
+      startSession(matched);
       return { success: true };
     }
 
-    // Dynamic LDAP simulated user if valid domain username provided
-    if (cleanUser.length >= 3 && cleanPass.length >= 3) {
-      const simulatedLdapUser: UserSession = {
-        username: cleanUser,
-        displayName: `${cleanUser} (دامین سازمانی)`,
-        groups: ['tech_operator'],
-        authType: 'ldap'
-      };
-      setCurrentUser(simulatedLdapUser);
-      return { success: true };
+    if (matched.isLocalAdmin) {
+      return { success: false, error: 'این حساب محلی است؛ از تب «ورود ادمین محلی» وارد شوید.' };
     }
-
-    return { 
-      success: false, 
-      error: 'نام کاربری یا کلمه عبور معتبر نمی‌باشد. برای ورود مدیر از admin/admin استفاده کنید.' 
-    };
+    // مثل سرویس اصلی: حتی با رمز درست، فقط عضو حداقل یکی از گروه‌های مجاز اجازه‌ی ورود دارد
+    if (!matched.groups.some((g) => ALLOWED_LOGIN_GROUPS.includes(g))) {
+      return { success: false, error: 'شما عضو هیچ‌کدام از گروه‌های مجاز این سرویس نیستید. با مدیر سیستم تماس بگیرید.' };
+    }
+    startSession(matched);
+    return { success: true };
   };
 
   const logout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem(STORAGE_KEYS.USER);
+    setSession(null);
     setActiveTab('dashboard');
+    setSelectedRowId(null);
   };
 
   const switchUser = (username: string) => {
+    if (!DEMO_MODE) return;
     const target = SAMPLE_USERS.find(u => u.username === username);
     if (target) {
-      setCurrentUser(target);
+      startSession(target);
     }
   };
 
   const resetToPrinstineData = () => {
+    if (!DEMO_MODE) return;
     setRows(INITIAL_DB_ROWS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
     setVendors(INITIAL_VENDORS);
@@ -369,22 +422,33 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   };
 
   // RFQ & Vendor Operations (ویژگی ۱)
+  const canManageCommercial = canEditSection('commercial');
+
   const addVendor = (vendorData: Omit<Vendor, 'id'>): Vendor => {
-    const id = `VND-${String(vendors.length + 1).padStart(3, '0')}`;
+    if (!canManageCommercial) throw new Error('فقط بازرگانی غدیر مجاز به مدیریت تأمین‌کنندگان است.');
+    const id = `VND-${String(Math.max(0, ...vendors.map(v => parseInt(v.id.replace(/\D/g, ''), 10) || 0)) + 1).padStart(3, '0')}`;
     const newVendor: Vendor = { ...vendorData, id };
     setVendors(prev => [newVendor, ...prev]);
     return newVendor;
   };
 
   const updateVendor = (id: string, updates: Partial<Vendor>) => {
+    if (!canManageCommercial) return;
     setVendors(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v));
   };
 
   const deleteVendor = (id: string) => {
+    if (!canManageCommercial) return;
     setVendors(prev => prev.filter(v => v.id !== id));
   };
 
+  const rowAcceptsEdits = (rowId: number, sectionKey: string): boolean => {
+    const r = rows.find((x) => x.id === rowId);
+    return Boolean(r && canEditSectionForRow(r, sectionKey));
+  };
+
   const addQuotation = (quoteData: Omit<Quotation, 'id' | 'createdAt' | 'createdBy'>): Quotation => {
+    if (!rowAcceptsEdits(quoteData.rowId, 'commercial')) throw new Error('امکان ثبت پیش‌فاکتور برای این درخواست وجود ندارد.');
     const id = `QT-${Date.now().toString().slice(-6)}`;
     const newQuote: Quotation = {
       ...quoteData,
@@ -411,7 +475,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
 
   const selectWinningQuotation = (quoteId: string) => {
     const quote = quotations.find(q => q.id === quoteId);
-    if (!quote) return;
+    if (!quote || !rowAcceptsEdits(quote.rowId, 'commercial')) return;
 
     setQuotations(prev => prev.map(q => {
       if (q.rowId === quote.rowId) {
@@ -436,6 +500,8 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   };
 
   const deleteQuotation = (quoteId: string) => {
+    const quote = quotations.find(q => q.id === quoteId);
+    if (!quote || !rowAcceptsEdits(quote.rowId, 'commercial')) return;
     setQuotations(prev => prev.filter(q => q.id !== quoteId));
   };
 
@@ -443,18 +509,8 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     return quotations.filter(q => q.rowId === rowId);
   };
 
-  // Multi-level Approvals & Digital Signature (ویژگی ۴)
-  const getRowApprovals = (rowId: number): ApprovalRecord[] => {
-    const list = approvals.filter(a => a.rowId === rowId);
-    if (list.length > 0) return list;
-    const row = rows.find(r => r.id === rowId);
-    if (row) {
-      const generated = createDefaultApprovals(rowId, row.priority, row.total_estimated_amount || 0);
-      setApprovals(prev => [...prev, ...generated]);
-      return generated;
-    }
-    return [];
-  };
+  // Multi-level Approvals (ویژگی ۴)
+  const getRowApprovals = (rowId: number): ApprovalRecord[] => approvals.filter(a => a.rowId === rowId);
 
   const canUserApprove = (approval: ApprovalRecord): boolean => {
     if (!currentUser) return false;
@@ -467,10 +523,19 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     if (!approval) return { success: false, message: 'مرحله تایید یافت نشد.' };
 
     if (!canUserApproveStep(currentUser, approval)) {
-      return { success: false, message: 'شما دسترسی مجاز برای امضا و تایید این مرحله را ندارید.' };
+      return { success: false, message: 'شما دسترسی مجاز برای تأیید این مرحله را ندارید.' };
+    }
+    const targetRow = rows.find(r => r.id === approval.rowId);
+    if (!targetRow || targetRow.deleted_at || !targetRow.published_at) {
+      return { success: false, message: 'این درخواست در دسترس نیست.' };
+    }
+    if (targetRow.cancelled_at || targetRow.returned_at) {
+      return { success: false, message: 'درخواست لغو یا عودت داده شده است؛ امکان تأیید وجود ندارد.' };
+    }
+    if (approval.status !== 'pending') {
+      return { success: false, message: 'این مرحله قبلاً بررسی شده است.' };
     }
 
-    const signature = generateDigitalSignature(approval.rowId, currentUser.username, approval.roleKey);
     const now = nowJalaliDateTime();
 
     setApprovals(prev => prev.map(a => {
@@ -481,7 +546,6 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
           approvedByUsername: currentUser.username,
           approvedByDisplay: currentUser.displayName,
           approvedAt: now,
-          digitalSignatureHash: signature,
           comment: comment || a.comment,
         };
       }
@@ -491,6 +555,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     // Update row status
     const rowApprovals = approvals.map(a => a.id === approvalId ? { ...a, status: 'approved' as const } : a).filter(a => a.rowId === approval.rowId);
     const allApproved = rowApprovals.every(a => a.status === 'approved');
+    appendAudit([{ row_id: approval.rowId, section_key: 'approvals', field_key: `approval_${approval.roleKey}`, field_label: approval.title, old_value: 'در انتظار', new_value: `تأیید شد${comment ? ' - ' + comment : ''}` }], now);
     setRows(prev => prev.map(r => {
       if (r.id === approval.rowId) {
         return {
@@ -508,7 +573,9 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   const rejectStep = (approvalId: string, reason: string) => {
     if (!currentUser) return;
     const approval = approvals.find(a => a.id === approvalId);
-    if (!approval) return;
+    if (!approval || approval.status !== 'pending' || !canUserApproveStep(currentUser, approval)) return;
+    const targetRow = rows.find(r => r.id === approval.rowId);
+    if (!targetRow || targetRow.deleted_at || targetRow.cancelled_at || targetRow.returned_at) return;
     const now = nowJalaliDateTime();
 
     setApprovals(prev => prev.map(a => {
@@ -525,6 +592,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
       return a;
     }));
 
+    appendAudit([{ row_id: approval.rowId, section_key: 'approvals', field_key: `approval_${approval.roleKey}`, field_label: approval.title, old_value: 'در انتظار', new_value: `رد شد - دلیل: ${reason}` }], now);
     setRows(prev => prev.map(r => r.id === approval.rowId ? { ...r, approvals_status: 'rejected' } : r));
   };
 
@@ -541,6 +609,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     }
 
     if (check.nextStage) {
+      appendAudit([{ row_id: rowId, section_key: 'workflow', field_key: 'workflow_stage', field_label: 'مرحله‌ی گردش‌کار', old_value: inferStageFromRow(row), new_value: check.nextStage }], nowJalaliDateTime());
       setRows(prev => prev.map(r => r.id === rowId ? { ...r, workflow_stage: check.nextStage } : r));
       return { success: true };
     }
@@ -548,6 +617,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   };
 
   const setWorkflowStage = (rowId: number, stage: WorkflowStageId) => {
+    if (!isAdmin) return;
     setRows(prev => prev.map(r => r.id === rowId ? { ...r, workflow_stage: stage } : r));
   };
 
@@ -565,34 +635,74 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     return rows.filter(r => !r.deleted_at && normalizeForDuplicateCheck(r.request_no) === normalized);
   };
 
+  const findDuplicatePurchaseRequestNo = (purchaseRequestNo: string, excludeRowId?: number): DbRow[] => {
+    const normalized = normalizeForDuplicateCheck(purchaseRequestNo);
+    if (!normalized) return [];
+    return rows.filter(
+      r => !r.deleted_at && r.id !== excludeRowId && normalizeForDuplicateCheck(r.purchase_request_no) === normalized
+    );
+  };
+
   const getDraftRows = (): DbRow[] => {
     if (!currentUser) return [];
     return rows.filter(r => r.created_by_username === currentUser.username && !r.published_at && !r.deleted_at);
   };
 
+  // ---------- Audit ----------
+  // تغییرات ادمین محلی (break-glass) عمداً هیچ‌وقت در تاریخچه ثبت نمی‌شود (مثل سرویس اصلی)
+  type AuditDraft = Omit<AuditLogEntry, 'id' | 'changed_by_username' | 'changed_by_display' | 'changed_at'>;
+  const appendAudit = (drafts: AuditDraft[], changedAt: string) => {
+    if (!currentUser || currentUser.isLocalAdmin || drafts.length === 0) return;
+    const who = currentUser;
+    setAuditLogs(prev => {
+      let id = prev.length > 0 ? Math.max(...prev.map(a => a.id)) + 1 : 1;
+      const entries: AuditLogEntry[] = drafts.map(d => ({
+        ...d,
+        id: id++,
+        changed_by_username: who.username,
+        changed_by_display: who.displayName,
+        changed_at: changedAt,
+      }));
+      return [...entries, ...prev];
+    });
+  };
+
+  const actorFields = () => ({
+    username: currentUser ? currentUser.username : '',
+    display: currentUser ? currentUser.displayName : '',
+  });
+
   // DB Operations
-  const createRow = (values: Partial<DbRow>, asDraft = false): { row: DbRow; isDuplicate: boolean } => {
+  // هر ردیفی که ساخته می‌شود ابتدا «پیش‌نویس» است (published_at خالی) و فقط با «ثبت نهایی»
+  // وارد فهرست مشترک می‌شود - مثل سرویس اصلی.
+  const createRow = (values: Partial<DbRow>): { row: DbRow | null; errors: string[]; isDuplicate: boolean } => {
+    if (!currentUser || !canCreateRows) {
+      return { row: null, errors: ['شما مجاز به ثبت درخواست جدید نیستید (فقط درخواست‌کننده).'], isDuplicate: false };
+    }
     const sec = findSection('tech_operator')!;
+    const { values: clean, errors } = validateFieldValues(sec.fields, values as Record<string, unknown>);
+    if (errors.length) return { row: null, errors, isDuplicate: false };
+
     const nextId = rows.length > 0 ? Math.max(...rows.map(r => r.id)) + 1 : 1;
     const createdAt = nowJalaliDateTime();
-    const publishedAt = asDraft ? '' : createdAt;
-
-    const duplicates = values.request_no ? findDuplicateRequestNo(values.request_no) : [];
+    const duplicates = findDuplicateRequestNo(clean.request_no);
+    const { username, display } = actorFields();
 
     const newRow: DbRow = {
       id: nextId,
-      created_by_username: currentUser ? currentUser.username : 'admin',
-      created_by_display: currentUser ? currentUser.displayName : 'کاربر سیستم',
+      created_by_username: username,
+      created_by_display: display,
       created_at: createdAt,
-      request_no: values.request_no || '',
-      item_description: values.item_description || '',
-      priority: values.priority || 'A',
-      total_qty: values.total_qty || '',
-      unit: values.unit || '',
-      usage_location: values.usage_location || '',
-      delivery_to_warehouse_date: values.delivery_to_warehouse_date || '',
-      item_type: values.item_type || 'استاندارد',
-      requester_dept: resolveRequesterDept(currentUser) || 'دفتر فنی',
+      request_no: clean.request_no,
+      item_description: clean.item_description,
+      priority: clean.priority as DbRow['priority'],
+      total_qty: clean.total_qty,
+      unit: clean.unit,
+      usage_location: clean.usage_location,
+      delivery_to_warehouse_date: clean.delivery_to_warehouse_date,
+      item_type: clean.item_type as DbRow['item_type'],
+      // دپارتمان همیشه از عضویت گروهی کاربر تشخیص داده می‌شود؛ هرگز از ورودی فرم
+      requester_dept: resolveRequesterDept(currentUser) as DbRow['requester_dept'],
       purchase_request_no: '',
       delivered_to_tech_expert_date: '',
       delivered_to_employer_date: '',
@@ -613,283 +723,182 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
       returned_by_username: '',
       returned_by_display: '',
       return_reason: '',
-      published_at: publishedAt,
+      published_at: '',
       workflow_stage: 'tech_request',
-      approvals_status: 'pending',
     };
 
     setRows(prev => [newRow, ...prev]);
 
-    // Initialize default approvals pipeline
-    const initialApps = createDefaultApprovals(nextId, newRow.priority, 0);
-    setApprovals(prev => [...initialApps, ...prev]);
-
-    // Insert audit entries
-    const auditEntries: AuditLogEntry[] = [];
-    let logIdCounter = auditLogs.length > 0 ? Math.max(...auditLogs.map(a => a.id)) + 1 : 1;
-
-    for (const field of sec.fields) {
-      const val = newRow[field.name];
-      if (val) {
-        auditEntries.push({
-          id: logIdCounter++,
+    appendAudit(
+      sec.fields
+        .filter(f => newRow[f.name])
+        .map(f => ({
           row_id: nextId,
           section_key: 'tech_operator',
-          field_key: field.name,
-          field_label: field.label,
+          field_key: f.name,
+          field_label: f.label,
           old_value: '',
-          new_value: String(val),
-          changed_by_username: currentUser ? currentUser.username : 'admin',
-          changed_by_display: currentUser ? currentUser.displayName : 'کاربر سیستم',
-          changed_at: createdAt,
-        });
-      }
-    }
+          new_value: String(newRow[f.name]),
+        })),
+      createdAt
+    );
 
-    if (auditEntries.length > 0) {
-      setAuditLogs(prev => [...auditEntries, ...prev]);
-    }
-
-    return { row: newRow, isDuplicate: duplicates.length > 0 };
+    return { row: newRow, errors: [], isDuplicate: duplicates.length > 0 };
   };
 
-  const updateSection = (rowId: number, sectionKey: string, values: Record<string, string>) => {
+  const updateSection = (rowId: number, sectionKey: string, values: Record<string, string>): { ok: boolean; errors: string[]; values?: Record<string, string> } => {
     const sec = findSection(sectionKey);
-    if (!sec) return;
     const target = rows.find(r => r.id === rowId);
-    if (!target) return;
+    if (!sec || !target) return { ok: false, errors: ['ردیف یا بخش نامعتبر است.'] };
+    if (!canEditSectionForRow(target, sectionKey)) {
+      return { ok: false, errors: [`شما مجاز به ویرایش «${sec.title}» در این ردیف نیستید (یا ردیف قفل است).`] };
+    }
+
+    // اگر مجری خرید تهران/برنا باشد، تاریخ مجوز پرداخت اصلاً قابل ویرایش نیست
+    const waived = isPaymentAuthWaived({ ...target, purchase_executor: (values.purchase_executor ?? target.purchase_executor) as DbRow['purchase_executor'] });
+    const editable = sec.fields.filter(f => !f.readOnly && !(f.name === 'payment_auth_issued_date' && waived));
+    const { values: clean, errors } = validateFieldValues(editable, values);
+    if (errors.length) return { ok: false, errors };
 
     const changedAt = nowJalaliDateTime();
-    const auditEntries: AuditLogEntry[] = [];
-    let logIdCounter = auditLogs.length > 0 ? Math.max(...auditLogs.map(a => a.id)) + 1 : 1;
+    const drafts: AuditDraft[] = [];
+    const updatedRow = { ...target } as DbRow;
 
-    const updatedRow = { ...target };
-
-    for (const field of sec.fields) {
+    for (const field of editable) {
       const oldVal = (target[field.name] || '').toString();
-      const newVal = field.readOnly ? oldVal : (values[field.name] || '').trim();
-      
+      const newVal = clean[field.name];
       if (newVal !== oldVal) {
         (updatedRow as any)[field.name] = newVal;
-        auditEntries.push({
-          id: logIdCounter++,
+        drafts.push({
           row_id: rowId,
           section_key: sectionKey,
           field_key: field.name,
           field_label: field.label,
           old_value: oldVal,
           new_value: newVal,
-          changed_by_username: currentUser ? currentUser.username : 'admin',
-          changed_by_display: currentUser ? currentUser.displayName : 'مدیر سیستم',
-          changed_at: changedAt,
         });
       }
     }
 
-    setRows(prev => prev.map(r => r.id === rowId ? updatedRow : r));
-    if (auditEntries.length > 0) {
-      setAuditLogs(prev => [...auditEntries, ...prev]);
+    if (drafts.length > 0) {
+      setRows(prev => prev.map(r => r.id === rowId ? updatedRow : r));
+      appendAudit(drafts, changedAt);
     }
+    return { ok: true, errors: [], values: clean };
   };
 
   const finalizeDrafts = (rowIds?: number[]) => {
+    if (!currentUser) return;
+    const targets = rows.filter(
+      r => r.created_by_username === currentUser.username && !r.published_at && !r.deleted_at && (!rowIds || rowIds.includes(r.id))
+    );
+    if (targets.length === 0) return;
     const publishedAt = nowJalaliDateTime();
-    let logIdCounter = auditLogs.length > 0 ? Math.max(...auditLogs.map(a => a.id)) + 1 : 1;
-    const newLogs: AuditLogEntry[] = [];
-
-    setRows(prev => prev.map(r => {
-      const match = currentUser && r.created_by_username === currentUser.username && !r.published_at && (!rowIds || rowIds.includes(r.id));
-      if (match) {
-        newLogs.push({
-          id: logIdCounter++,
-          row_id: r.id,
-          section_key: 'tech_operator',
-          field_key: 'published_at',
-          field_label: 'وضعیت ثبت',
-          old_value: 'پیش‌نویس',
-          new_value: 'ثبت نهایی شد',
-          changed_by_username: currentUser ? currentUser.username : 'admin',
-          changed_by_display: currentUser ? currentUser.displayName : 'کاربر سیستم',
-          changed_at: publishedAt,
-        });
-        return { ...r, published_at: publishedAt };
-      }
-      return r;
-    }));
-
-    if (newLogs.length > 0) {
-      setAuditLogs(prev => [...newLogs, ...prev]);
-    }
+    const ids = new Set(targets.map(r => r.id));
+    setRows(prev => prev.map(r => (ids.has(r.id) ? { ...r, published_at: publishedAt } : r)));
+    appendAudit(
+      targets.map(r => ({
+        row_id: r.id,
+        section_key: 'tech_operator',
+        field_key: 'published_at',
+        field_label: 'وضعیت ثبت',
+        old_value: 'پیش‌نویس',
+        new_value: 'ثبت نهایی شد',
+      })),
+      publishedAt
+    );
   };
 
-  const discardDraft = (rowId: number) => {
-    setRows(prev => prev.filter(r => !(r.id === rowId && !r.published_at)));
+  // حذف کامل (نه نرم) یک پیش‌نویس - فقط سازنده یا ادمین، و فقط تا وقتی ثبت نهایی نشده
+  const discardDraft = (rowId: number): boolean => {
+    if (!currentUser) return false;
+    const target = rows.find(r => r.id === rowId);
+    if (!target || target.published_at) return false;
+    if (target.created_by_username !== currentUser.username && !isAdmin) return false;
+    setRows(prev => prev.filter(r => r.id !== rowId));
     setAuditLogs(prev => prev.filter(a => a.row_id !== rowId));
+    setApprovals(prev => prev.filter(a => a.rowId !== rowId));
+    setQuotations(prev => prev.filter(q => q.rowId !== rowId));
+    return true;
   };
 
+  // حذف نرم فقط برای ادمین محلی (و بدون ثبت در تاریخچه)
   const softDeleteRow = (rowId: number) => {
+    if (!currentUser || !currentUser.isLocalAdmin) return;
     const deletedAt = nowJalaliDateTime();
-    setRows(prev => prev.map(r => {
-      if (r.id === rowId) {
-        return {
-          ...r,
-          deleted_at: deletedAt,
-          deleted_by_username: currentUser ? currentUser.username : 'admin',
-          deleted_by_display: currentUser ? currentUser.displayName : 'مدیر سیستم',
-        };
-      }
-      return r;
-    }));
+    const { username, display } = actorFields();
+    setRows(prev => prev.map(r =>
+      r.id === rowId ? { ...r, deleted_at: deletedAt, deleted_by_username: username, deleted_by_display: display } : r
+    ));
   };
 
   const restoreRow = (rowId: number) => {
-    setRows(prev => prev.map(r => {
-      if (r.id === rowId) {
-        return {
-          ...r,
-          deleted_at: '',
-          deleted_by_username: '',
-          deleted_by_display: '',
-        };
-      }
-      return r;
-    }));
+    if (!currentUser || !currentUser.isLocalAdmin) return;
+    setRows(prev => prev.map(r =>
+      r.id === rowId ? { ...r, deleted_at: '', deleted_by_username: '', deleted_by_display: '' } : r
+    ));
   };
 
-  const cancelRow = (rowId: number, reason: string) => {
+  const statusLog = (rowId: number, sectionKey: string, fieldKey: string, oldValue: string, newValue: string): AuditDraft => ({
+    row_id: rowId,
+    section_key: sectionKey,
+    field_key: fieldKey,
+    field_label: 'وضعیت درخواست',
+    old_value: oldValue,
+    new_value: newValue,
+  });
+
+  // لغو: دلیل الزامی؛ با «عودت» ناسازگار است (تا وقتی یکی فعال است دیگری ممکن نیست)
+  const cancelRow = (rowId: number, reason: string): boolean => {
+    const target = rows.find(r => r.id === rowId);
+    const cleanReason = reason.trim();
+    if (!target || !currentUser || !cleanReason) return false;
+    if (!canCancelRow(target) || target.cancelled_at || target.returned_at) return false;
     const cancelledAt = nowJalaliDateTime();
-    const logId = auditLogs.length > 0 ? Math.max(...auditLogs.map(a => a.id)) + 1 : 1;
-
-    setRows(prev => prev.map(r => {
-      if (r.id === rowId) {
-        return {
-          ...r,
-          cancelled_at: cancelledAt,
-          cancelled_by_username: currentUser ? currentUser.username : 'admin',
-          cancelled_by_display: currentUser ? currentUser.displayName : 'مدیر سیستم',
-          cancel_reason: reason,
-        };
-      }
-      return r;
-    }));
-
-    setAuditLogs(prev => [
-      {
-        id: logId,
-        row_id: rowId,
-        section_key: 'tech_operator',
-        field_key: 'cancel_reason',
-        field_label: 'وضعیت درخواست',
-        old_value: 'فعال',
-        new_value: `لغو شد - دلیل: ${reason}`,
-        changed_by_username: currentUser ? currentUser.username : 'admin',
-        changed_by_display: currentUser ? currentUser.displayName : 'مدیر سیستم',
-        changed_at: cancelledAt,
-      },
-      ...prev,
-    ]);
+    const { username, display } = actorFields();
+    setRows(prev => prev.map(r => r.id === rowId ? {
+      ...r, cancelled_at: cancelledAt, cancelled_by_username: username, cancelled_by_display: display, cancel_reason: cleanReason,
+    } : r));
+    appendAudit([statusLog(rowId, 'tech_operator', 'cancel_reason', 'فعال', `لغو شد - دلیل: ${cleanReason}`)], cancelledAt);
+    return true;
   };
 
-  const uncancelRow = (rowId: number) => {
+  const uncancelRow = (rowId: number): boolean => {
+    const target = rows.find(r => r.id === rowId);
+    if (!target || !currentUser || !canCancelRow(target) || !target.cancelled_at) return false;
     const changedAt = nowJalaliDateTime();
-    const logId = auditLogs.length > 0 ? Math.max(...auditLogs.map(a => a.id)) + 1 : 1;
-
-    setRows(prev => prev.map(r => {
-      if (r.id === rowId) {
-        return {
-          ...r,
-          cancelled_at: '',
-          cancelled_by_username: '',
-          cancelled_by_display: '',
-          cancel_reason: '',
-        };
-      }
-      return r;
-    }));
-
-    setAuditLogs(prev => [
-      {
-        id: logId,
-        row_id: rowId,
-        section_key: 'tech_operator',
-        field_key: 'cancel_reason',
-        field_label: 'وضعیت درخواست',
-        old_value: 'لغو شد',
-        new_value: 'بازگردانده شد (فعال)',
-        changed_by_username: currentUser ? currentUser.username : 'admin',
-        changed_by_display: currentUser ? currentUser.displayName : 'مدیر سیستم',
-        changed_at: changedAt,
-      },
-      ...prev,
-    ]);
+    setRows(prev => prev.map(r => r.id === rowId ? {
+      ...r, cancelled_at: '', cancelled_by_username: '', cancelled_by_display: '', cancel_reason: '',
+    } : r));
+    appendAudit([statusLog(rowId, 'tech_operator', 'cancel_reason', 'لغو شد', 'بازگردانده شد (فعال)')], changedAt);
+    return true;
   };
 
-  const returnToTechOffice = (rowId: number, reason: string) => {
+  // عودت: فقط انبار کارفرما/ادمین؛ دلیل اختیاری
+  const returnToTechOffice = (rowId: number, reason: string): boolean => {
+    const target = rows.find(r => r.id === rowId);
+    if (!target || !currentUser || !canReturnToTechOffice || target.deleted_at) return false;
+    if (target.cancelled_at || target.returned_at) return false;
+    const cleanReason = reason.trim();
     const returnedAt = nowJalaliDateTime();
-    const logId = auditLogs.length > 0 ? Math.max(...auditLogs.map(a => a.id)) + 1 : 1;
-
-    setRows(prev => prev.map(r => {
-      if (r.id === rowId) {
-        return {
-          ...r,
-          returned_at: returnedAt,
-          returned_by_username: currentUser ? currentUser.username : 'warehouse',
-          returned_by_display: currentUser ? currentUser.displayName : 'انبار کارفرما',
-          return_reason: reason,
-        };
-      }
-      return r;
-    }));
-
-    setAuditLogs(prev => [
-      {
-        id: logId,
-        row_id: rowId,
-        section_key: 'warehouse_1',
-        field_key: 'return_reason',
-        field_label: 'وضعیت درخواست',
-        old_value: 'فعال',
-        new_value: reason ? `عودت به درخواست‌کننده - دلیل: ${reason}` : 'عودت به درخواست‌کننده',
-        changed_by_username: currentUser ? currentUser.username : 'warehouse',
-        changed_by_display: currentUser ? currentUser.displayName : 'انبار کارفرما',
-        changed_at: returnedAt,
-      },
-      ...prev,
-    ]);
+    const { username, display } = actorFields();
+    setRows(prev => prev.map(r => r.id === rowId ? {
+      ...r, returned_at: returnedAt, returned_by_username: username, returned_by_display: display, return_reason: cleanReason,
+    } : r));
+    appendAudit([statusLog(rowId, 'warehouse_1', 'return_reason', 'فعال',
+      cleanReason ? `عودت به درخواست‌کننده - دلیل: ${cleanReason}` : 'عودت به درخواست‌کننده')], returnedAt);
+    return true;
   };
 
-  const unreturnFromTechOffice = (rowId: number) => {
+  const unreturnFromTechOffice = (rowId: number): boolean => {
+    const target = rows.find(r => r.id === rowId);
+    if (!target || !currentUser || !canReturnToTechOffice || !target.returned_at) return false;
     const changedAt = nowJalaliDateTime();
-    const logId = auditLogs.length > 0 ? Math.max(...auditLogs.map(a => a.id)) + 1 : 1;
-
-    setRows(prev => prev.map(r => {
-      if (r.id === rowId) {
-        return {
-          ...r,
-          returned_at: '',
-          returned_by_username: '',
-          returned_by_display: '',
-          return_reason: '',
-        };
-      }
-      return r;
-    }));
-
-    setAuditLogs(prev => [
-      {
-        id: logId,
-        row_id: rowId,
-        section_key: 'warehouse_1',
-        field_key: 'return_reason',
-        field_label: 'وضعیت درخواست',
-        old_value: 'عودت به درخواست‌کننده',
-        new_value: 'بازگردانده شد (فعال)',
-        changed_by_username: currentUser ? currentUser.username : 'warehouse',
-        changed_by_display: currentUser ? currentUser.displayName : 'انبار کارفرما',
-        changed_at: changedAt,
-      },
-      ...prev,
-    ]);
+    setRows(prev => prev.map(r => r.id === rowId ? {
+      ...r, returned_at: '', returned_by_username: '', returned_by_display: '', return_reason: '',
+    } : r));
+    appendAudit([statusLog(rowId, 'warehouse_1', 'return_reason', 'عودت به درخواست‌کننده', 'بازگردانده شد (فعال)')], changedAt);
+    return true;
   };
 
   const getFilteredRows = (): DbRow[] => {
@@ -1032,8 +1041,10 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
         setReturnModalRowId,
         setHistoryDrawerRowId,
         switchUser,
+        sessionExpiresAt,
         resetToPrinstineData,
         isAdmin,
+        isLocalAdmin,
         isManagement,
         canCreateRows,
         canEditSectionForRow,
@@ -1065,6 +1076,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
         getRow,
         getRowHistory,
         findDuplicateRequestNo,
+        findDuplicatePurchaseRequestNo,
         getDraftRows,
         getFilteredRows,
         getOverdueRows,

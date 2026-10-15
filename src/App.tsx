@@ -1,3 +1,4 @@
+import { DEMO_MODE, ENABLE_EXTENDED_WORKFLOW } from './config';
 import React, { useState } from 'react';
 import { ExactDatabaseProvider, useExactDb } from './context/ExactDatabaseContext';
 import { Header } from './components/Header';
@@ -30,9 +31,12 @@ const MainLayout: React.FC = () => {
     currentUser,
     activeTab, 
     setActiveTab, 
+    selectedRowId,
     setSelectedRowId, 
     setIsLdapModalOpen,
     canCreateRows,
+    isLocalAdmin,
+    isManagement,
     getDraftRows
   } = useExactDb();
 
@@ -50,21 +54,21 @@ const MainLayout: React.FC = () => {
       case 'dashboard':
         return <DashboardView />;
       case 'workflow_pipeline':
-        return <WorkflowPipelineView />;
+        return ENABLE_EXTENDED_WORKFLOW ? <WorkflowPipelineView /> : <DashboardView />;
       case 'vendors':
-        return <VendorsDirectoryView />;
+        return ENABLE_EXTENDED_WORKFLOW ? <VendorsDirectoryView /> : <DashboardView />;
       case 'new_request':
         return <NewRequestView />;
       case 'drafts':
         return <DraftsView />;
       case 'row_detail':
-        return <RowDetailView />;
+        return <RowDetailView key={selectedRowId ?? 'none'} />;
       case 'duration_report':
         return <DurationReportView />;
       case 'management_report':
-        return <ManagementReportView />;
+        return isManagement ? <ManagementReportView /> : <DashboardView />;
       case 'deleted_rows':
-        return <DeletedRowsView />;
+        return isLocalAdmin ? <DeletedRowsView /> : <DashboardView />;
       case 'audit_logs':
         return <AuditLogsView />;
       default:
@@ -151,6 +155,7 @@ const MainLayout: React.FC = () => {
           <span>زمان‌بندی</span>
         </button>
 
+        {DEMO_MODE && (
         <button
           onClick={() => setIsLdapModalOpen(true)}
           className="flex flex-col items-center gap-1 p-1 text-[11px] font-medium text-slate-400"
@@ -158,6 +163,7 @@ const MainLayout: React.FC = () => {
           <User className="w-5 h-5" />
           <span>کاربر</span>
         </button>
+        )}
       </nav>
 
       {/* Modals & Drawers */}

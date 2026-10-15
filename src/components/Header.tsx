@@ -1,3 +1,4 @@
+import { DEMO_MODE } from '../config';
 import React from 'react';
 import { useExactDb } from '../context/ExactDatabaseContext';
 import { 
@@ -147,9 +148,9 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
             {/* LDAP / Local User Badge */}
             {currentUser && (
               <button
-                onClick={() => setIsLdapModalOpen(true)}
+                onClick={() => DEMO_MODE && setIsLdapModalOpen(true)}
                 className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-slate-800 hover:border-slate-700 bg-slate-900/90 hover:bg-slate-800 transition-colors text-right"
-                title="تغییر کاربر یا مشاهده مشخصات نشست"
+                title={DEMO_MODE ? 'تغییر کاربر یا مشاهده مشخصات نشست' : currentUser.username}
               >
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
                   currentUser.isLocalAdmin 

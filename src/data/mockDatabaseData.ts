@@ -1,77 +1,78 @@
+import { GROUPS } from '../config';
 import { DbRow, AuditLogEntry, UserSession, Vendor, Quotation, ApprovalRecord } from '../types';
 
 export const SAMPLE_USERS: UserSession[] = [
   {
     username: 'admin',
     displayName: 'مدیر ارشد محلی (Local Administrator)',
-    groups: ['formadmin', 'PRT-Management'],
+    groups: [GROUPS.admin, GROUPS.management],
     isLocalAdmin: true,
     authType: 'local',
   },
   {
     username: 'soleimani',
     displayName: 'مهندس محمدرضا سلیمانی (مدیر سیستم دامین)',
-    groups: ['formadmin', 'PRT-Management'],
+    groups: [GROUPS.admin, GROUPS.management],
     authType: 'ldap',
   },
   {
     username: 'tech_expert1',
     displayName: 'مهندس احسان نادری (دفتر فنی)',
-    groups: ['tech_operator'],
+    groups: [GROUPS.techOperator],
     authType: 'ldap',
   },
   {
     username: 'civil_expert',
     displayName: 'مهندس وحید کاظمی (عمران)',
-    groups: ['PRT-Civil'],
+    groups: [GROUPS.civil],
     authType: 'ldap',
   },
   {
     username: 'it_expert',
     displayName: 'مهندس بهزاد کمالی (آی‌تی)',
-    groups: ['PRT-IT'],
+    groups: [GROUPS.it],
     authType: 'ldap',
   },
   {
     username: 'warehouse_mgr',
     displayName: 'قاسم صادقی (انبار کارفرما)',
-    groups: ['warehouse'],
+    groups: [GROUPS.warehouse],
     authType: 'ldap',
   },
   {
     username: 'commercial_officer',
     displayName: 'نرگس علیزاده (بازرگانی غدیر)',
-    groups: ['commercial'],
+    groups: [GROUPS.commercial],
     authType: 'ldap',
   },
   {
     username: 'management_user',
     displayName: 'دکتر فرشید حسینی (مدیر ارشد)',
-    groups: ['PRT-Management'],
+    groups: [GROUPS.management],
     authType: 'ldap',
   },
   {
     username: 'tech_lead',
     displayName: 'مهندس مسعود کریمی (سرپرست دفتر فنی)',
-    groups: ['tech_lead', 'tech_operator'],
+    groups: [GROUPS.techLead, GROUPS.techOperator],
     authType: 'ldap',
   },
   {
     username: 'finance_mgr',
     displayName: 'مهندس سینا ابراهیمی (مدیر مالی و بودجه)',
-    groups: ['finance', 'PRT-Management'],
+    groups: [GROUPS.finance, GROUPS.management],
     authType: 'ldap',
   },
   {
     username: 'ceo_exec',
     displayName: 'دکتر علیرضا بهرامی (مدیرعامل و مجری طرح)',
-    groups: ['executive', 'PRT-Management'],
+    groups: [GROUPS.executive, GROUPS.management],
     authType: 'ldap',
   },
   {
     username: 'viewer_user',
     displayName: 'ناظر پروژه‌ها (فقط مشاهده)',
-    groups: ['PRT-Viewer'],
+    groups: [GROUPS.viewer],
     authType: 'ldap',
   },
 ];
@@ -570,7 +571,6 @@ export const INITIAL_APPROVALS: ApprovalRecord[] = [
     approvedByUsername: 'tech_lead',
     approvedByDisplay: 'مهندس مسعود کریمی',
     approvedAt: '1403/08/11 11:00:00',
-    digitalSignatureHash: 'DSIG-SHA256-8A3F9B2C10D4',
     comment: 'مشخصات فنی و توان هیدرولیکی پمپ‌ها با نقشه پیوست مطابقت کامل دارد.',
   },
   {
@@ -584,7 +584,6 @@ export const INITIAL_APPROVALS: ApprovalRecord[] = [
     approvedByUsername: 'soleimani',
     approvedByDisplay: 'مهندس محمدرضا سلیمانی',
     approvedAt: '1403/08/21 16:30:00',
-    digitalSignatureHash: 'DSIG-SHA256-4E2A719D33F0',
     comment: 'استعلام سه‌گانه اخذ شد؛ پمپیران با کمترین قیمت و بالاترین گارانتی انتخاب شد.',
   },
   {
@@ -598,7 +597,6 @@ export const INITIAL_APPROVALS: ApprovalRecord[] = [
     approvedByUsername: 'finance_mgr',
     approvedByDisplay: 'مهندس سینا ابراهیمی',
     approvedAt: '1403/08/24 09:45:00',
-    digitalSignatureHash: 'DSIG-SHA256-7B114AC890E1',
     comment: 'تأمین اعتبار در ردیف بودجه ارتقای پمپ‌خانه فاز ۲ تایید می‌گردد.',
   },
   {
@@ -612,7 +610,6 @@ export const INITIAL_APPROVALS: ApprovalRecord[] = [
     approvedByUsername: 'ceo_exec',
     approvedByDisplay: 'دکتر علیرضا بهرامی',
     approvedAt: '1403/08/25 10:15:00',
-    digitalSignatureHash: 'DSIG-SHA256-12EF90D44A7C',
     comment: 'موافقت شد، مجوز پرداخت و عقد قرارداد خرید صادر گردد.',
   },
 
@@ -628,7 +625,6 @@ export const INITIAL_APPROVALS: ApprovalRecord[] = [
     approvedByUsername: 'tech_lead',
     approvedByDisplay: 'مهندس مسعود کریمی',
     approvedAt: '1403/08/16 10:00:00',
-    digitalSignatureHash: 'DSIG-SHA256-33D4F5A1108E',
     comment: 'سایز تیرآهن با محاسبات سازه سوله مطابقت دارد.',
   },
   {
@@ -642,7 +638,6 @@ export const INITIAL_APPROVALS: ApprovalRecord[] = [
     approvedByUsername: 'soleimani',
     approvedByDisplay: 'مهندس محمدرضا سلیمانی',
     approvedAt: '1403/08/24 14:00:00',
-    digitalSignatureHash: 'DSIG-SHA256-99A04B12D7E3',
     comment: 'تأمین‌کننده فولاد تجارت اصفهان تایید است.',
   },
   {

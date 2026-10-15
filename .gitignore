@@ -1,26 +1,26 @@
-# Dependencies (کتابخانه‌ها و ماژول‌ها)
+# Dependencies
 node_modules/
 /.pnp
 .pnp.js
 
-# Production & Build outputs (خروجی‌های بیلد)
+# Production & Build outputs
 dist/
 dist-ssr/
 build/
 coverage/
 
-# Vite & TypeScript cache (فایل‌های کش بیلد و کامپایلر)
+# Vite & TypeScript cache
 .vite/
 *.tsbuildinfo
 
-# Environment variables & secrets (فایل‌های حساس و متغیرهای محیطی)
+# Environment variables & secrets
 .env
 .env.local
 .env.*.local
 *.env
 !.env.example
 
-# Logs (فایل‌های لاگ خطای پکیج‌منیجرها)
+# Logs
 logs/
 *.log
 npm-debug.log*
@@ -29,7 +29,7 @@ yarn-error.log*
 pnpm-debug.log*
 bun.log*
 
-# Editor & IDE directories (تنظیمات ادیتورها)
+# Editor & IDE directories
 .idea/
 .vscode/*
 !.vscode/settings.json
@@ -43,7 +43,7 @@ bun.log*
 *.swp
 *.swo
 
-# Operating System files (فایل‌های مخفی سیستم‌عامل مک و ویندوز)
+# Operating System files
 .DS_Store
 .DS_Store?
 ._*
@@ -52,7 +52,7 @@ ehthumbs.db
 ehthumbs_vista.db
 Desktop.ini
 
-# Temporary & Archive files (فایل‌های فشرده موقت)
+# Temporary & Archive files
 *.zip
 *.tar.gz
 *.rar

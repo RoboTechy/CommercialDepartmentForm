@@ -17,6 +17,7 @@ import {
   Building2
 } from 'lucide-react';
 import { requesterDepartments } from '../data/exactSections';
+import { GROUPS, DEMO_MODE, ENABLE_EXTENDED_WORKFLOW } from '../config';
 
 export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const { 
@@ -30,6 +31,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     canCreateRows, 
     isAdmin,
     isManagement,
+    isLocalAdmin,
     setIsLdapModalOpen,
     resetToPrinstineData,
     logout
@@ -83,6 +85,8 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             </span>
           </button>
 
+          {ENABLE_EXTENDED_WORKFLOW && (
+            <>
           {/* Workflow Pipeline (گردش کار چند مرحله‌ای) */}
           <button
             onClick={() => handleNav('workflow_pipeline')}
@@ -118,6 +122,9 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
               {vendors.length}
             </span>
           </button>
+
+            </>
+          )}
 
           {canCreateRows && (
             <button
@@ -198,6 +205,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             </div>
           </button>
 
+          {isLocalAdmin && (
           <button
             onClick={() => handleNav('deleted_rows')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
@@ -216,6 +224,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
               </span>
             )}
           </button>
+          )}
 
           {/* Section Access Card */}
           {currentUser && (
@@ -237,9 +246,9 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                     <span className="text-blue-400 font-semibold">مدیر ارشد: ویرایش تمامی بخش‌ها مجاز است.</span>
                   ) : userDept ? (
                     <span>دپارتمان درخواست‌کننده: <b>{userDept.label}</b> (ثبت و ویرایش درخواست‌های خود)</span>
-                  ) : currentUser.groups.includes('warehouse') ? (
+                  ) : currentUser.groups.includes(GROUPS.warehouse) ? (
                     <span>انبار کارفرما: تکمیل فیلدهای بلوک ۱ و ۲ + عودت درخواست</span>
-                  ) : currentUser.groups.includes('commercial') ? (
+                  ) : currentUser.groups.includes(GROUPS.commercial) ? (
                     <span>بازرگانی غدیر: ثبت ارجاع، مجری خرید و مجوز پرداخت</span>
                   ) : (
                     <span>فقط مشاهده اطلاعات</span>
@@ -247,6 +256,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                 </div>
 
                 <div className="flex items-center gap-1.5 pt-1">
+                  {DEMO_MODE && (
                   <button
                     onClick={() => setIsLdapModalOpen(true)}
                     className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg text-[11px] font-medium transition-colors"
@@ -254,6 +264,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                     <KeyRound className="w-3 h-3 text-slate-400" />
                     <span>تغییر کاربر</span>
                   </button>
+                  )}
 
                   <button
                     onClick={() => {
@@ -273,7 +284,8 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
 
         </div>
 
-        {/* Footer */}
+        {/* Footer (فقط در حالت دمو) */}
+        {DEMO_MODE && (
         <div className="p-3 border-t border-slate-800 bg-slate-950/60 space-y-2">
           <button
             onClick={() => {
@@ -287,6 +299,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             <span>بازیابی دیتابیس به حالت اولیه</span>
           </button>
         </div>
+        )}
       </aside>
     </>
   );
