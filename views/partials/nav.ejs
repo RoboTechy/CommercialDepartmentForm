@@ -1,5 +1,28 @@
+<%
+  var _p = (typeof currentPath !== 'undefined' && currentPath) ? currentPath : '';
+  var _items = [];
+  if (typeof nav !== 'undefined' && nav) {
+    _items.push({ href: '/', icon: '🏠', label: 'فهرست درخواست‌ها', active: _p === '/' });
+    if (nav.canCreateRows) {
+      _items.push({ href: '/rows/new', icon: '➕', label: 'ثبت درخواست کالای جدید', active: _p === '/rows/new' });
+      _items.push({ href: '/rows/import', icon: '📥', label: 'ایمپورت از اکسل', active: _p.indexOf('/rows/import') === 0 });
+    }
+    _items.push({ href: '/stats', icon: '📊', label: 'آمار', active: _p === '/stats' });
+    _items.push({ href: '/reports/duration', icon: '⏱', label: 'ابزار گزارش‌ساز زمان‌بندی', active: _p.indexOf('/reports/duration') === 0 });
+    if (nav.isManagement) {
+      _items.push({ href: '/reports/management', icon: '📈', label: 'گزارش‌های مدیریتی', active: _p === '/reports/management' });
+    }
+    _items.push({ href: '/logs', icon: '🧾', label: 'تاریخچه‌ی کامل تغییرات', active: _p === '/logs' });
+    if (nav.isLocalAdmin) {
+      _items.push({ href: '/rows/deleted', icon: '🗑', label: 'ردیف‌های حذف‌شده', active: _p === '/rows/deleted' });
+    }
+  }
+%>
 <header class="topbar no-print">
   <div class="brand">
+    <% if (_items.length) { %>
+      <button type="button" class="sidebar-toggle" aria-label="منو" onclick="document.body.classList.toggle('sidebar-open')">☰</button>
+    <% } %>
     <a href="/" class="brand-link">
       <img src="/LOGO.jpg" alt="لوگوی شرکت آهن و فولاد غدیر ایرانیان" class="nav-logo" />
       <span class="brand-name">PRT</span>
@@ -7,11 +30,21 @@
   </div>
   <% if (typeof user !== 'undefined' && user) { %>
   <div class="user-box">
-    <a href="/" class="nav-link">🏠 خانه</a>
-    <span>خوش آمدید، <strong><%= user.displayName %></strong></span>
+    <span class="user-chip"><span class="user-avatar"><%= String(user.displayName || user.username || '?').charAt(0) %></span><strong><%= user.displayName %></strong></span>
     <form method="post" action="/logout" style="display:inline">
       <button type="submit" class="link-btn">خروج</button>
     </form>
   </div>
   <% } %>
 </header>
+<% if (_items.length) { %>
+<aside class="sidebar no-print" aria-label="منوی اصلی">
+  <div class="sidebar-title">بخش‌های سامانه</div>
+  <nav>
+    <% _items.forEach(function(it) { %>
+      <a href="<%= it.href %>" class="sidebar-link<%= it.active ? ' active' : '' %>"><span class="sidebar-icon"><%= it.icon %></span><span><%= it.label %></span></a>
+    <% }) %>
+  </nav>
+</aside>
+<div class="sidebar-backdrop no-print" onclick="document.body.classList.remove('sidebar-open')"></div>
+<% } %>

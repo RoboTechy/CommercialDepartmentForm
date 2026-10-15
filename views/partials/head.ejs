@@ -8,4 +8,9 @@
   <link rel="stylesheet" href="/style.css" />
   <script src="/app.js" defer></script>
 </head>
-<body<% if (typeof bodyClass !== 'undefined' && bodyClass) { %> class="<%= bodyClass %>"<% } %>>
+<%
+  var _bodyClasses = [];
+  if (typeof bodyClass !== 'undefined' && bodyClass) _bodyClasses.push(bodyClass);
+  if (typeof nav !== 'undefined' && nav && typeof user !== 'undefined' && user) _bodyClasses.push('has-sidebar');
+%>
+<body<% if (_bodyClasses.length) { %> class="<%= _bodyClasses.join(' ') %>"<% } %>>

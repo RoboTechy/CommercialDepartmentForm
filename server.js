@@ -10,6 +10,7 @@ const authRoutes = require('./src/routes/auth');
 const rowRoutes = require('./src/routes/rows');
 const apiRoutes = require('./src/routes/api');
 const reportApiRoutes = require('./src/routes/reportApi');
+const { isAdmin, isLocalAdmin, isManagement, canCreateRows } = require('./src/middleware');
 
 const app = express();
 
@@ -29,6 +30,22 @@ app.use(
   })
 );
 app.use(flash());
+
+// اطلاعات لازم برای سایدبار (منوی کناری) در همه‌ی قالب‌ها - فقط نمایشی است؛
+// کنترل دسترسی واقعی همچنان سمت سرور روی هر مسیر انجام می‌شود
+app.use((req, res, next) => {
+  const u = req.session && req.session.user;
+  res.locals.currentPath = req.path;
+  res.locals.nav = u
+    ? {
+        canCreateRows: canCreateRows(u),
+        isAdmin: isAdmin(u),
+        isLocalAdmin: isLocalAdmin(u),
+        isManagement: isManagement(u),
+      }
+    : null;
+  next();
+});
 
 app.use('/', authRoutes);
 // API گزارش‌گیری برای برنامه‌های دیگر (HTTP Basic Auth مخصوص به خودش،
