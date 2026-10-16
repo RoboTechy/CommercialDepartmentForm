@@ -107,7 +107,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({ row }) => {
               value={currentStageId}
               onChange={(e) => setWorkflowStage(row.id, e.target.value as WorkflowStageId)}
               className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-blue-500"
-              title="تغییر مستقیم گام توسط مدیر سیستم"
+              title="تغییر مستقیم گام توسط مدیر سیستم (اطلاعات ثبت‌شده، حداقل مرحله را تعیین می‌کند و عقب‌تر از آن نمی‌رود)"
             >
               {WORKFLOW_STAGES.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -137,7 +137,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({ row }) => {
       {!advanceCheck.allowed && advanceCheck.reason && currentStageIndex < WORKFLOW_STAGES.length - 1 && (
         <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-300 flex items-center gap-2">
           <Info className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>پیش‌نیاز گام بعدی: {advanceCheck.reason}</span>
+          <span>ارتقا ممکن نیست: {advanceCheck.reason}</span>
         </div>
       )}
 

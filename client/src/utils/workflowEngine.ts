@@ -6,7 +6,7 @@ import {
   ApprovalRecord, 
   ApprovalRoleKey 
 } from '../types';
-import { sections } from '../data/exactSections';
+import { sections, findField } from '../data/exactSections';
 import { GROUPS } from '../config';
 
 export interface StageDefinition {
@@ -102,24 +102,38 @@ export function getStageInfo(stageId?: WorkflowStageId): StageDefinition {
   return found || WORKFLOW_STAGES[0];
 }
 
-export function inferStageFromRow(row: DbRow): WorkflowStageId {
-  if (row.workflow_stage) {
-    return row.workflow_stage;
-  }
-  if (row.letter_no && row.dispatch_date) {
-    return 'completed';
-  }
-  if (row.payment_auth_issued_date || row.purchase_executor) {
-    return 'financial_approval';
-  }
-  if (row.referred_to_commercial_date) {
-    return 'commercial_rfq';
-  }
-  if (row.purchase_request_no || row.delivered_to_tech_expert_date) {
-    return 'warehouse_review';
-  }
-  return 'tech_request';
+// معادل src/workflow.js سمت سرور (مرجع نهایی سرور است؛ این‌جا فقط برای نمایش)
+const EXTERNAL_EXECUTORS = ['تهران', 'برنا'];
+const STAGE_ORDER: WorkflowStageId[] = ['tech_request', 'warehouse_review', 'commercial_rfq', 'financial_approval', 'final_dispatch', 'completed'];
+
+// مرحله‌ای که خودِ اطلاعات ثبت‌شده ایجاب می‌کند (بدون ارتقای دستی). مجری خرید «تهران/برنا» یعنی
+// کار بازرگانی تمام است و درخواست مستقیم به انبار (ترخیص/ارسال) می‌رود.
+export function autoStageFromRow(row: DbRow): WorkflowStageId {
+  if (row.letter_no && row.dispatch_date) return 'completed';
+  const ex = row.purchase_executor;
+  if (ex && EXTERNAL_EXECUTORS.includes(ex)) return 'final_dispatch';
+  if (ex === 'سایت') return row.payment_auth_issued_date ? 'final_dispatch' : 'financial_approval';
+  if (row.referred_to_commercial_date) return 'commercial_rfq';
+  // ثبت نهایی = ارسال به انبار؛ پیش‌نویس هنوز نزد درخواست‌کننده است
+  return row.published_at ? 'warehouse_review' : 'tech_request';
 }
+
+// مرحله‌ی واقعی = دیرتر از (ذخیره‌شده) و (ناشی از اطلاعات)
+export function inferStageFromRow(row: DbRow): WorkflowStageId {
+  // عودت‌شده: برگشته نزد درخواست‌کننده تا نقص را برطرف کند
+  if (row.returned_at) return 'tech_request';
+  const stored: WorkflowStageId = row.workflow_stage && STAGE_ORDER.includes(row.workflow_stage as WorkflowStageId) ? (row.workflow_stage as WorkflowStageId) : 'tech_request';
+  const auto = autoStageFromRow(row);
+  return STAGE_ORDER.indexOf(stored) >= STAGE_ORDER.indexOf(auto) ? stored : auto;
+}
+
+const REQUIRED_TO_ADVANCE: Partial<Record<WorkflowStageId, (keyof DbRow)[]>> = {
+  tech_request: ['request_no', 'item_description', 'priority', 'total_qty', 'unit', 'usage_location', 'delivery_to_warehouse_date', 'item_type'],
+  warehouse_review: ['purchase_request_no', 'delivered_to_tech_expert_date', 'delivered_to_employer_date'],
+  commercial_rfq: ['referred_to_commercial_date', 'purchase_executor'],
+  financial_approval: ['payment_auth_issued_date'],
+  final_dispatch: ['letter_no', 'dispatch_date'],
+};
 
 export function createDefaultApprovals(rowId: number, priority: PriorityLevel, estimatedAmount: number = 0): ApprovalRecord[] {
   const list: ApprovalRecord[] = [
@@ -188,62 +202,36 @@ export function canUserApproveStep(user: UserSession, approval: ApprovalRecord):
 }
 
 export function canAdvanceWorkflow(
-  row: DbRow, 
+  row: DbRow,
   user: UserSession,
   approvals: ApprovalRecord[]
 ): { allowed: boolean; reason?: string; nextStage?: WorkflowStageId } {
-  const currentStage = inferStageFromRow(row);
-  const currentIndex = WORKFLOW_STAGES.findIndex((s) => s.id === currentStage);
+  if (row.cancelled_at) return { allowed: false, reason: 'درخواست لغو شده است و گردش‌کار متوقف می‌باشد.' };
+  if (row.returned_at) return { allowed: false, reason: 'درخواست به درخواست‌کننده عودت داده شده است. ابتدا باید نقص برطرف گردد.' };
 
-  if (row.cancelled_at) {
-    return { allowed: false, reason: 'درخواست لغو شده است و گردش‌کار متوقف می‌باشد.' };
-  }
-  if (row.returned_at) {
-    return { allowed: false, reason: 'درخواست به دفتر فنی عودت داده شده است. ابتدا باید نقص برطرف گردد.' };
-  }
-  if (currentIndex >= WORKFLOW_STAGES.length - 1) {
-    return { allowed: false, reason: 'فرآیند به مرحله نهایی (تکمیل‌شده) رسیده است.' };
-  }
+  const current = inferStageFromRow(row);
+  const idx = STAGE_ORDER.indexOf(current);
+  if (idx >= STAGE_ORDER.length - 1) return { allowed: false, reason: 'فرآیند به مرحله نهایی (تکمیل‌شده) رسیده است.' };
 
-  const nextStage = WORKFLOW_STAGES[currentIndex + 1].id;
-
-  const stageDef = WORKFLOW_STAGES[currentIndex];
-  if (!user.isLocalAdmin && !stageDef.allowedGroups.some((g) => user.groups.includes(g))) {
-    return { allowed: false, reason: 'شما مجاز به ارتقای این مرحله از گردش‌کار نیستید.' };
+  const stageDef = WORKFLOW_STAGES[idx];
+  if (!user.isLocalAdmin && !user.groups.includes(GROUPS.admin) && !stageDef.allowedGroups.some((g) => user.groups.includes(g))) {
+    return { allowed: false, reason: 'این درخواست اکنون در مرحله‌ی دیگری است و ارتقای آن با مسئول همان مرحله است.' };
   }
 
-  // Validation rules per transition
-  if (currentStage === 'tech_request') {
-    if (!row.request_no || !row.item_description || !row.total_qty) {
-      return { allowed: false, reason: 'فیلدهای الزامی درخواست‌کننده تکمیل نشده‌اند.' };
-    }
+  const missing = (REQUIRED_TO_ADVANCE[current] || []).filter((f) => !((row[f] ?? '') as string).toString().trim());
+  if (missing.length) {
+    const labels = missing.map((f) => findField(f as string)?.field.label ?? String(f));
+    const hint = current === 'commercial_rfq' ? ' (با انتخاب مجری خرید، درخواست خودکار جابه‌جا می‌شود)' : '';
+    return { allowed: false, reason: `برای ارتقا این فیلدها باید پر شوند: ${labels.join('، ')}${hint}` };
   }
 
-  if (currentStage === 'warehouse_review') {
-    if (!row.purchase_request_no && !row.delivered_to_tech_expert_date) {
-      return { allowed: false, reason: 'ثبت حداقل یکی از فیلدهای شماره درخواست خرید یا تاریخ تحویل الزامی است.' };
-    }
+  if (current === 'financial_approval') {
+    const own = approvals.filter((a) => a.rowId === row.id);
+    if (own.some((a) => a.status === 'rejected')) return { allowed: false, reason: 'یکی از مراحل تأیید رد شده است. امکان ارتقا وجود ندارد.' };
+    if (own.some((a) => a.status === 'pending')) return { allowed: false, reason: 'تمامی مراحل تأیید چندمرحله‌ای هنوز تکمیل نشده است.' };
   }
 
-  if (currentStage === 'commercial_rfq') {
-    if (!row.referred_to_commercial_date) {
-      return { allowed: false, reason: 'تاریخ ارجاع به بازرگانی هنوز ثبت نشده است.' };
-    }
-  }
-
-  if (currentStage === 'financial_approval') {
-    const rowApprovals = approvals.filter((a) => a.rowId === row.id);
-    const hasPending = rowApprovals.some((a) => a.status === 'pending');
-    const hasRejected = rowApprovals.some((a) => a.status === 'rejected');
-    if (hasRejected) {
-      return { allowed: false, reason: 'یکی از مراحل تأیید رد شده است. امکان ارتقا وجود ندارد.' };
-    }
-    if (hasPending && rowApprovals.length > 0) {
-      return { allowed: false, reason: 'تمامی مراحل تأیید چندمرحله‌ای هنوز تکمیل نشده است.' };
-    }
-  }
-
-  return { allowed: true, nextStage };
+  return { allowed: true, nextStage: STAGE_ORDER[idx + 1] };
 }
 
 export function formatToman(amount?: number): string {

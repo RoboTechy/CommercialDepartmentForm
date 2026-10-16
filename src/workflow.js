@@ -14,13 +14,47 @@ const STAGES = [
   { id: 'completed', allowedGroups: [G.admin] },
 ];
 
-function inferStage(row) {
-  if (row.workflow_stage) return row.workflow_stage;
+// مجری خرید «تهران/برنا»: خرید توسط بازرگانی سایت انجام نمی‌شود، پس کار بازرگانی همین‌جا تمام است
+// (مجوز پرداخت لازم نیست) و درخواست مستقیم به انبار (بلوک ۲: ترخیص/ارسال) می‌رود. معادل
+// isPaymentAuthWaived در sections.js.
+const EXTERNAL_EXECUTORS = ['تهران', 'برنا'];
+const STAGE_IDS = STAGES.map((s) => s.id);
+
+// مرحله‌ای که خودِ اطلاعات ثبت‌شده ایجاب می‌کند (بدون نیاز به ارتقای دستی)
+function autoStage(row) {
   if (row.letter_no && row.dispatch_date) return 'completed';
-  if (row.payment_auth_issued_date || row.purchase_executor) return 'financial_approval';
+  const ex = row.purchase_executor;
+  if (EXTERNAL_EXECUTORS.includes(ex)) return 'final_dispatch';
+  if (ex === 'سایت') return row.payment_auth_issued_date ? 'final_dispatch' : 'financial_approval';
   if (row.referred_to_commercial_date) return 'commercial_rfq';
-  if (row.purchase_request_no || row.delivered_to_tech_expert_date) return 'warehouse_review';
-  return 'tech_request';
+  // ثبت نهایی = ارسال به انبار کارفرما: ردیف ثبت‌شده همان لحظه در صف انبار است
+  // (پیش‌نویس هنوز نزد درخواست‌کننده است)
+  return row.published_at ? 'warehouse_review' : 'tech_request';
+}
+
+// مرحله‌ی واقعی = دیرتر از (مرحله‌ی ذخیره‌شده با ارتقای دستی/خودکار) و (مرحله‌ی ناشی از اطلاعات).
+// یعنی اطلاعات ثبت‌شده هیچ‌وقت عقب‌تر از واقعیت نمی‌ماند؛ ارتقای دستی فقط برای «تحویل کار به
+// بخش بعد» است وقتی اطلاعات هنوز آن را نشان نمی‌دهد.
+function inferStage(row) {
+  // عودت‌شده: برگشته نزد درخواست‌کننده تا نقص را برطرف کند
+  if (row.returned_at) return 'tech_request';
+  const stored = STAGE_IDS.includes(row.workflow_stage) ? row.workflow_stage : 'tech_request';
+  const auto = autoStage(row);
+  return STAGE_IDS.indexOf(stored) >= STAGE_IDS.indexOf(auto) ? stored : auto;
+}
+
+// فیلدهایی که برای تحویل کار به مرحله‌ی بعد باید پر باشند
+const REQUIRED_TO_ADVANCE = {
+  tech_request: ['request_no', 'item_description', 'priority', 'total_qty', 'unit', 'usage_location', 'delivery_to_warehouse_date', 'item_type'],
+  warehouse_review: ['purchase_request_no', 'delivered_to_tech_expert_date', 'delivered_to_employer_date'],
+  commercial_rfq: ['referred_to_commercial_date', 'purchase_executor'],
+  financial_approval: ['payment_auth_issued_date'],
+  final_dispatch: ['letter_no', 'dispatch_date'],
+};
+
+function labelOf(name) {
+  const found = require('./sections').findField(name);
+  return found ? found.field.label : name;
 }
 
 function createDefaultApprovals(rowId, priority, estimatedAmount = 0) {
@@ -54,20 +88,16 @@ function canAdvance(row, user, approvals) {
   if (row.cancelled_at) return { allowed: false, reason: 'درخواست لغو شده است و گردش‌کار متوقف می‌باشد.' };
   if (row.returned_at) return { allowed: false, reason: 'درخواست به درخواست‌کننده عودت داده شده است. ابتدا باید نقص برطرف گردد.' };
   const current = inferStage(row);
-  const idx = STAGES.findIndex((s) => s.id === current);
+  const idx = STAGE_IDS.indexOf(current);
   if (idx >= STAGES.length - 1) return { allowed: false, reason: 'فرآیند به مرحله نهایی (تکمیل‌شده) رسیده است.' };
   const stage = STAGES[idx];
   if (!isAdminUser(user) && !stage.allowedGroups.some((g) => user.groups.includes(g))) {
-    return { allowed: false, reason: 'شما مجاز به ارتقای این مرحله از گردش‌کار نیستید.' };
+    return { allowed: false, reason: 'این درخواست اکنون در مرحله‌ی دیگری است و ارتقای آن با مسئول همان مرحله است.' };
   }
-  if (current === 'tech_request' && (!row.request_no || !row.item_description || !row.total_qty)) {
-    return { allowed: false, reason: 'فیلدهای الزامی درخواست‌کننده تکمیل نشده‌اند.' };
-  }
-  if (current === 'warehouse_review' && !row.purchase_request_no && !row.delivered_to_tech_expert_date) {
-    return { allowed: false, reason: 'ثبت حداقل یکی از فیلدهای شماره درخواست خرید یا تاریخ تحویل الزامی است.' };
-  }
-  if (current === 'commercial_rfq' && !row.referred_to_commercial_date) {
-    return { allowed: false, reason: 'تاریخ ارجاع به بازرگانی هنوز ثبت نشده است.' };
+  const missing = (REQUIRED_TO_ADVANCE[current] || []).filter((f) => !(row[f] || '').toString().trim());
+  if (missing.length) {
+    const hint = current === 'commercial_rfq' ? ' (با انتخاب مجری خرید، درخواست خودکار جابه‌جا می‌شود)' : '';
+    return { allowed: false, reason: `برای ارتقا این فیلدها باید پر شوند: ${missing.map(labelOf).join('، ')}${hint}` };
   }
   if (current === 'financial_approval') {
     if (approvals.some((a) => a.status === 'rejected')) {
@@ -92,4 +122,4 @@ function shortSignature(hex) {
   return `DSIG-HMAC-${hex.slice(0, 16).toUpperCase()}`;
 }
 
-module.exports = { STAGES, inferStage, createDefaultApprovals, canApproveStep, canAdvance, signatureOf, shortSignature, isAdminUser };
+module.exports = { STAGES, autoStage, REQUIRED_TO_ADVANCE, EXTERNAL_EXECUTORS, inferStage, createDefaultApprovals, canApproveStep, canAdvance, signatureOf, shortSignature, isAdminUser };
