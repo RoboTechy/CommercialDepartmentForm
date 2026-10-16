@@ -1,3 +1,12 @@
+# ---- مرحله‌ی ۱: build رابط کاربری React ----
+FROM node:20-slim AS client-build
+WORKDIR /client
+COPY client/package.json client/package-lock.json ./
+RUN npm ci --legacy-peer-deps
+COPY client/ ./
+RUN npm run build
+
+# ---- مرحله‌ی ۲: سرویس اصلی (Express + SQLite + LDAP) ----
 FROM node:20-slim
 
 # tzdata لازم است تا ساعت داخل کانتینر با منطقه‌ی زمانی ایران (برای زمان‌بندی
@@ -14,6 +23,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY . .
+COPY --from=client-build /client/dist ./client/dist
 
 ENV PORT=3000
 EXPOSE 3000

@@ -158,6 +158,29 @@ ${fieldColumns}
     sqlDb.run(`UPDATE rows SET published_at = created_at WHERE published_at = ''`);
   }
 
+  // ستون‌ها و جدول‌های ماژول «گردش‌کار گسترده» (مرحله‌ی ردیف، تأمین‌کنندگان،
+  // پیش‌فاکتورها و تأییدات چندمرحله‌ای). فقط افزودنی‌اند: هیچ ستون/جدول
+  // موجودی تغییر یا حذف نمی‌شود و ردیف‌های قبلی دست‌نخورده می‌مانند
+  // (مقدار workflow_stage خالی = مرحله از روی فیلدهای پرشده استنتاج می‌شود).
+  for (const [col, ddl] of [
+    ['workflow_stage', "TEXT NOT NULL DEFAULT ''"],
+    ['selected_vendor_name', "TEXT NOT NULL DEFAULT ''"],
+    ['selected_quote_id', "TEXT NOT NULL DEFAULT ''"],
+    ['approvals_status', "TEXT NOT NULL DEFAULT ''"],
+    ['total_estimated_amount', 'REAL NOT NULL DEFAULT 0'],
+  ]) {
+    if (!existingColumns.has(col)) {
+      sqlDb.run(`ALTER TABLE rows ADD COLUMN ${col} ${ddl}`);
+    }
+  }
+  sqlDb.run(`
+    CREATE TABLE IF NOT EXISTS vendors (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS quotations (id TEXT PRIMARY KEY, row_id INTEGER NOT NULL, data TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS approvals (id TEXT PRIMARY KEY, row_id INTEGER NOT NULL, data TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS idx_quotations_row ON quotations(row_id);
+    CREATE INDEX IF NOT EXISTS idx_approvals_row ON approvals(row_id);
+  `);
+
   // مهاجرت اولیه‌ی راه‌اندازی - برخلاف بقیه‌ی نوشتن‌ها، فوری و همزمان
   // ذخیره می‌شود (نه دسته‌ای) چون تاخیرش قابل‌قبول نیست
   persistNow();

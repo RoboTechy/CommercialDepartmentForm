@@ -8,3 +8,4 @@ backups/
 backup/
 auto-deploy.log
 .auto-deploy.lock
+client/dist/

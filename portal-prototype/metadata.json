@@ -1,6 +1,0 @@
-{
-  "name": "Commercial Department Portal",
-  "description": "Enterprise commercial operations tracking portal with section access control, stage workflows, and Jalaali calendar support.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

@@ -43,6 +43,11 @@ module.exports = {
       // دسترسی به گزارش‌های مدیریتی (/reports/management) - آمار
       // تحلیلی/زمان‌بندی برای تصمیم‌گیری، نه یک نقش عملیاتی مثل بقیه
       management: need('LDAP_GROUP_MANAGEMENT', 'PRT-Management'),
+      // نقش‌های تأییدکننده‌ی ماژول «تأییدات چندمرحله‌ای» (سرپرست فنی، مدیر مالی،
+      // مدیرعامل). اگر این گروه‌ها در AD ساخته نشوند، فقط ادمین می‌تواند تأیید کند.
+      techLead: need('LDAP_GROUP_TECH_LEAD', 'PRT-TechLead'),
+      finance: need('LDAP_GROUP_FINANCE', 'PRT-Finance'),
+      executive: need('LDAP_GROUP_EXECUTIVE', 'PRT-Executive'),
     },
   },
 };

@@ -774,6 +774,7 @@ function getManagementPriorityStats() {
 }
 
 module.exports = {
+  insertAuditEntries,
   listRows,
   getRow,
   findRowsByRequestNo,
