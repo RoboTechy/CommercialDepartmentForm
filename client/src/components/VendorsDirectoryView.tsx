@@ -294,9 +294,15 @@ export const VendorsDirectoryView: React.FC = () => {
               {/* Footer Stats & Actions */}
               <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
                 <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                  <span>{quotesCount} استعلام</span>
-                  <span>•</span>
-                  <span className="text-emerald-400 font-semibold">{winsCount} خرید موفق</span>
+                  {isAdmin ? (
+                    <>
+                      <span>{quotesCount} استعلام</span>
+                      <span>•</span>
+                      <span className="text-emerald-400 font-semibold">{winsCount} خرید موفق</span>
+                    </>
+                  ) : (
+                    <span>{vendor.city}</span>
+                  )}
                 </div>
 
                 {canManageVendors && (

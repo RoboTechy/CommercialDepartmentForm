@@ -47,6 +47,21 @@ export const DashboardView: React.FC = () => {
 
   const myDrafts = getDraftRows();
 
+  // کارت‌های آماری فضای زیادی می‌گیرند؛ برای دیدن ردیف‌های بیشتر قابل جمع‌شدن‌اند (انتخاب هر مرورگر ذخیره می‌شود)
+  const [showStats, setShowStats] = React.useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem('prt_show_stats');
+      if (v !== null) return v === '1';
+    } catch { /* ignore */ }
+    return window.innerHeight >= 1000;
+  });
+  const toggleStats = () => {
+    setShowStats((v) => {
+      try { localStorage.setItem('prt_show_stats', v ? '0' : '1'); } catch { /* ignore */ }
+      return !v;
+    });
+  };
+
   const filteredRows = getFilteredRows();
   const stats = getStats();
 
@@ -70,8 +85,8 @@ export const DashboardView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-12">
-      
+    <div className="flex flex-col gap-4 lg:h-[calc(100vh-7.5rem)] lg:overflow-hidden pb-12 lg:pb-0">
+      <div className="shrink-0 space-y-4">
       {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -83,6 +98,13 @@ export const DashboardView: React.FC = () => {
           </p>
         </div>
 
+        <button
+          type="button"
+          onClick={toggleStats}
+          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all"
+        >
+          {showStats ? 'جمع کردن آمار' : 'نمایش آمار'}
+        </button>
         {ENABLE_EXTENDED_WORKFLOW && (
         <div className="flex items-center gap-2 flex-wrap">
           <button
@@ -119,6 +141,8 @@ export const DashboardView: React.FC = () => {
         </div>
       )}
 
+      {showStats && (
+      <div className="space-y-4">
       {/* KPI Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 shadow-sm flex flex-col justify-between">
@@ -227,6 +251,8 @@ export const DashboardView: React.FC = () => {
           );
         })}
       </div>
+      </div>
+      )}
 
       {/* Search and Filters Bar */}
       <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-sm space-y-3">
@@ -341,6 +367,8 @@ export const DashboardView: React.FC = () => {
           </span>
           <span className="text-[11px] text-slate-500">روی شماره درخواست کلیک کنید تا به صفحه‌ی ویرایش همان درخواست بروید</span>
         </div>
+      </div>
+
       </div>
 
       {/* Desktop Data Table: ستون‌های بخش کاربر باز، بقیه کشویی؛ ویرایش درجا؛ تاریخچه با هاور */}

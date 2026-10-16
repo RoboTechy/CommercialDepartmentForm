@@ -31,8 +31,14 @@ export const RfqQuotationsView: React.FC<RfqQuotationsViewProps> = ({ row }) => 
     selectWinningQuotation, 
     deleteQuotation, 
     currentUser,
-    isAdmin 
+    isAdmin,
+    canEditSectionForRow,
+    quotationCount
   } = useExactDb();
+
+  // ثبت پیش‌فاکتور: فقط بازرگانی و ادمین؛ دیدن جزئیات پیش‌فاکتورها: فقط ادمین
+  const canAddQuote = canEditSectionForRow(row, 'commercial');
+  const quoteCount = quotationCount(row.id);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedVendorId, setSelectedVendorId] = useState<string>(vendors[0]?.id || '');
@@ -105,7 +111,7 @@ export const RfqQuotationsView: React.FC<RfqQuotationsViewProps> = ({ row }) => 
               ویژگی ۱: استعلام قیمت و مقایسه پیش‌فاکتورها (RFQ & Quotes)
             </span>
             <span className="text-[11px] px-2 py-0.5 rounded-full font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-              {rowQuotes.length} استعلام ثبت‌شده
+              {isAdmin ? rowQuotes.length : quoteCount} استعلام ثبت‌شده
             </span>
           </div>
           <h3 className="text-sm font-bold text-white mt-1">
@@ -116,6 +122,7 @@ export const RfqQuotationsView: React.FC<RfqQuotationsViewProps> = ({ row }) => 
           </p>
         </div>
 
+        {canAddQuote && (
         <button
           onClick={() => setIsAddModalOpen(true)}
           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md transition-all self-start sm:self-auto cursor-pointer"
@@ -123,8 +130,23 @@ export const RfqQuotationsView: React.FC<RfqQuotationsViewProps> = ({ row }) => 
           <PlusCircle className="w-4 h-4" />
           <span>ثبت پیش‌فاکتور جدید</span>
         </button>
+        )}
       </div>
 
+      {!isAdmin && (
+        <div className={`p-4 rounded-xl border text-xs flex items-center gap-3 ${quoteCount > 0 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200' : 'bg-slate-950/60 border-slate-800 text-slate-300'}`}>
+          <Award className="w-5 h-5 shrink-0" />
+          <div>
+            {quoteCount > 0
+              ? <>برای این درخواست <b>{quoteCount}</b> پیش‌فاکتور دریافت شده است.</>
+              : <>هنوز پیش‌فاکتوری برای این درخواست ثبت نشده است.</>}
+            <div className="text-[11px] text-slate-400 mt-0.5">جزئیات پیش‌فاکتورها (تأمین‌کننده و قیمت) فقط برای ادمین‌ها قابل مشاهده است.</div>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && (
+      <>
       {/* Selected Winner Banner */}
       {winningQuote && (
         <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
@@ -299,6 +321,8 @@ export const RfqQuotationsView: React.FC<RfqQuotationsViewProps> = ({ row }) => 
             );
           })}
         </div>
+      )}
+      </>
       )}
 
       {/* Modal: Add New Quotation */}

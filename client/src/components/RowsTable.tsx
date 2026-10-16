@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useExactDb } from '../context/ExactDatabaseContext';
 import { sections, isPaymentAuthWaived, FieldDef, SectionDef } from '../data/exactSections';
 import { DbRow, PriorityLevel } from '../types';
@@ -8,10 +8,11 @@ import {
   ExternalLink, History, XCircle, RotateCcw, CheckCircle2, AlertTriangle, Trash2, AlertCircle, ChevronLeft, ChevronDown, Pencil,
 } from 'lucide-react';
 
-const SECTION_STYLE: Record<string, { head: string; chip: string }> = {
-  tech_operator: { head: 'bg-blue-500/10 text-blue-300', chip: 'border-blue-500/40 text-blue-300' },
-  warehouse: { head: 'bg-amber-500/10 text-amber-300', chip: 'border-amber-500/40 text-amber-300' },
-  commercial: { head: 'bg-emerald-500/10 text-emerald-300', chip: 'border-emerald-500/40 text-emerald-300' },
+// پس‌زمینه‌ی سرستون‌ها باید مات باشد (چون هنگام اسکرول روی ردیف‌ها می‌چسبند)
+const SECTION_STYLE: Record<string, { head: string; bg: string }> = {
+  tech_operator: { head: 'text-blue-300', bg: '#0c1a3a' },
+  warehouse: { head: 'text-amber-300', bg: '#241a09' },
+  commercial: { head: 'text-emerald-300', bg: '#08251d' },
 };
 
 const SECTION_TITLE: Record<string, string> = {
@@ -37,7 +38,7 @@ interface EditState { rowId: number; fieldKey: string }
 export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
   const {
     currentUser, isAdmin, isLocalAdmin, canEditSectionForRow, canCancelRow, canReturnToTechOffice,
-    updateSection, getRowHistory, setSelectedRowId, setActiveTab, setHistoryDrawerRowId, setCancelModalRowId,
+    updateSection, getRowHistory, quotationCount, notify, setSelectedRowId, setActiveTab, setHistoryDrawerRowId, setCancelModalRowId,
     setReturnModalRowId, uncancelRow, unreturnFromTechOffice, softDeleteRow,
   } = useExactDb();
 
@@ -197,15 +198,31 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
     );
   };
 
+  const headRow1 = useRef<HTMLTableRowElement>(null);
+  const [h1, setH1] = useState(40);
+  useLayoutEffect(() => {
+    if (headRow1.current) setH1(headRow1.current.offsetHeight);
+  });
+
+  // دلیل غیرقابل‌ویرایش بودن یک فیلد (برای پیام وقتی روی آن کلیک می‌شود)
+  const whyNotEditable = (row: DbRow, section: SectionDef, field: FieldDef): string => {
+    if (field.readOnly) return `«${field.label}» خودکار تعیین می‌شود و قابل تغییر نیست.`;
+    if (field.name === 'payment_auth_issued_date' && isPaymentAuthWaived(row)) return `مجری خرید «${row.purchase_executor}» است؛ مجوز پرداخت سایت لازم نیست.`;
+    if (row.cancelled_at) return 'این درخواست لغو شده است؛ برای ویرایش ابتدا لغو را بردارید.';
+    if (row.returned_at && section.key !== 'tech_operator') return 'این درخواست به درخواست‌کننده عودت داده شده؛ فقط درخواست‌کننده می‌تواند ویرایش کند.';
+    if (section.key === 'tech_operator') return `این درخواست متعلق به دپارتمان «${row.requester_dept || '—'}» است و فقط همان دپارتمان (یا ادمین) می‌تواند آن را ویرایش کند.`;
+    return `ویرایش «${SECTION_TITLE[section.key] || section.title}» فقط برای پرسنل همان بخش (یا ادمین) مجاز است.`;
+  };
+
   const openSections = sections.filter((s) => open.includes(s.key));
   const baseCols = 3;
   const totalCols = baseCols + sections.reduce((n, s) => n + (open.includes(s.key) ? s.fields.length : 1), 0) + 1;
 
   return (
-    <div className="hidden lg:block bg-slate-900/90 rounded-2xl border border-slate-800 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-slate-800 text-[11px] text-slate-400 flex-wrap">
+    <div className="hidden lg:flex lg:flex-col lg:flex-1 lg:min-h-0 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-sm overflow-hidden">
+      <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2 border-b border-slate-800 text-[11px] text-slate-400 flex-wrap">
         <span>
-          ستون‌های بخش شما باز است؛ بقیه با کلیک روی عنوان بخش باز می‌شوند. روی هر مقدار قابل‌ویرایش کلیک کنید تا همان‌جا ویرایش شود؛ با نگه‌داشتن موس، تاریخچه‌ی همان فیلد دیده می‌شود.
+          بخش شما باز است؛ بقیه با کلیک روی عنوانشان باز می‌شوند · مقدارهای دارای آیکن <Pencil className="w-2.5 h-2.5 inline text-blue-400" /> با یک کلیک همان‌جا ویرایش می‌شوند · هاور = تاریخچه‌ی فیلد
         </span>
         <span className="flex gap-2">
           <button type="button" onClick={() => setOpen(sections.map((s) => s.key))} className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200">باز کردن همه</button>
@@ -213,11 +230,11 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
         </span>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="flex-1 min-h-0 overflow-auto">
         <table className="w-full text-right text-xs">
           <thead>
-            <tr className="border-b border-slate-800 bg-slate-950/70 text-[11px] font-bold text-slate-300">
-              <th colSpan={baseCols} className="py-2.5 px-3 border-l border-slate-800">مشخصات اولیه ردیف</th>
+            <tr ref={headRow1} className="border-b border-slate-800 text-[11px] font-bold text-slate-300">
+              <th colSpan={baseCols} style={{ backgroundColor: '#020617' }} className="sticky top-0 z-20 py-2.5 px-3 border-l border-slate-800">مشخصات اولیه ردیف</th>
               {sections.map((s) => {
                 const isOpen = open.includes(s.key);
                 const st = SECTION_STYLE[s.color];
@@ -226,7 +243,8 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
                     key={s.key}
                     colSpan={isOpen ? s.fields.length : 1}
                     rowSpan={isOpen ? 1 : 2}
-                    className={`py-2.5 px-3 border-l border-slate-800 ${st.head} ${isOpen ? '' : 'align-middle'}`}
+                    style={{ backgroundColor: st.bg }}
+                    className={`sticky top-0 z-20 py-2.5 px-3 border-l border-slate-800 ${st.head} ${isOpen ? '' : 'align-middle'}`}
                   >
                     <button type="button" onClick={() => toggle(s.key)} className="inline-flex items-center gap-1.5 font-bold hover:underline" title={isOpen ? 'بستن این بخش' : 'باز کردن این بخش'}>
                       {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
@@ -236,15 +254,15 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
                   </th>
                 );
               })}
-              <th rowSpan={2} className="py-2.5 px-3 text-center align-middle">اقدامات</th>
+              <th rowSpan={2} style={{ backgroundColor: '#020617' }} className="sticky top-0 z-20 py-2.5 px-3 text-center align-middle">اقدامات</th>
             </tr>
-            <tr className="border-b border-slate-800 bg-slate-950/50 text-slate-400 font-semibold text-[11px]">
-              <th className="py-2 px-3">ردیف</th>
-              <th className="py-2 px-3">وضعیت</th>
-              <th className="py-2 px-3 border-l border-slate-800">ثبت‌کننده</th>
+            <tr className="border-b border-slate-800 text-slate-400 font-semibold text-[11px]">
+              <th style={{ top: h1, backgroundColor: '#0b1224' }} className="sticky z-10 py-2 px-3">ردیف</th>
+              <th style={{ top: h1, backgroundColor: '#0b1224' }} className="sticky z-10 py-2 px-3">وضعیت</th>
+              <th style={{ top: h1, backgroundColor: '#0b1224' }} className="sticky z-10 py-2 px-3 border-l border-slate-800">ثبت‌کننده</th>
               {openSections.map((s) =>
                 s.fields.map((f, i) => (
-                  <th key={`${s.key}-${f.name as string}`} className={`py-2 px-3 whitespace-nowrap ${i === s.fields.length - 1 ? 'border-l border-slate-800' : ''}`}>
+                  <th key={`${s.key}-${f.name as string}`} style={{ top: h1, backgroundColor: '#0b1224' }} className={`sticky z-10 py-2 px-3 whitespace-nowrap ${i === s.fields.length - 1 ? 'border-l border-slate-800' : ''}`}>
                     {f.label}
                   </th>
                 ))
@@ -307,15 +325,33 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
                         if (key === 'request_no') {
                           return (
                             <td key={key} className={`${base} whitespace-nowrap`}>
-                              <button
-                                type="button"
-                                onClick={() => openRow(row.id)}
-                                className="font-mono font-bold text-blue-400 hover:text-blue-300 hover:underline inline-flex items-center gap-1"
-                                title="رفتن به صفحه‌ی مشاهده و ویرایش این درخواست"
-                              >
-                                {row.request_no}
-                                <ExternalLink className="w-3 h-3 opacity-60" />
-                              </button>
+                              <span className="inline-flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => openRow(row.id)}
+                                  className="font-mono font-bold text-blue-400 hover:text-blue-300 hover:underline inline-flex items-center gap-1"
+                                  title="رفتن به صفحه‌ی مشاهده و ویرایش این درخواست"
+                                >
+                                  {row.request_no}
+                                  <ExternalLink className="w-3 h-3 opacity-60" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setHistoryDrawerRowId(row.id)}
+                                  className="p-0.5 rounded text-slate-500 hover:text-amber-400 hover:bg-slate-800"
+                                  title="تاریخچه‌ی تمام تغییرات روی تمام فیلدهای این درخواست"
+                                >
+                                  <History className="w-3.5 h-3.5" />
+                                </button>
+                                {quotationCount(row.id) > 0 && (
+                                  <span
+                                    className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                                    title="برای این درخواست پیش‌فاکتور گرفته شده است"
+                                  >
+                                    {quotationCount(row.id)} پیش‌فاکتور
+                                  </span>
+                                )}
+                              </span>
                             </td>
                           );
                         }
@@ -326,7 +362,11 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
                             className={`${base} ${f.type === 'jalali-date' || key.includes('no') ? 'font-mono' : ''} ${f.type === 'jalali-date' ? 'tabular-nums text-slate-300' : 'text-slate-200'} ${key === 'item_description' ? 'max-w-[220px]' : 'whitespace-nowrap'} ${editable && !editing ? 'cursor-text hover:bg-blue-500/10 group' : ''}`}
                             onMouseEnter={(e) => onEnter(e, row, f)}
                             onMouseLeave={clearHover}
-                            onClick={() => { if (editable && !editing) startEdit(row, f); }}
+                            onClick={() => {
+                              if (editing) return;
+                              if (editable) startEdit(row, f);
+                              else notify('info', whyNotEditable(row, s, f));
+                            }}
                             title={editable ? 'کلیک برای ویرایش' : undefined}
                           >
                             {editing ? (
@@ -334,7 +374,7 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
                             ) : (
                               <span className={key === 'item_description' ? 'block truncate' : 'inline-flex items-center gap-1'}>
                                 {renderValue(row, f)}
-                                {editable && <Pencil className="w-2.5 h-2.5 text-blue-400/0 group-hover:text-blue-400/70" />}
+                                {editable && <Pencil className="w-2.5 h-2.5 text-blue-400/45 group-hover:text-blue-400" />}
                               </span>
                             )}
                           </td>

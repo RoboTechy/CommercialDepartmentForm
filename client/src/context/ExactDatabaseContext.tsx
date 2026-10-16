@@ -36,7 +36,7 @@ interface FilterState {
 }
 
 interface Toast {
-  type: 'error' | 'success';
+  type: 'error' | 'success' | 'info';
   message: string;
 }
 
@@ -50,6 +50,8 @@ interface ExactDatabaseContextType {
   auditLogs: AuditLogEntry[];
   vendors: Vendor[];
   quotations: Quotation[];
+  quotationCount: (rowId: number) => number;
+  notify: (type: 'error' | 'success' | 'info', message: string) => void;
   approvals: ApprovalRecord[];
   currentUser: UserSession | null;
   booting: boolean;
@@ -149,6 +151,7 @@ interface DataResponse {
   auditLogs: AuditLogEntry[];
   vendors: Vendor[];
   quotations: Quotation[];
+  quotationCounts?: Record<string, number>;
   approvals: ApprovalRecord[];
 }
 
@@ -161,6 +164,8 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [quotations, setQuotations] = useState<Quotation[]>([]);
+  // جزئیات پیش‌فاکتورها فقط برای ادمین می‌آید؛ همه تعداد پیش‌فاکتور هر درخواست را می‌بینند
+  const [quotationCounts, setQuotationCounts] = useState<Record<string, number>>({});
   const [approvals, setApprovals] = useState<ApprovalRecord[]>([]);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [booting, setBooting] = useState(true);
@@ -195,6 +200,8 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     toastTimer.current = window.setTimeout(() => setToast(null), 6000);
   }, []);
   const dismissToast = () => setToast(null);
+  const notify = (type: 'error' | 'success' | 'info', message: string) => showToast({ type, message });
+  const quotationCount = (rowId: number): number => quotationCounts[String(rowId)] || 0;
 
   const clearSession = useCallback(() => {
     setMe(null);
@@ -202,6 +209,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     setAuditLogs([]);
     setVendors([]);
     setQuotations([]);
+    setQuotationCounts({});
     setApprovals([]);
     setActiveTab('dashboard');
     setSelectedRowId(null);
@@ -228,6 +236,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     setAuditLogs(d.auditLogs);
     setVendors(d.vendors);
     setQuotations(d.quotations);
+    setQuotationCounts(d.quotationCounts || {});
     setApprovals(d.approvals);
   }, []);
 
@@ -585,7 +594,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   return (
     <ExactDatabaseContext.Provider
       value={{
-        rows, auditLogs, vendors, quotations, approvals, currentUser, booting, loading, toast, dismissToast, refresh,
+        rows, auditLogs, vendors, quotations, quotationCount, notify, approvals, currentUser, booting, loading, toast, dismissToast, refresh,
         activeTab, selectedRowId, filters, isLdapModalOpen, cancelModalRowId, returnModalRowId, historyDrawerRowId,
         login, logout, sessionExpiresAt,
         setActiveTab, setSelectedRowId, setFilters, setIsLdapModalOpen, setCancelModalRowId, setReturnModalRowId, setHistoryDrawerRowId,

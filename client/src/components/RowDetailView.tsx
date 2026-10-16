@@ -42,7 +42,7 @@ export const RowDetailView: React.FC = () => {
     unreturnFromTechOffice,
     canCancelRow,
     canReturnToTechOffice,
-    quotations,
+    quotationCount,
     approvals,
     findDuplicatePurchaseRequestNo,
     getDraftRows,
@@ -351,7 +351,7 @@ export const RowDetailView: React.FC = () => {
           <Building2 className="w-4 h-4 text-emerald-400" />
           <span>استعلام قیمت و پیش‌فاکتورها (RFQ)</span>
           <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-            {quotations.filter((q) => q.rowId === row.id).length}
+            {quotationCount(row.id)}
           </span>
         </button>
 

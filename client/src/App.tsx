@@ -190,6 +190,8 @@ const MainLayout: React.FC = () => {
           className={`fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-[60] max-w-md px-4 py-3 rounded-xl text-xs font-semibold shadow-2xl cursor-pointer border ${
             toast.type === 'error'
               ? 'bg-rose-950/95 text-rose-200 border-rose-500/40'
+              : toast.type === 'info'
+              ? 'bg-slate-900/95 text-slate-100 border-slate-600'
               : 'bg-emerald-950/95 text-emerald-200 border-emerald-500/40'
           }`}
         >

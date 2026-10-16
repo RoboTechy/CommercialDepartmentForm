@@ -137,12 +137,19 @@ router.get('/data', (req, res) => {
   const auditLogs = db
     .all('SELECT * FROM audit_log ORDER BY id DESC LIMIT 30000')
     .filter((l) => visibleIds.has(l.row_id));
+  // جزئیات پیش‌فاکتورها (تأمین‌کننده، قیمت و...) فقط برای ادمین‌ها ارسال می‌شود؛
+  // بقیه فقط تعداد پیش‌فاکتورهای هر درخواست را می‌بینند (گرفته شده یا نه)
+  const allQuotes = ext.listQuotations().filter((q) => visibleIds.has(q.rowId));
+  const quotationCounts = {};
+  for (const q of allQuotes) quotationCounts[q.rowId] = (quotationCounts[q.rowId] || 0) + 1;
+  const seeQuotes = isAdmin(user) || isLocalAdmin(user);
   res.json({
     ok: true,
     rows,
     auditLogs,
     vendors: ext.listVendors(),
-    quotations: ext.listQuotations().filter((q) => visibleIds.has(q.rowId)),
+    quotations: seeQuotes ? allQuotes : [],
+    quotationCounts,
     approvals: ext.listApprovals().filter((a) => visibleIds.has(a.rowId)),
     serverTime: nowJalaliDateTime(),
   });
@@ -490,11 +497,13 @@ router.post('/quotations', (req, res) => {
   ext.saveQuotation(quote);
   if (!row.total_estimated_amount) setRowCols(row.id, { total_estimated_amount: quote.totalPrice });
   audit(row, 'commercial', 'quotation', 'پیش‌فاکتور', '', `${vendor.name} - ${quote.totalPrice}`, user);
-  res.json({ ok: true, quotation: quote });
+  // کاربر غیرادمین فقط ثبت را تأیید می‌گیرد؛ جزئیات پیش‌فاکتور به او برنمی‌گردد
+  res.json({ ok: true, quotation: isAdmin(user) || isLocalAdmin(user) ? quote : { id: quote.id, rowId: quote.rowId } });
 });
 
 router.post('/quotations/:id/select', (req, res) => {
   const user = sessionUser(req);
+  if (!isAdmin(user) && !isLocalAdmin(user)) return fail(res, 403, 'فقط ادمین می‌تواند پیش‌فاکتورها را ببیند و برنده را انتخاب کند.');
   const quote = ext.getQuotation(req.params.id);
   if (!quote) return fail(res, 404, 'پیش‌فاکتور یافت نشد.');
   const row = store.getRow(quote.rowId);
@@ -515,6 +524,7 @@ router.post('/quotations/:id/select', (req, res) => {
 
 router.delete('/quotations/:id', (req, res) => {
   const user = sessionUser(req);
+  if (!isAdmin(user) && !isLocalAdmin(user)) return fail(res, 403, 'فقط ادمین می‌تواند پیش‌فاکتور را حذف کند.');
   const quote = ext.getQuotation(req.params.id);
   if (!quote) return fail(res, 404, 'پیش‌فاکتور یافت نشد.');
   const row = store.getRow(quote.rowId);
