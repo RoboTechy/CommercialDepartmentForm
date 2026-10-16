@@ -26,6 +26,7 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
     setSelectedRowId, 
     setIsLdapModalOpen,
     canCreateRows,
+    canViewAuditLogs,
     isAdmin,
     logout
   } = useExactDb();
@@ -127,6 +128,7 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
               گزارش مدیریتی
             </button>
 
+            {canViewAuditLogs && (
             <button
               onClick={() => {
                 setSelectedRowId(null);
@@ -140,6 +142,7 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
             >
               تاریخچه سیستم
             </button>
+            )}
           </nav>
 
           {/* Zone 3: User Switcher, Logout & Create CTA */}

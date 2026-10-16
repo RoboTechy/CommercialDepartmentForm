@@ -39,6 +39,7 @@ const MainLayout: React.FC = () => {
     canCreateRows,
     isLocalAdmin,
     isManagement,
+    canViewAuditLogs,
     getDraftRows,
     booting,
     toast,
@@ -87,7 +88,7 @@ const MainLayout: React.FC = () => {
       case 'deleted_rows':
         return isLocalAdmin ? <DeletedRowsView /> : <DashboardView />;
       case 'audit_logs':
-        return <AuditLogsView />;
+        return canViewAuditLogs ? <AuditLogsView /> : <DashboardView />;
       default:
         return <DashboardView />;
     }

@@ -34,6 +34,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     isAdmin,
     isManagement,
     isLocalAdmin,
+    canViewAuditLogs,
     setIsLdapModalOpen,
     logout
   } = useExactDb();
@@ -137,7 +138,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
           >
             <div className="flex items-center gap-2.5">
               <Building2 className="w-4 h-4 text-emerald-400" />
-              <span>بانک اطلاعات تأمین‌کنندگان</span>
+              <span>وندور لیست و استعلام قیمت</span>
             </div>
             <span className="font-mono text-[11px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 tabular-nums border border-slate-700">
               {vendors.length}
@@ -227,6 +228,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             </button>
           )}
 
+          {canViewAuditLogs && (
           <button
             onClick={() => handleNav('audit_logs')}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
@@ -240,6 +242,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
               <span>ردیابی رویدادها (Audit Logs)</span>
             </div>
           </button>
+          )}
 
           {isLocalAdmin && (
           <button

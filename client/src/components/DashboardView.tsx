@@ -103,7 +103,7 @@ export const DashboardView: React.FC = () => {
           onClick={toggleStats}
           className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all"
         >
-          {showStats ? 'جمع کردن آمار' : 'نمایش آمار'}
+          {showStats ? 'مخفی کردن آمار' : 'نمایش آمار'}
         </button>
         {ENABLE_EXTENDED_WORKFLOW && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -113,14 +113,6 @@ export const DashboardView: React.FC = () => {
           >
             <Kanban className="w-4 h-4 text-blue-400" />
             <span>تابلوی خط لوله (Kanban)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('vendors')}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 flex items-center gap-2 transition-all cursor-pointer shadow-xs"
-          >
-            <Building2 className="w-4 h-4 text-emerald-400" />
-            <span>وندور لیست و استعلام قیمت</span>
           </button>
         </div>
         )}

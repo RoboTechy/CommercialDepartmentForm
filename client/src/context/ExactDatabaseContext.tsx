@@ -85,6 +85,7 @@ interface ExactDatabaseContextType {
   isAdmin: boolean;
   isLocalAdmin: boolean;
   isManagement: boolean;
+  canViewAuditLogs: boolean;
   canCreateRows: boolean;
   canEditSectionForRow: (row: DbRow, sectionKey: string) => boolean;
   canCancelRow: (row: DbRow) => boolean;
@@ -298,6 +299,8 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   const isLocalAdmin = Boolean(currentUser && currentUser.isLocalAdmin);
   const isAdmin = Boolean(currentUser && (currentUser.groups.includes(GROUPS.admin) || isLocalAdmin));
   const isManagement = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.management)));
+  // صفحه‌ی «ردیابی رویدادها»: فقط ادمین‌ها و گروه آی‌تی (تاریخچه‌ی هر ردیف برای همه در دسترس است)
+  const canViewAuditLogs = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.it)));
   const canReturnToTechOffice = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.warehouse)));
 
   const canCreateRows = Boolean(currentUser && (isAdmin || sections.some(s => s.canCreateRows && (
@@ -598,7 +601,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
         activeTab, selectedRowId, filters, isLdapModalOpen, cancelModalRowId, returnModalRowId, historyDrawerRowId,
         login, logout, sessionExpiresAt,
         setActiveTab, setSelectedRowId, setFilters, setIsLdapModalOpen, setCancelModalRowId, setReturnModalRowId, setHistoryDrawerRowId,
-        isAdmin, isLocalAdmin, isManagement, canCreateRows, canEditSectionForRow, canCancelRow, canReturnToTechOffice,
+        isAdmin, isLocalAdmin, isManagement, canViewAuditLogs, canCreateRows, canEditSectionForRow, canCancelRow, canReturnToTechOffice,
         createRow, updateSection, finalizeDrafts, discardDraft, softDeleteRow, restoreRow,
         cancelRow, uncancelRow, returnToTechOffice, unreturnFromTechOffice,
         addVendor, updateVendor, deleteVendor, addQuotation, selectWinningQuotation, deleteQuotation, getRowQuotations,
