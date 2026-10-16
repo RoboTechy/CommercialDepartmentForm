@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const router = express.Router();
 const config = require('../config');
 const db = require('../db');
@@ -23,6 +24,9 @@ const {
 // API JSON برای رابط کاربری جدید (React). تمام قواعد دسترسی/قفل همین‌جا (سمت سرور)
 // و با همان توابع middleware.js و store.js سرویس قبلی اعمال می‌شود؛ فرانت‌اند فقط
 // نمایش می‌دهد و هیچ‌چیز را به‌تنهایی مجاز نمی‌کند.
+
+// فایل اکسل فقط در حافظه پردازش می‌شود و هیچ‌وقت روی دیسک ذخیره نمی‌شود
+const importUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 const SESSION_MS = 2 * 60 * 60 * 1000;
 const PERSIAN = '۰۱۲۳۴۵۶۷۸۹';
@@ -168,6 +172,70 @@ router.post('/rows', (req, res) => {
   if (errors.length) return fail(res, 400, errors.join(' — '));
   const row = store.createRow(values, user);
   res.json({ ok: true, row });
+});
+
+// ---- ایمپورت گروهی از اکسل (همان اعتبارسنجی فرم تک‌ردیفی) ----
+router.get('/rows/import/template', async (req, res) => {
+  const user = sessionUser(req);
+  if (!canCreateRows(user)) return fail(res, 403, 'شما مجاز به ایجاد ردیف جدید نیستید (فقط درخواست‌کننده).');
+  try {
+    const workbook = await excelImport.buildTemplateWorkbook();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="import-template.xlsx"; filename*=UTF-8''${encodeURIComponent('قالب-ایمپورت-درخواست-کالا.xlsx')}`
+    );
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('ساخت قالب اکسل با خطا مواجه شد:', err);
+    fail(res, 500, 'ساخت فایل قالب اکسل با خطا مواجه شد.');
+  }
+});
+
+router.post('/rows/import', (req, res) => {
+  importUpload.single('file')(req, res, async (uploadErr) => {
+    const user = sessionUser(req);
+    if (uploadErr) return fail(res, 400, 'آپلود فایل ناموفق بود (حداکثر ۵ مگابایت).');
+    if (!canCreateRows(user)) return fail(res, 403, 'شما مجاز به ایجاد ردیف جدید نیستید (فقط درخواست‌کننده).');
+    if (!req.file) return fail(res, 400, 'فایلی انتخاب نشده بود.');
+    if (!/\.xlsx$/i.test(req.file.originalname || '')) return fail(res, 400, 'فقط فایل با پسوند xlsx پذیرفته می‌شود.');
+
+    let result;
+    try {
+      result = await excelImport.parseImportFile(req.file.buffer);
+    } catch (err) {
+      console.error('خواندن فایل اکسل ایمپورت با خطا مواجه شد:', err);
+      return fail(res, 400, 'خواندن این فایل ممکن نشد. مطمئن شوید فایل یک اکسل (xlsx) سالم و مطابق قالب است.');
+    }
+    if (result.headerError) return fail(res, 400, result.headerError);
+    if (!result.validRows.length && !result.invalidRows.length) return fail(res, 400, 'هیچ ردیف داده‌ای در فایل پیدا نشد.');
+
+    // فقط ردیف‌های سالم موقتاً روی سشن می‌مانند تا با «ثبت ردیف‌های سالم» دوباره آپلود لازم نباشد
+    req.session.pendingImport = { createdByUsername: user.username, rows: result.validRows.map((r) => r.values) };
+    res.json({ ok: true, validCount: result.validRows.length, invalidRows: result.invalidRows });
+  });
+});
+
+router.post('/rows/import/confirm', (req, res) => {
+  const user = sessionUser(req);
+  if (!canCreateRows(user)) return fail(res, 403, 'شما مجاز به ایجاد ردیف جدید نیستید (فقط درخواست‌کننده).');
+  const pending = req.session.pendingImport;
+  if (!pending || pending.createdByUsername !== user.username || !pending.rows.length) {
+    return fail(res, 400, 'داده‌ای برای ثبت پیدا نشد؛ لطفاً دوباره فایل اکسل را آپلود کنید.');
+  }
+  const created = pending.rows.map((values) => store.createRow(values, user));
+  const finalized = store.finalizeDraftRows(user, created.map((r) => r.id));
+  for (const r of finalized) {
+    if (!ext.listRowApprovals(r.id).length) wf.createDefaultApprovals(r.id, r.priority, 0).forEach(ext.saveApproval);
+  }
+  delete req.session.pendingImport;
+  res.json({ ok: true, count: finalized.length });
+});
+
+router.post('/rows/import/cancel', (req, res) => {
+  delete req.session.pendingImport;
+  res.json({ ok: true });
 });
 
 router.post('/rows/finalize', (req, res) => {

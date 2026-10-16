@@ -1,3 +1,4 @@
+import { GROUPS } from '../config';
 import React, { useState } from 'react';
 import { Vendor } from '../types';
 import { useExactDb } from '../context/ExactDatabaseContext';
@@ -19,7 +20,9 @@ import {
 } from 'lucide-react';
 
 export const VendorsDirectoryView: React.FC = () => {
-  const { vendors, addVendor, updateVendor, deleteVendor, quotations, isAdmin } = useExactDb();
+  const { vendors, addVendor, updateVendor, deleteVendor, quotations, isAdmin, currentUser } = useExactDb();
+  // فقط بازرگانی غدیر و ادمین می‌توانند اطلاعات بانک تأمین‌کنندگان را ثبت/ویرایش/حذف کنند (سرور هم همین را اعمال می‌کند)
+  const canManageVendors = Boolean(isAdmin || (currentUser && currentUser.groups.includes(GROUPS.commercial)));
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -148,6 +151,7 @@ export const VendorsDirectoryView: React.FC = () => {
           </p>
         </div>
 
+        {canManageVendors ? (
         <button
           onClick={() => {
             setEditingVendor(null);
@@ -159,6 +163,11 @@ export const VendorsDirectoryView: React.FC = () => {
           <PlusCircle className="w-4 h-4" />
           <span>افزودن تأمین‌کننده جدید</span>
         </button>
+        ) : (
+          <span className="text-[11px] px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 self-start sm:self-auto">
+            فقط مشاهده — ثبت و ویرایش با بازرگانی غدیر
+          </span>
+        )}
       </div>
 
       {/* Filters Bar */}
@@ -290,6 +299,7 @@ export const VendorsDirectoryView: React.FC = () => {
                   <span className="text-emerald-400 font-semibold">{winsCount} خرید موفق</span>
                 </div>
 
+                {canManageVendors && (
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => openEdit(vendor)}
@@ -307,6 +317,7 @@ export const VendorsDirectoryView: React.FC = () => {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
+                )}
               </div>
             </div>
           );

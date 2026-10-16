@@ -95,6 +95,12 @@ export const NewRequestView: React.FC = () => {
         </div>
 
         <button
+          onClick={() => setActiveTab('import_rows')}
+          className="px-3 py-2 text-[11px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/20 mr-auto ml-2"
+        >
+          ثبت گروهی از اکسل
+        </button>
+        <button
           onClick={() => setActiveTab('dashboard')}
           className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
         >

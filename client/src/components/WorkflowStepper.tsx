@@ -5,7 +5,8 @@ import {
   WORKFLOW_STAGES, 
   getStageInfo, 
   inferStageFromRow, 
-  canAdvanceWorkflow 
+  canAdvanceWorkflow,
+  stageDisplayLabel,
 } from '../utils/workflowEngine';
 import { 
   CheckCircle2, 
@@ -110,7 +111,7 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({ row }) => {
             >
               {WORKFLOW_STAGES.map((s) => (
                 <option key={s.id} value={s.id}>
-                  انتقال به: {s.shortLabel}
+                  انتقال به: {stageDisplayLabel(s, row.requester_dept)}
                 </option>
               ))}
             </select>
@@ -189,10 +190,10 @@ export const WorkflowStepper: React.FC<WorkflowStepperProps> = ({ row }) => {
                   <span className={`text-xs block font-bold transition-colors ${
                     isCurrent ? 'text-blue-400' : isCompleted ? 'text-emerald-300' : 'text-slate-500'
                   }`}>
-                    {stage.shortLabel}
+                    {stageDisplayLabel(stage, row.requester_dept)}
                   </span>
                   <span className="text-[10px] text-slate-400 block max-w-[110px] truncate mx-auto">
-                    {stage.ownerDepartment}
+                    {stage.id === 'tech_request' && row.requester_dept ? 'دپارتمان درخواست‌کننده' : stage.ownerDepartment}
                   </span>
                 </div>
               </div>

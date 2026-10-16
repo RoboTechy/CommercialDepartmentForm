@@ -4,7 +4,8 @@ import {
   WORKFLOW_STAGES, 
   inferStageFromRow, 
   canAdvanceWorkflow, 
-  formatToman 
+  formatToman,
+  stageDisplayLabel,
 } from '../utils/workflowEngine';
 import { WorkflowStageId, DbRow } from '../types';
 import { 
@@ -131,7 +132,7 @@ export const WorkflowPipelineView: React.FC = () => {
                       {colIdx + 1}
                     </span>
                     <h3 className="text-xs font-bold text-white truncate max-w-[170px]" title={stage.label}>
-                      {stage.shortLabel}
+                      {stageDisplayLabel(stage, selectedDept !== 'all' ? selectedDept : undefined)}
                     </h3>
                   </div>
 

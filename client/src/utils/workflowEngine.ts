@@ -26,13 +26,13 @@ export const WORKFLOW_STAGES: StageDefinition[] = [
   {
     id: 'tech_request',
     order: 1,
-    label: '۱. ثبت درخواست و دفتر فنی',
-    shortLabel: 'دفتر فنی',
+    label: '۱. ثبت درخواست (دپارتمان درخواست‌کننده)',
+    shortLabel: 'درخواست‌کننده',
     badgeColor: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
     bgColor: 'bg-blue-600',
     borderColor: 'border-blue-500',
     description: 'مشخصات اولیه کالا، تعداد، محل مصرف و زمان تحویل به انبار کارفرما',
-    ownerDepartment: 'دفتر فنی / دپارتمان متقاضی',
+    ownerDepartment: 'دفتر فنی / عمران / آی‌تی',
     allowedGroups: [GROUPS.techOperator, GROUPS.civil, GROUPS.it, GROUPS.techLead, GROUPS.admin],
   },
   {
@@ -249,4 +249,10 @@ export function canAdvanceWorkflow(
 export function formatToman(amount?: number): string {
   if (amount === undefined || amount === null || isNaN(amount)) return '۰ تومان';
   return new Intl.NumberFormat('fa-IR').format(amount) + ' تومان';
+}
+
+// عنوان گام اول به دپارتمان واقعی درخواست‌کننده بستگی دارد (دفتر فنی / عمران / آی‌تی)؛ سایر گام‌ها ثابت‌اند
+export function stageDisplayLabel(stage: StageDefinition, dept?: string): string {
+  if (stage.id === 'tech_request' && dept) return dept;
+  return stage.shortLabel;
 }

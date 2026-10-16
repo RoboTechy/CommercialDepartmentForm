@@ -162,6 +162,21 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
               </div>
             </button>
           )}
+          {canCreateRows && (
+            <button
+              onClick={() => handleNav('import_rows')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                activeTab === 'import_rows'
+                  ? 'bg-blue-600/20 text-blue-400 font-semibold border border-blue-500/30'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <span>ثبت گروهی از اکسل</span>
+              </div>
+            </button>
+          )}
 
           <button
             onClick={() => handleNav('drafts')}

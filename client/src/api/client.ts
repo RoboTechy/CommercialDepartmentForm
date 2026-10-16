@@ -31,3 +31,25 @@ export async function api<T = any>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', pa
   }
   return json as T;
 }
+
+// آپلود فایل (multipart) - برای ایمپورت اکسل
+export async function apiUpload<T = any>(path: string, file: File): Promise<T> {
+  const form = new FormData();
+  form.append('file', file);
+  let res: Response;
+  try {
+    res = await fetch(`/api/v1${path}`, { method: 'POST', credentials: 'same-origin', body: form });
+  } catch {
+    throw new ApiError('ارتباط با سرور برقرار نشد. اتصال شبکه را بررسی کنید.', 0);
+  }
+  let json: any = null;
+  try {
+    json = await res.json();
+  } catch {
+    /* پاسخ غیر JSON */
+  }
+  if (!res.ok || (json && json.ok === false)) {
+    throw new ApiError((json && json.error) || `خطای سرور (${res.status})`, res.status);
+  }
+  return json as T;
+}

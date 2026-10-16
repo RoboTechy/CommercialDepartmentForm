@@ -155,6 +155,7 @@ export type ActiveTab =
   | 'new_request'
   | 'drafts'
   | 'overdue'
+  | 'import_rows'
   | 'row_detail'
   | 'duration_report'
   | 'management_report'

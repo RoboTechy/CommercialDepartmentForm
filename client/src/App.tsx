@@ -8,6 +8,7 @@ import { RowDetailView } from './components/RowDetailView';
 import { NewRequestView } from './components/NewRequestView';
 import { DraftsView } from './components/DraftsView';
 import { OverdueView } from './components/OverdueView';
+import { ImportRowsView } from './components/ImportRowsView';
 import { DurationReportView } from './components/DurationReportView';
 import { ManagementReportView } from './components/ManagementReportView';
 import { DeletedRowsView } from './components/DeletedRowsView';
@@ -75,6 +76,8 @@ const MainLayout: React.FC = () => {
         return <DraftsView />;
       case 'overdue':
         return <OverdueView />;
+      case 'import_rows':
+        return <ImportRowsView />;
       case 'row_detail':
         return <RowDetailView key={selectedRowId ?? 'none'} />;
       case 'duration_report':
