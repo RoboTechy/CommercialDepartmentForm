@@ -24,11 +24,16 @@ interface Props {
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  // برای استفاده داخل کانتینرهای دارای اسکرول (مثل جدول): پاپ‌آپ با position: fixed رسم می‌شود تا بریده نشود
+  fixedPopup?: boolean;
+  autoOpen?: boolean;
+  onBlurCommit?: () => void;
 }
 
 // فیلد تاریخ شمسی (خورشیدی) با تقویم بازشونده؛ مقدار همیشه به‌صورت YYYY/MM/DD
-export const JalaliDateInput: React.FC<Props> = ({ value, onChange, disabled, placeholder = '1403/00/00', className = '' }) => {
-  const [open, setOpen] = useState(false);
+export const JalaliDateInput: React.FC<Props> = ({ value, onChange, disabled, placeholder = '1403/00/00', className = '', fixedPopup = false, autoOpen = false }) => {
+  const [open, setOpen] = useState(autoOpen);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const base = parse(value) ?? parse(todayJalaliDate())!;
   const [view, setView] = useState({ jy: base.jy, jm: base.jm });
   const ref = useRef<HTMLDivElement>(null);
@@ -41,6 +46,16 @@ export const JalaliDateInput: React.FC<Props> = ({ value, onChange, disabled, pl
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
+
+  // موقعیت پاپ‌آپ ثابت نسبت به پنجره (با محدود شدن به لبه‌های صفحه)
+  useEffect(() => {
+    if (!open || !fixedPopup || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    const w = 256;
+    const left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+    const top = r.bottom + 4 + 300 > window.innerHeight ? Math.max(8, r.top - 304) : r.bottom + 4;
+    setPos({ top, left });
+  }, [open, fixedPopup]);
 
   const toggle = () => {
     if (disabled) return;
@@ -94,7 +109,11 @@ export const JalaliDateInput: React.FC<Props> = ({ value, onChange, disabled, pl
       </div>
 
       {open && !disabled && (
-        <div dir="rtl" className="absolute z-40 mt-1 right-0 w-64 p-3 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl">
+        <div
+          dir="rtl"
+          style={fixedPopup && pos ? { position: 'fixed', top: pos.top, left: pos.left } : undefined}
+          className={`${fixedPopup ? 'z-[70]' : 'absolute z-40 mt-1 right-0'} w-64 p-3 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl`}
+        >
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={() => shift(-1)} className="p-1 rounded hover:bg-slate-800 text-slate-300" title="ماه قبل">
               <ChevronRight className="w-4 h-4" />
