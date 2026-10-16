@@ -7,6 +7,7 @@ import { DashboardView } from './components/DashboardView';
 import { RowDetailView } from './components/RowDetailView';
 import { NewRequestView } from './components/NewRequestView';
 import { DraftsView } from './components/DraftsView';
+import { OverdueView } from './components/OverdueView';
 import { DurationReportView } from './components/DurationReportView';
 import { ManagementReportView } from './components/ManagementReportView';
 import { DeletedRowsView } from './components/DeletedRowsView';
@@ -72,6 +73,8 @@ const MainLayout: React.FC = () => {
         return <NewRequestView />;
       case 'drafts':
         return <DraftsView />;
+      case 'overdue':
+        return <OverdueView />;
       case 'row_detail':
         return <RowDetailView key={selectedRowId ?? 'none'} />;
       case 'duration_report':

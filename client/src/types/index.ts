@@ -154,6 +154,7 @@ export type ActiveTab =
   | 'vendors'
   | 'new_request'
   | 'drafts'
+  | 'overdue'
   | 'row_detail'
   | 'duration_report'
   | 'management_report'

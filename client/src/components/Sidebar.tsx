@@ -2,6 +2,7 @@ import React from 'react';
 import { useExactDb } from '../context/ExactDatabaseContext';
 import { ActiveTab } from '../types';
 import { 
+  AlertTriangle,
   LayoutDashboard, 
   FilePlus2, 
   Clock, 
@@ -25,7 +26,8 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
     setActiveTab, 
     setSelectedRowId, 
     rows, 
-    getDraftRows, 
+    getDraftRows,
+    getOverdueRows, 
     vendors,
     currentUser, 
     canCreateRows, 
@@ -39,6 +41,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
   const publishedCount = rows.filter(r => !r.deleted_at && r.published_at).length;
   const deletedCount = rows.filter(r => r.deleted_at).length;
   const draftCount = getDraftRows().length;
+  const overdueCount = getOverdueRows().length;
 
   const handleNav = (tab: ActiveTab) => {
     setSelectedRowId(null);
@@ -82,6 +85,25 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
             <span className="font-mono text-[11px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 tabular-nums border border-slate-700">
               {publishedCount}
             </span>
+          </button>
+
+          <button
+            onClick={() => handleNav('overdue')}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+              activeTab === 'overdue'
+                ? 'bg-amber-600/20 text-amber-300 font-semibold border border-amber-500/30'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-400" />
+              <span>ردیف‌های معطل‌مانده</span>
+            </div>
+            {overdueCount > 0 && (
+              <span className="font-mono text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-bold tabular-nums">
+                {overdueCount}
+              </span>
+            )}
           </button>
 
           {ENABLE_EXTENDED_WORKFLOW && (

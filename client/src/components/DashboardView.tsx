@@ -27,7 +27,6 @@ export const DashboardView: React.FC = () => {
   const { 
     getFilteredRows, 
     getStats, 
-    getOverdueRows, 
     filters, 
     setFilters, 
     setSelectedRowId, 
@@ -49,7 +48,6 @@ export const DashboardView: React.FC = () => {
 
   const filteredRows = getFilteredRows();
   const stats = getStats();
-  const overdueRows = getOverdueRows();
 
   const handleOpenRow = (id: number) => {
     setSelectedRowId(id);
@@ -228,38 +226,6 @@ export const DashboardView: React.FC = () => {
           );
         })}
       </div>
-
-      {/* Overdue Items Alert Banner */}
-      {overdueRows.length > 0 && (
-        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-bold text-xs">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
-              <span>ردیف‌های معطل‌مانده (بیش از ۳ روز از ایجاد گذشته و هنوز تکمیل نشده است):</span>
-            </div>
-            <span className="font-mono text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded">
-              {overdueRows.length} ردیف
-            </span>
-          </div>
-
-          <div className="flex flex-wrap gap-2 pt-1">
-            {overdueRows.map(({ row, blockingSection, ageDays }) => (
-              <button
-                key={row.id}
-                onClick={() => handleOpenRow(row.id)}
-                className="px-2.5 py-1.5 bg-slate-900 border border-amber-500/40 hover:border-amber-400 rounded-lg text-[11px] text-slate-200 flex items-center gap-2 transition-colors shadow-xs"
-              >
-                <span className="font-mono font-bold text-blue-400">{row.request_no}</span>
-                <span className="text-slate-600">|</span>
-                <span className="text-slate-300 truncate max-w-[120px]">{row.item_description}</span>
-                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-semibold text-[10px]">
-                  منتظر: {blockingSection.title} ({ageDays} روز)
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Search and Filters Bar */}
       <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-sm space-y-3">
