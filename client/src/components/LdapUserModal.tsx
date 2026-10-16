@@ -31,7 +31,6 @@ export const LdapUserModal: React.FC = () => {
             <div className="flex justify-between"><span className="text-slate-400">نام</span><span className="text-slate-100 font-semibold">{currentUser.displayName}</span></div>
             <div className="flex justify-between"><span className="text-slate-400">نام کاربری</span><span className="font-mono text-slate-200">{currentUser.username}</span></div>
             <div className="flex justify-between"><span className="text-slate-400">نوع ورود</span><span className="text-slate-200">{currentUser.isLocalAdmin ? 'ادمین محلی' : 'Active Directory (LDAP)'}</span></div>
-            <div className="flex justify-between gap-4"><span className="text-slate-400 shrink-0">گروه‌ها</span><span className="font-mono text-slate-200 text-left" dir="ltr">{currentUser.groups.join(', ') || '—'}</span></div>
             <div className="flex justify-between"><span className="text-slate-400">پایان نشست</span><span className="text-slate-200">{expires}</span></div>
           </div>
 

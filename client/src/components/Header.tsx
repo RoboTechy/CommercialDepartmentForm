@@ -162,9 +162,6 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
                   <span className="text-xs font-semibold text-slate-200 truncate max-w-[130px]">
                     {currentUser.displayName.split('(')[0]}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {currentUser.isLocalAdmin ? 'local-admin' : (currentUser.groups[0] || 'user')}
-                  </span>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
               </button>
