@@ -141,9 +141,9 @@ export function toLatinDigits(value: string): string {
 
 const SECTION_LABELS: Record<string, string> = {
   tech_operator: 'درخواست‌کننده',
-  warehouse_1: 'انبار کارفرما (بلوک ۱)',
+  warehouse_1: 'انبار کارفرما-1',
   commercial: 'بازرگانی غدیر',
-  warehouse_2: 'انبار کارفرما (بلوک ۲)',
+  warehouse_2: 'انبار کارفرما-2',
 };
 
 // نخستین بخشِ قبل از sectionKey که هنوز تکمیل نشده (معادل incompleteSectionBefore در src/sections.js)

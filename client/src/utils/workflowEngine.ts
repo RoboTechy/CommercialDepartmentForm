@@ -44,7 +44,7 @@ export const WORKFLOW_STAGES: StageDefinition[] = [
     bgColor: 'bg-amber-600',
     borderColor: 'border-amber-500',
     description: 'بررسی موجودی انبار، تخصیص شماره درخواست خرید و تحویل به کارشناس',
-    ownerDepartment: 'انبار کارفرما (بلوک ۱)',
+    ownerDepartment: 'انبار کارفرما-1',
     allowedGroups: [GROUPS.warehouse, GROUPS.admin],
   },
   {
@@ -74,13 +74,13 @@ export const WORKFLOW_STAGES: StageDefinition[] = [
   {
     id: 'final_dispatch',
     order: 5,
-    label: '۵. ترخیص و اعزام انبار کارفرما (بلوک ۲)',
+    label: '۵. ترخیص و اعزام انبار کارفرما-2',
     shortLabel: 'ترخیص و اعزام',
     badgeColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
     bgColor: 'bg-cyan-600',
     borderColor: 'border-cyan-500',
     description: 'ثبت شماره نامه رسمی، تاریخ ارسال و در پایان تاریخ ورود به کارخانه',
-    ownerDepartment: 'انبار کارفرما (بلوک ۲)',
+    ownerDepartment: 'انبار کارفرما-2',
     allowedGroups: [GROUPS.warehouse, GROUPS.admin],
   },
   {

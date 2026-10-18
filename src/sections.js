@@ -98,9 +98,9 @@ function isPaymentAuthWaived(row) {
 // عنوان قابل‌تشخیص هر بخش (انبار کارفرما دو بلوک جدا دارد)
 const SECTION_LABELS = {
   tech_operator: 'درخواست‌کننده',
-  warehouse_1: 'انبار کارفرما (بلوک ۱)',
+  warehouse_1: 'انبار کارفرما-1',
   commercial: 'بازرگانی غدیر',
-  warehouse_2: 'انبار کارفرما (بلوک ۲)',
+  warehouse_2: 'انبار کارفرما-2',
 };
 
 // نخستین بخشِ «قبل از sectionKey» که هنوز تکمیل نشده؛ null اگر همه‌ی بخش‌های قبلی کامل باشند.

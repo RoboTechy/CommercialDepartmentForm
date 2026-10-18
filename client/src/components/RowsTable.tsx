@@ -18,9 +18,9 @@ const SECTION_STYLE: Record<string, { head: string; bg: string }> = {
 
 const SECTION_TITLE: Record<string, string> = {
   tech_operator: 'بخش ۱: درخواست‌کننده',
-  warehouse_1: 'بخش ۲: انبار کارفرما (بلوک ۱)',
+  warehouse_1: 'بخش ۲: انبار کارفرما-1',
   commercial: 'بخش ۳: بازرگانی غدیر',
-  warehouse_2: 'بخش ۴: انبار کارفرما (بلوک ۲)',
+  warehouse_2: 'بخش ۴: انبار کارفرما-2',
 };
 
 function priorityClass(p: PriorityLevel) {
@@ -352,7 +352,6 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
                     <button type="button" onClick={() => toggle(s.key)} className="inline-flex items-center gap-1.5 font-bold hover:underline" title={isOpen ? 'بستن این بخش' : 'باز کردن این بخش'}>
                       {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
                       <span>{SECTION_TITLE[s.key]}</span>
-                      {!isOpen && <span className="text-[10px] font-normal opacity-70">({s.fields.filter((f) => !f.readOnly).length} فیلد)</span>}
                     </button>
                   </th>
                 );
