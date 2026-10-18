@@ -43,11 +43,12 @@ export const ThemeMenu: React.FC = () => {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(o => !o)}
-        className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-transparent rounded-xl transition-colors"
+        className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 text-xs text-blue-300 hover:text-slate-100 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl transition-colors"
         title="تم رنگی"
         aria-label="تم رنگی"
       >
         <Palette className="w-4 h-4" />
+        <span className="hidden sm:inline">تم رنگی</span>
       </button>
       {open && (
         <div className="absolute left-0 top-full mt-2 w-56 z-[70] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 space-y-3">
