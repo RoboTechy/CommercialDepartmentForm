@@ -52,11 +52,8 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
                 setSelectedRowId(null);
                 setActiveTab('dashboard');
               }}
-              className="flex items-center gap-2.5 text-slate-100 group"
+              className="flex items-center gap-2.5 text-slate-100"
             >
-              <div className="w-10 h-10 rounded-xl bg-white p-0.5 overflow-hidden shrink-0 shadow-md group-hover:scale-105 transition-transform">
-                <img src="/LOGO.jpg" alt="لوگوی غدیر" className="w-full h-full object-contain" />
-              </div>
               <div className="flex flex-col text-right whitespace-nowrap">
                 <span className="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-2">
                   <span>سامانه مدیریت بازرگانی و انبار</span>
@@ -183,6 +180,12 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
                 <span>ثبت درخواست کالا</span>
               </button>
             )}
+
+            <button onClick={() => { setSelectedRowId(null); setActiveTab('dashboard'); }} className="block ms-1 shrink-0" title="صفحه‌ی نخست">
+              <div className="w-10 h-10 rounded-xl bg-white p-0.5 overflow-hidden shrink-0 shadow-md hover:scale-105 transition-transform">
+                <img src="/LOGO.jpg" alt="لوگوی غدیر" className="w-full h-full object-contain" />
+              </div>
+            </button>
           </div>
 
         </div>
