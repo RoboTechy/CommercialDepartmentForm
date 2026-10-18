@@ -1,4 +1,5 @@
 import React from 'react';
+import { ThemeMenu } from './ThemeMenu';
 import { useExactDb } from '../context/ExactDatabaseContext';
 import { 
   Building2, 
@@ -147,6 +148,8 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
 
           {/* Zone 3: User Switcher, Logout & Create CTA */}
           <div className="flex items-center gap-2">
+            <ThemeMenu />
+
             {/* LDAP / Local User Badge */}
             {currentUser && (
               <button

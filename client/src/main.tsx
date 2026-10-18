@@ -9,6 +9,9 @@ import '@fontsource/vazirmatn/arabic-700.css';
 import '@fontsource/vazirmatn/latin-400.css';
 import '@fontsource/vazirmatn/latin-600.css';
 import './index.css';
+import { applyTheme, loadTheme } from './utils/theme.ts';
+
+applyTheme(loadTheme());
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
