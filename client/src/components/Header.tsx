@@ -27,7 +27,6 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
     setSelectedRowId, 
     setIsLdapModalOpen,
     canCreateRows,
-    canViewAuditLogs,
     isAdmin,
     logout
   } = useExactDb();
@@ -129,21 +128,6 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
               گزارش مدیریتی
             </button>
 
-            {canViewAuditLogs && (
-            <button
-              onClick={() => {
-                setSelectedRowId(null);
-                setActiveTab('audit_logs');
-              }}
-              className={`transition-colors py-1 relative ${
-                activeTab === 'audit_logs'
-                  ? 'text-blue-400 font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-blue-500'
-                  : 'hover:text-slate-200'
-              }`}
-            >
-              تاریخچه سیستم
-            </button>
-            )}
           </nav>
 
           {/* Zone 3: User Switcher, Logout & Create CTA */}
