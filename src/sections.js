@@ -56,7 +56,6 @@ const sections = [
       { name: 'purchase_request_no', label: 'شماره درخواست خرید', type: 'text' },
       { name: 'delivered_to_tech_expert_date', label: 'تاریخ تحویل به کارشناس فنی', type: 'jalali-date' },
       { name: 'delivered_to_employer_date', label: 'تاریخ تحویل به کارفرما', type: 'jalali-date' },
-      { name: 'factory_arrival_date', label: 'تاریخ ورود به کارخانه', type: 'jalali-date' },
     ],
   },
   {
@@ -80,6 +79,7 @@ const sections = [
     fields: [
       { name: 'letter_no', label: 'شماره نامه', type: 'text' },
       { name: 'dispatch_date', label: 'تاریخ ارسال', type: 'jalali-date' },
+      { name: 'factory_arrival_date', label: 'تاریخ ورود به کارخانه', type: 'jalali-date' },
     ],
   },
 ];

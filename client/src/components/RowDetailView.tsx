@@ -445,9 +445,9 @@ export const RowDetailView: React.FC = () => {
                     <h2 className="text-sm font-bold text-white">{section.title}</h2>
                     <span className="text-[11px] opacity-75 text-slate-300">
                       {section.key === 'tech_operator' && 'مشخصات اولیه کالا، تعداد، محل مصرف و تاریخ تحویل'}
-                      {section.key === 'warehouse_1' && 'شماره خرید و تاریخ‌های تحویل به کارشناس، کارفرما و کارخانه'}
+                      {section.key === 'warehouse_1' && 'شماره خرید و تاریخ‌های تحویل به کارشناس فنی و کارفرما'}
                       {section.key === 'commercial' && 'ارجاع، انتخاب مجری خرید (سایت/تهران/برنا) و مجوز پرداخت'}
-                      {section.key === 'warehouse_2' && 'شماره نامه رسمی و تاریخ ارسال نهایی'}
+                      {section.key === 'warehouse_2' && 'شماره نامه رسمی، تاریخ ارسال و تاریخ ورود به کارخانه'}
                     </span>
                   </div>
                 </div>

@@ -79,7 +79,7 @@ export const WORKFLOW_STAGES: StageDefinition[] = [
     badgeColor: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
     bgColor: 'bg-cyan-600',
     borderColor: 'border-cyan-500',
-    description: 'ثبت شماره نامه رسمی، مجوز خروج و ارسال قطعی به سایت پروژه',
+    description: 'ثبت شماره نامه رسمی، تاریخ ارسال و در پایان تاریخ ورود به کارخانه',
     ownerDepartment: 'انبار کارفرما (بلوک ۲)',
     allowedGroups: [GROUPS.warehouse, GROUPS.admin],
   },
@@ -109,7 +109,7 @@ const STAGE_ORDER: WorkflowStageId[] = ['tech_request', 'warehouse_review', 'com
 // مرحله‌ای که خودِ اطلاعات ثبت‌شده ایجاب می‌کند (بدون ارتقای دستی). مجری خرید «تهران/برنا» یعنی
 // کار بازرگانی تمام است و درخواست مستقیم به انبار (ترخیص/ارسال) می‌رود.
 export function autoStageFromRow(row: DbRow): WorkflowStageId {
-  if (row.letter_no && row.dispatch_date) return 'completed';
+  if (row.letter_no && row.dispatch_date && row.factory_arrival_date) return 'completed';
   const ex = row.purchase_executor;
   if (ex && EXTERNAL_EXECUTORS.includes(ex)) return 'final_dispatch';
   if (ex === 'سایت') return row.payment_auth_issued_date ? 'final_dispatch' : 'financial_approval';
@@ -132,7 +132,7 @@ const REQUIRED_TO_ADVANCE: Partial<Record<WorkflowStageId, (keyof DbRow)[]>> = {
   warehouse_review: ['purchase_request_no', 'delivered_to_tech_expert_date', 'delivered_to_employer_date'],
   commercial_rfq: ['referred_to_commercial_date', 'purchase_executor'],
   financial_approval: ['payment_auth_issued_date'],
-  final_dispatch: ['letter_no', 'dispatch_date'],
+  final_dispatch: ['letter_no', 'dispatch_date', 'factory_arrival_date'],
 };
 
 export function createDefaultApprovals(rowId: number, priority: PriorityLevel, estimatedAmount: number = 0): ApprovalRecord[] {
