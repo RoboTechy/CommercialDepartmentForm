@@ -32,11 +32,11 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
 
   return (
     <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
-      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div>
+        <div className="flex items-center h-16">
           
           {/* Zone 1: Brand Wordmark */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 shrink-0 pr-4 sm:pr-6 lg:pr-3.5 lg:w-72 lg:border-l lg:border-slate-800 h-full">
             <button
               onClick={onToggleMobileMenu}
               className="lg:hidden p-2 -mr-2 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-800 transition-colors"
@@ -52,20 +52,24 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
                 setSelectedRowId(null);
                 setActiveTab('dashboard');
               }}
-              className="flex items-center gap-2.5 text-slate-100"
+              className="flex items-center gap-2.5 text-slate-100 group"
             >
-              <div className="flex flex-col text-right whitespace-nowrap">
-                <span className="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-white p-0.5 overflow-hidden shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                <img src="/LOGO.jpg" alt="لوگوی غدیر" className="w-full h-full object-contain" />
+              </div>
+              <div className="flex flex-col text-right whitespace-nowrap min-w-0">
+                <span className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
                   <span>سامانه مدیریت بازرگانی و انبار</span>
                   
                 </span>
-                <span className="text-[11px] font-medium text-slate-400 hidden sm:inline">
+                <span className="text-[11px] font-medium text-slate-400 hidden sm:block truncate">
                   گردش کار و پایش آنلاین درخواست‌های کالا
                 </span>
               </div>
             </a>
           </div>
 
+          <div className="flex-1 min-w-0 flex items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           {/* Zone 2: Navigation Links (Single-Line, Hover Underline) */}
           <nav className="hidden lg:flex items-center gap-6 text-xs sm:text-sm font-medium text-slate-400">
             <button
@@ -180,12 +184,7 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
                 <span>ثبت درخواست کالا</span>
               </button>
             )}
-
-            <button onClick={() => { setSelectedRowId(null); setActiveTab('dashboard'); }} className="block ms-1 shrink-0" title="صفحه‌ی نخست">
-              <div className="w-10 h-10 rounded-xl bg-white p-0.5 overflow-hidden shrink-0 shadow-md hover:scale-105 transition-transform">
-                <img src="/LOGO.jpg" alt="لوگوی غدیر" className="w-full h-full object-contain" />
-              </div>
-            </button>
+          </div>
           </div>
 
         </div>
