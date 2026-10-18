@@ -95,6 +95,31 @@ function isPaymentAuthWaived(row) {
   return EXTERNAL_PURCHASE_EXECUTORS.includes(row.purchase_executor);
 }
 
+// عنوان قابل‌تشخیص هر بخش (انبار کارفرما دو بلوک جدا دارد)
+const SECTION_LABELS = {
+  tech_operator: 'درخواست‌کننده',
+  warehouse_1: 'انبار کارفرما (بلوک ۱)',
+  commercial: 'بازرگانی غدیر',
+  warehouse_2: 'انبار کارفرما (بلوک ۲)',
+};
+
+// نخستین بخشِ «قبل از sectionKey» که هنوز تکمیل نشده؛ null اگر همه‌ی بخش‌های قبلی کامل باشند.
+// معیار کامل‌بودن همان قاعده‌ی «منتظر کدام بخش» است: همه‌ی فیلدهای غیر-فقط‌خواندنی پر باشند
+// (به‌جز «تاریخ صدور مجوز پرداخت» وقتی مجری خرید تهران/برنا است).
+function incompleteSectionBefore(row, sectionKey) {
+  for (const section of sections) {
+    if (section.key === sectionKey) return null;
+    const fields = section.fields
+      .filter((f) => !f.readOnly)
+      .filter((f) => !(f.name === 'payment_auth_issued_date' && isPaymentAuthWaived(row)));
+    const missing = fields.filter((f) => !(row[f.name] || '').toString().trim());
+    if (missing.length) {
+      return { key: section.key, label: SECTION_LABELS[section.key] || section.title, missing: missing.map((f) => f.label) };
+    }
+  }
+  return null;
+}
+
 function findSection(key) {
   return sections.find((s) => s.key === key);
 }
@@ -111,4 +136,4 @@ function allFields() {
   return sections.flatMap((s) => s.fields.map((f) => ({ ...f, sectionKey: s.key })));
 }
 
-module.exports = { sections, findSection, findField, allFields, requesterDepartments, isPaymentAuthWaived };
+module.exports = { incompleteSectionBefore, SECTION_LABELS, sections, findSection, findField, allFields, requesterDepartments, isPaymentAuthWaived };

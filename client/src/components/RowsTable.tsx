@@ -71,7 +71,7 @@ interface RowsTableProps {
 export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFilter, clearColFilters }) => {
   const {
     currentUser, isAdmin, isLocalAdmin, canEditSectionForRow, canCancelRow, canReturnToTechOffice,
-    updateSection, getRowHistory, quotationCount, notify, setSelectedRowId, setActiveTab, setHistoryDrawerRowId, setCancelModalRowId,
+    updateSection, getRowHistory, quotationCount, notify, sectionLockReason, setSelectedRowId, setActiveTab, setHistoryDrawerRowId, setCancelModalRowId,
     setReturnModalRowId, uncancelRow, unreturnFromTechOffice, softDeleteRow,
   } = useExactDb();
 
@@ -265,6 +265,8 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
     if (field.name === 'payment_auth_issued_date' && isPaymentAuthWaived(row)) return `مجری خرید «${row.purchase_executor}» است؛ مجوز پرداخت سایت لازم نیست.`;
     if (row.cancelled_at) return 'این درخواست لغو شده است؛ برای ویرایش ابتدا لغو را بردارید.';
     if (row.returned_at && section.key !== 'tech_operator') return 'این درخواست به درخواست‌کننده عودت داده شده؛ فقط درخواست‌کننده می‌تواند ویرایش کند.';
+    const lock = sectionLockReason(row, section.key);
+    if (lock) return lock;
     if (section.key === 'tech_operator') return `این درخواست متعلق به دپارتمان «${row.requester_dept || '—'}» است و فقط همان دپارتمان (یا ادمین) می‌تواند آن را ویرایش کند.`;
     return `ویرایش «${SECTION_TITLE[section.key] || section.title}» فقط برای پرسنل همان بخش (یا ادمین) مجاز است.`;
   };

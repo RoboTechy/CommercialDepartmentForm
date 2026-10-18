@@ -12,6 +12,9 @@ module.exports = {
   dbFile: need('DB_FILE', require('path').join(__dirname, '..', 'data', 'app.db')),
   // بعد از چند روز از ایجاد یک ردیف، اگر هنوز بخشی از آن تکمیل نشده باشد
   // در جدول اصلی به‌صورت معطل‌مانده هایلایت می‌شود
+  // ترتیب بخش‌ها: تا بخش قبلی کامل نشده، بخش بعدی (جز ادمین) چیزی در آن ردیف ثبت نمی‌کند.
+  // برای خاموش کردن: ENFORCE_SECTION_ORDER=false
+  enforceSectionOrder: need('ENFORCE_SECTION_ORDER', 'true') !== 'false',
   overdueDays: parseInt(need('OVERDUE_DAYS', '3'), 10),
   // حساب ادمین محلی (اختیاری) - کاملاً مستقل از LDAP/Active Directory، برای
   // مواقعی که اتصال به دامنه قطع می‌شود. اگر LOCAL_ADMIN_USERNAME خالی باشد،

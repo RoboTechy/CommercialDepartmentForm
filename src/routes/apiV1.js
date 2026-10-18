@@ -17,6 +17,7 @@ const {
   canCreateRows,
   canEditSection,
   canEditSectionForRow,
+  sectionOrderBlocker,
   canCancelRow,
   canReturnToTechOffice,
 } = require('../middleware');
@@ -63,6 +64,7 @@ function meOf(user) {
       canReturnToTechOffice: canReturnToTechOffice(user),
     },
     overdueDays: config.overdueDays,
+    enforceSectionOrder: config.enforceSectionOrder,
     sessionExpiresAt: user.loginAt ? user.loginAt + SESSION_MS : null,
   };
 }
@@ -281,6 +283,10 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
     return fail(res, 400, 'این درخواست به درخواست‌کننده عودت داده شده است؛ فقط درخواست‌کننده می‌تواند ویرایش کند.');
   }
   if (!canEditSectionForRow(user, row, section.key)) {
+    const blocker = sectionOrderBlocker(user, row, section.key);
+    if (blocker && canEditSection(user, section.key)) {
+      return fail(res, 403, `ابتدا بخش «${blocker.label}» باید تکمیل شود. فیلدهای خالی: ${blocker.missing.join('، ')}`);
+    }
     return fail(res, 403, `شما مجاز به تکمیل «${section.title}» در این ردیف نیستید.`);
   }
 

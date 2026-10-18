@@ -19,6 +19,7 @@ import {
   isRowComplete,
   currentBlockingSection,
   normalizeForDuplicateCheck,
+  incompleteSectionBefore,
   DEPARTMENTS,
 } from '../store/exactStore';
 import { GROUPS, OVERDUE_DAYS } from '../config';
@@ -88,6 +89,8 @@ interface ExactDatabaseContextType {
   canViewAuditLogs: boolean;
   canCreateRows: boolean;
   canEditSectionForRow: (row: DbRow, sectionKey: string) => boolean;
+  // اگر بخشی به‌خاطر ناقص‌بودن بخش قبلی قفل است، دلیلش (وگرنه null)
+  sectionLockReason: (row: DbRow, sectionKey: string) => string | null;
   canCancelRow: (row: DbRow) => boolean;
   canReturnToTechOffice: boolean;
 
@@ -145,6 +148,7 @@ interface ExactDatabaseContextType {
 interface MeResponse {
   user: UserSession;
   sessionExpiresAt: number | null;
+  enforceSectionOrder?: boolean;
 }
 
 interface DataResponse {
@@ -324,8 +328,17 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     return groups.some((g) => currentUser.groups.includes(g));
   };
 
+  // ترتیب بخش‌ها: تا بخش قبلی تکمیل نشده، بخش بعدی (جز ادمین) چیزی ثبت نمی‌کند (سرور هم همین را اعمال می‌کند)
+  const sectionLockReason = (row: DbRow, sectionKey: string): string | null => {
+    if (!currentUser || isAdmin || me?.enforceSectionOrder === false) return null;
+    const blocker = incompleteSectionBefore(row, sectionKey);
+    if (!blocker) return null;
+    return `ابتدا بخش «${blocker.label}» باید تکمیل شود (فیلدهای خالی: ${blocker.missing.join('، ')}).`;
+  };
+
   const canEditSectionForRow = (row: DbRow, sectionKey: string): boolean => {
     if (!currentUser) return false;
+    if (sectionLockReason(row, sectionKey)) return false;
     if (row.deleted_at || row.cancelled_at) return false;
     if (row.returned_at && sectionKey !== 'tech_operator') return false;
     // پیش‌نویس هنوز در فهرست مشترک نیست: فقط سازنده‌اش (یا ادمین) می‌تواند ویرایشش کند
@@ -601,7 +614,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
         activeTab, selectedRowId, filters, isLdapModalOpen, cancelModalRowId, returnModalRowId, historyDrawerRowId,
         login, logout, sessionExpiresAt,
         setActiveTab, setSelectedRowId, setFilters, setIsLdapModalOpen, setCancelModalRowId, setReturnModalRowId, setHistoryDrawerRowId,
-        isAdmin, isLocalAdmin, isManagement, canViewAuditLogs, canCreateRows, canEditSectionForRow, canCancelRow, canReturnToTechOffice,
+        isAdmin, isLocalAdmin, isManagement, canViewAuditLogs, canCreateRows, canEditSectionForRow, sectionLockReason, canCancelRow, canReturnToTechOffice,
         createRow, updateSection, finalizeDrafts, discardDraft, softDeleteRow, restoreRow,
         cancelRow, uncancelRow, returnToTechOffice, unreturnFromTechOffice,
         addVendor, updateVendor, deleteVendor, addQuotation, selectWinningQuotation, deleteQuotation, getRowQuotations,

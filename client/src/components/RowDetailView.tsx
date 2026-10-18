@@ -34,6 +34,7 @@ export const RowDetailView: React.FC = () => {
     setSelectedRowId, 
     setActiveTab, 
     canEditSectionForRow, 
+    sectionLockReason,
     updateSection,
     setHistoryDrawerRowId,
     setCancelModalRowId,
@@ -422,6 +423,7 @@ export const RowDetailView: React.FC = () => {
           <div className="space-y-5">
             {sections.map((section, sIdx) => {
               const canEdit = canEditSectionForRow(row, section.key);
+              const lockReason = sectionLockReason(row, section.key);
               const isSaving = savingSection === section.key;
 
               const getSectionHeaderColor = () => {
@@ -486,6 +488,12 @@ export const RowDetailView: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {lockReason && (
+                <div className="mx-4 mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200">
+                  {lockReason}
+                </div>
+              )}
 
               {/* Fields Grid */}
               <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -1,5 +1,5 @@
 const config = require('./config');
-const { sections, findSection, requesterDepartments } = require('./sections');
+const { sections, findSection, requesterDepartments, incompleteSectionBefore } = require('./sections');
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -63,7 +63,16 @@ function canEditRequesterRow(user, row) {
 // گروهی/دپارتمانی را چک می‌کند و هم قفل‌های وضعیتی ردیف (حذف‌شده/لغوشده/
 // عودت‌داده‌شده) را؛ محل واحد این منطق تا در همه‌جا (نمای جزئیات ردیف، ثبت
 // تغییرات هر بخش، ویرایش درجا از فهرست اصلی) یکسان اعمال شود.
+// اگر یکی از بخش‌های قبلی هنوز کامل نشده باشد، آن بخش را برمی‌گرداند (برای ادمین/ادمین محلی
+// هرگز - تا بتوانند خطاها را اصلاح کنند - و وقتی ENFORCE_SECTION_ORDER=false باشد هم نه)
+function sectionOrderBlocker(user, row, sectionKey) {
+  if (!config.enforceSectionOrder) return null;
+  if (isAdmin(user)) return null;
+  return incompleteSectionBefore(row, sectionKey);
+}
+
 function canEditSectionForRow(user, row, sectionKey) {
+  if (sectionOrderBlocker(user, row, sectionKey)) return false;
   if (row.deleted_at || row.cancelled_at) return false;
   if (row.returned_at && sectionKey !== 'tech_operator') return false;
   return sectionKey === 'tech_operator' ? canEditRequesterRow(user, row) : canEditSection(user, sectionKey);
@@ -91,6 +100,7 @@ module.exports = {
   canEditSection,
   canEditRequesterRow,
   canEditSectionForRow,
+  sectionOrderBlocker,
   canCreateRows,
   canCancelRow,
   canReturnToTechOffice,

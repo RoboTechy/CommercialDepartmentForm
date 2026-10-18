@@ -138,3 +138,21 @@ export function toLatinDigits(value: string): string {
     .replace(/[۰-۹]/g, (d) => String(PERSIAN_DIGITS.indexOf(d)))
     .replace(/[٠-٩]/g, (d) => String(ARABIC_INDIC_DIGITS.indexOf(d)));
 }
+
+const SECTION_LABELS: Record<string, string> = {
+  tech_operator: 'درخواست‌کننده',
+  warehouse_1: 'انبار کارفرما (بلوک ۱)',
+  commercial: 'بازرگانی غدیر',
+  warehouse_2: 'انبار کارفرما (بلوک ۲)',
+};
+
+// نخستین بخشِ قبل از sectionKey که هنوز تکمیل نشده (معادل incompleteSectionBefore در src/sections.js)
+export function incompleteSectionBefore(row: DbRow, sectionKey: string): { key: string; label: string; missing: string[] } | null {
+  for (const section of sections) {
+    if (section.key === sectionKey) return null;
+    const fields = fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly));
+    const missing = fields.filter((f) => !((row[f.name] ?? '') as string).toString().trim());
+    if (missing.length) return { key: section.key, label: SECTION_LABELS[section.key] || section.title, missing: missing.map((f) => f.label) };
+  }
+  return null;
+}
