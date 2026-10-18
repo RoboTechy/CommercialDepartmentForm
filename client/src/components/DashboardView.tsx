@@ -42,10 +42,12 @@ export const DashboardView: React.FC = () => {
     canReturnToTechOffice,
     isAdmin,
     isLocalAdmin,
-    getDraftRows
+    getDraftRows,
+    dataLoaded
   } = useExactDb();
 
   const myDrafts = getDraftRows();
+  const [mobileLimit, setMobileLimit] = React.useState(60);
 
   // کارت‌های آماری فضای زیادی می‌گیرند؛ برای دیدن ردیف‌های بیشتر قابل جمع‌شدن‌اند (انتخاب هر مرورگر ذخیره می‌شود)
   const [showStats, setShowStats] = React.useState<boolean>(() => {
@@ -371,7 +373,10 @@ export const DashboardView: React.FC = () => {
 
       {/* Mobile Responsive Cards View */}
       <div className="lg:hidden space-y-3">
-        {filteredRows.map(row => {
+        {!dataLoaded && (
+          <div className="py-10 text-center text-sm text-slate-400">در حال بارگذاری فهرست درخواست‌ها...</div>
+        )}
+        {filteredRows.slice(0, mobileLimit).map(row => {
           const isCancelled = Boolean(row.cancelled_at);
           const isReturned = Boolean(row.returned_at);
 
@@ -435,6 +440,15 @@ export const DashboardView: React.FC = () => {
             </div>
           );
         })}
+        {filteredRows.length > mobileLimit && (
+          <button
+            type="button"
+            onClick={() => setMobileLimit((n) => n + 60)}
+            className="w-full py-3 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200"
+          >
+            نمایش ۶۰ ردیف بیشتر ({filteredRows.length - mobileLimit} ردیف باقی مانده)
+          </button>
+        )}
       </div>
 
     </div>

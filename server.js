@@ -1,6 +1,7 @@
 const express = require('express');
 const session = require('express-session');
 const morgan = require('morgan');
+const compression = require('compression');
 const path = require('path');
 const config = require('./src/config');
 const db = require('./src/db');
@@ -14,6 +15,8 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 app.use(morgan('dev'));
+// فشرده‌سازی gzip: پاسخ JSON فهرست (چند مگابایت) و فایل‌های js/css را حدود ۳۰ برابر کوچک‌تر می‌کند
+app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));

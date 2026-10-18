@@ -136,25 +136,34 @@ router.get('/data', (req, res) => {
   const user = sessionUser(req);
   const rows = db.all('SELECT * FROM rows ORDER BY id DESC').filter((r) => canSeeRow(user, r));
   const visibleIds = new Set(rows.map((r) => r.id));
-  const auditLogs = db
-    .all('SELECT * FROM audit_log ORDER BY id DESC LIMIT 30000')
-    .filter((l) => visibleIds.has(l.row_id));
   // جزئیات پیش‌فاکتورها (تأمین‌کننده، قیمت و...) فقط برای ادمین‌ها ارسال می‌شود؛
   // بقیه فقط تعداد پیش‌فاکتورهای هر درخواست را می‌بینند (گرفته شده یا نه)
   const allQuotes = ext.listQuotations().filter((q) => visibleIds.has(q.rowId));
   const quotationCounts = {};
   for (const q of allQuotes) quotationCounts[q.rowId] = (quotationCounts[q.rowId] || 0) + 1;
   const seeQuotes = isAdmin(user) || isLocalAdmin(user);
+  // لاگ تغییرات عمداً اینجا نیست (حجمش از خود ردیف‌ها بیشتر است و فهرست را کند می‌کرد)؛ از /audit-logs
+  // جداگانه و در پس‌زمینه گرفته می‌شود
   res.json({
     ok: true,
     rows,
-    auditLogs,
     vendors: ext.listVendors(),
     quotations: seeQuotes ? allQuotes : [],
     quotationCounts,
     approvals: ext.listApprovals().filter((a) => visibleIds.has(a.rowId)),
     serverTime: nowJalaliDateTime(),
   });
+});
+
+router.get('/audit-logs', (req, res) => {
+  const user = sessionUser(req);
+  const visibleIds = new Set(
+    db.all('SELECT id, published_at, created_by_username, deleted_at FROM rows').filter((r) => canSeeRow(user, r)).map((r) => r.id)
+  );
+  const auditLogs = db
+    .all('SELECT * FROM audit_log ORDER BY id DESC LIMIT 30000')
+    .filter((l) => visibleIds.has(l.row_id));
+  res.json({ ok: true, auditLogs });
 });
 
 // ---------------- ردیف‌ها ----------------

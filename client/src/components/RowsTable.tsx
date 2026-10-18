@@ -71,7 +71,7 @@ interface RowsTableProps {
 export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFilter, clearColFilters }) => {
   const {
     currentUser, isAdmin, isLocalAdmin, canEditSectionForRow, canCancelRow, canReturnToTechOffice,
-    updateSection, getRowHistory, quotationCount, notify, sectionLockReason, setSelectedRowId, setActiveTab, setHistoryDrawerRowId, setCancelModalRowId,
+    updateSection, getRowHistory, quotationCount, notify, sectionLockReason, dataLoaded, setSelectedRowId, setActiveTab, setHistoryDrawerRowId, setCancelModalRowId,
     setReturnModalRowId, uncancelRow, unreturnFromTechOffice, softDeleteRow,
   } = useExactDb();
 
@@ -271,6 +271,42 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
     return `ویرایش «${SECTION_TITLE[section.key] || section.title}» فقط برای پرسنل همان بخش (یا ادمین) مجاز است.`;
   };
 
+  // ---------- پنجره‌ای‌سازی (virtualization): فقط ردیف‌های قابل‌دیدن در DOM هستند ----------
+  // با ۱۴۰۰+ ردیف و ۲۰+ ستون، رندر همه‌ی ردیف‌ها (ده‌ها هزار سلول) چند ثانیه طول می‌کشید.
+  const OVERSCAN = 12;
+  const VIRTUALIZE_OVER = 60;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const theadRef = useRef<HTMLTableSectionElement>(null);
+  const firstRowRef = useRef<HTMLTableRowElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewH, setViewH] = useState(600);
+  const [rowH, setRowH] = useState(46);
+  const rafRef = useRef<number | null>(null);
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const top = e.currentTarget.scrollTop;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => setScrollTop(top));
+  };
+  useLayoutEffect(() => {
+    if (scrollRef.current && scrollRef.current.clientHeight !== viewH) setViewH(scrollRef.current.clientHeight);
+    if (firstRowRef.current) {
+      const h = firstRowRef.current.offsetHeight;
+      if (h > 20 && Math.abs(h - rowH) > 1) setRowH(h);
+    }
+  });
+  useEffect(() => {
+    const onResize = () => scrollRef.current && setViewH(scrollRef.current.clientHeight);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const virtual = rows.length > VIRTUALIZE_OVER;
+  const headerH = theadRef.current ? theadRef.current.offsetHeight : 130;
+  const vStart = virtual ? Math.max(0, Math.floor(Math.max(0, scrollTop - headerH) / rowH) - OVERSCAN) : 0;
+  const vEnd = virtual ? Math.min(rows.length, Math.ceil((scrollTop + viewH) / rowH) + OVERSCAN) : rows.length;
+  const shownRows = virtual ? rows.slice(vStart, vEnd) : rows;
+  const topPad = virtual ? vStart * rowH : 0;
+  const bottomPad = virtual ? (rows.length - vEnd) * rowH : 0;
+
   const openSections = sections.filter((s) => open.includes(s.key));
   const baseCols = 3; // چک‌باکس، ردیف، وضعیت
   const totalCols = baseCols + sections.reduce((n, s) => n + (open.includes(s.key) ? s.fields.length : 1), 0) + 1;
@@ -297,9 +333,9 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
         </span>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto">
+      <div ref={scrollRef} onScroll={onScroll} className="flex-1 min-h-0 overflow-auto">
         <table className="w-full text-right text-xs">
-          <thead>
+          <thead ref={theadRef}>
             <tr ref={headRow1} className="border-b border-slate-800 text-[11px] font-bold text-slate-300">
               <th colSpan={baseCols} style={{ backgroundColor: '#020617' }} className="sticky top-0 z-20 py-2.5 px-3 border-l border-slate-800">مشخصات اولیه ردیف</th>
               {sections.map((s) => {
@@ -396,7 +432,14 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
           </thead>
 
           <tbody className="divide-y divide-slate-800/80">
-            {rows.length === 0 ? (
+            {!dataLoaded ? (
+              <tr>
+                <td colSpan={totalCols} className="py-14 text-center text-slate-400">
+                  <div className="w-8 h-8 mx-auto mb-3 rounded-full border-2 border-slate-700 border-t-blue-500 animate-spin" />
+                  <p className="font-medium">در حال بارگذاری فهرست درخواست‌ها...</p>
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={totalCols} className="py-12 text-center text-slate-400">
                   <AlertCircle className="w-8 h-8 text-slate-600 mx-auto mb-2" />
@@ -404,12 +447,14 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
                 </td>
               </tr>
             ) : (
-              rows.map((row) => {
+              <>
+              {topPad > 0 && <tr aria-hidden="true" style={{ height: topPad }}><td colSpan={totalCols} /></tr>}
+              {shownRows.map((row, ri) => {
                 const isCancelled = Boolean(row.cancelled_at);
                 const isReturned = Boolean(row.returned_at);
                 const isMarked = marked.includes(row.id);
                 return (
-                  <tr key={row.id} className={`transition-colors ${isMarked ? 'bg-indigo-500/20 hover:bg-indigo-500/25' : `hover:bg-slate-800/40 ${isCancelled ? 'bg-rose-950/20' : isReturned ? 'bg-amber-950/20' : ''}`}`}>
+                  <tr key={row.id} ref={ri === 0 ? firstRowRef : undefined} className={`transition-colors ${isMarked ? 'bg-indigo-500/20 hover:bg-indigo-500/25' : `hover:bg-slate-800/40 ${isCancelled ? 'bg-rose-950/20' : isReturned ? 'bg-amber-950/20' : ''}`}`}>
                     <td className={`py-2 px-2 w-8 ${isMarked ? 'border-r-4 border-indigo-400' : ''}`}>
                       <input type="checkbox" checked={isMarked} onChange={() => toggleMark(row.id)} title="علامت‌گذاری این ردیف" className="rounded border-slate-600 bg-slate-900 text-indigo-500 cursor-pointer" />
                     </td>
@@ -539,7 +584,9 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
                     </td>
                   </tr>
                 );
-              })
+              })}
+              {bottomPad > 0 && <tr aria-hidden="true" style={{ height: bottomPad }}><td colSpan={totalCols} /></tr>}
+              </>
             )}
           </tbody>
         </table>

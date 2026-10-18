@@ -57,6 +57,8 @@ interface ExactDatabaseContextType {
   currentUser: UserSession | null;
   booting: boolean;
   loading: boolean;
+  // true بعد از اولین دریافت فهرست از سرور (تا آن موقع «خالی» نشان داده نمی‌شود)
+  dataLoaded: boolean;
   toast: Toast | null;
   dismissToast: () => void;
   refresh: () => Promise<void>;
@@ -153,7 +155,6 @@ interface MeResponse {
 
 interface DataResponse {
   rows: DbRow[];
-  auditLogs: AuditLogEntry[];
   vendors: Vendor[];
   quotations: Quotation[];
   quotationCounts?: Record<string, number>;
@@ -174,6 +175,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   const [approvals, setApprovals] = useState<ApprovalRecord[]>([]);
   const [me, setMe] = useState<MeResponse | null>(null);
   const [booting, setBooting] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
 
@@ -216,6 +218,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     setQuotations([]);
     setQuotationCounts({});
     setApprovals([]);
+    setDataLoaded(false);
     setActiveTab('dashboard');
     setSelectedRowId(null);
   }, []);
@@ -235,15 +238,27 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     [clearSession, showToast]
   );
 
-  const refresh = useCallback(async () => {
+  // فهرست (ردیف‌ها، تأمین‌کنندگان، پیش‌فاکتور، تأییدات) - سبک و فشرده
+  const refreshData = useCallback(async () => {
     const d = await api<DataResponse>('GET', '/data');
     setRows(d.rows);
-    setAuditLogs(d.auditLogs);
     setVendors(d.vendors);
     setQuotations(d.quotations);
     setQuotationCounts(d.quotationCounts || {});
     setApprovals(d.approvals);
+    setDataLoaded(true);
   }, []);
+
+  // لاگ تغییرات حجیم است و برای نمایش فهرست لازم نیست؛ جدا و در پس‌زمینه گرفته می‌شود
+  const refreshLogs = useCallback(async () => {
+    const d = await api<{ auditLogs: AuditLogEntry[] }>('GET', '/audit-logs');
+    setAuditLogs(d.auditLogs);
+  }, []);
+
+  const refresh = useCallback(async () => {
+    await refreshData();
+    refreshLogs().catch(() => { /* پس‌زمینه؛ با تلاش بعدی دوباره */ });
+  }, [refreshData, refreshLogs]);
 
   // بارگذاری اولیه: آیا نشست معتبر داریم؟
   useEffect(() => {
@@ -263,8 +278,12 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   // به‌روزرسانی دوره‌ای (چند کاربر هم‌زمان روی یک دیتابیس کار می‌کنند) و هنگام بازگشت به تب
   useEffect(() => {
     if (!me) return;
+    let n = 0;
     const tick = () => {
-      if (document.visibilityState === 'visible') refresh().catch((e) => handleError(e, true));
+      if (document.visibilityState !== 'visible') return;
+      n++;
+      // فهرست هر ۳۰ ثانیه؛ لاگ‌ها (سنگین‌تر) هر ۲ دقیقه
+      (n % 4 === 0 ? refresh() : refreshData()).catch((e) => handleError(e, true));
     };
     const timer = window.setInterval(tick, POLL_MS);
     document.addEventListener('visibilitychange', tick);
@@ -272,7 +291,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', tick);
     };
-  }, [me, refresh, handleError]);
+  }, [me, refresh, refreshData, handleError]);
 
   // پایان خودکار نشست (۲ ساعت از لحظه‌ی ورود - همان مدت سرور)
   useEffect(() => {
@@ -358,10 +377,12 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const m = await api<MeResponse>('POST', '/auth/login', { username: username.trim(), password });
+      // اول فهرست را بگیر و بعد داشبورد را نشان بده؛ وگرنه چند ثانیه «ردیفی وجود ندارد» دیده می‌شود
+      await refreshData();
       setMe(m);
       setActiveTab('dashboard');
       setSelectedRowId(null);
-      await refresh();
+      refreshLogs().catch(() => { /* پس‌زمینه */ });
       return { success: true };
     } catch (e) {
       return { success: false, error: e instanceof ApiError ? e.message : 'ورود ناموفق بود.' };
@@ -610,7 +631,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   return (
     <ExactDatabaseContext.Provider
       value={{
-        rows, auditLogs, vendors, quotations, quotationCount, notify, approvals, currentUser, booting, loading, toast, dismissToast, refresh,
+        rows, auditLogs, vendors, quotations, quotationCount, notify, approvals, currentUser, booting, loading, dataLoaded, toast, dismissToast, refresh,
         activeTab, selectedRowId, filters, isLdapModalOpen, cancelModalRowId, returnModalRowId, historyDrawerRowId,
         login, logout, sessionExpiresAt,
         setActiveTab, setSelectedRowId, setFilters, setIsLdapModalOpen, setCancelModalRowId, setReturnModalRowId, setHistoryDrawerRowId,
