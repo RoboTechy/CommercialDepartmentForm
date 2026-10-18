@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useExactDb } from '../context/ExactDatabaseContext';
 import { 
-  Building2, 
   ShieldCheck, 
   Lock, 
   User, 
@@ -37,8 +36,8 @@ export const LoginPage: React.FC = () => {
 
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 shadow-xl shadow-blue-500/20 mb-3 border border-blue-400/30">
-            <Building2 className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white p-1 shadow-xl mb-3 overflow-hidden">
+            <img src="/LOGO.jpg" alt="لوگوی شرکت آهن و فولاد غدیر ایرانیان" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white">
             سامانه جامع مدیریت بازرگانی و انبار

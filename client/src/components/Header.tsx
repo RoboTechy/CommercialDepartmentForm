@@ -2,7 +2,6 @@ import React from 'react';
 import { ThemeMenu } from './ThemeMenu';
 import { useExactDb } from '../context/ExactDatabaseContext';
 import { 
-  Building2, 
   Plus, 
   Menu, 
   X, 
@@ -33,11 +32,11 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
 
   return (
     <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
           {/* Zone 1: Brand Wordmark */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={onToggleMobileMenu}
               className="lg:hidden p-2 -mr-2 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-800 transition-colors"
@@ -55,10 +54,10 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
               }}
               className="flex items-center gap-2.5 text-slate-100 group"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                <Building2 className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-white p-0.5 overflow-hidden shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                <img src="/LOGO.jpg" alt="لوگوی غدیر" className="w-full h-full object-contain" />
               </div>
-              <div className="flex flex-col text-right">
+              <div className="flex flex-col text-right whitespace-nowrap">
                 <span className="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-2">
                   <span>سامانه مدیریت بازرگانی و انبار</span>
                   
