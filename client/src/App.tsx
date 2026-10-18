@@ -20,6 +20,7 @@ import { CancelReasonModal } from './components/CancelReasonModal';
 import { ReturnReasonModal } from './components/ReturnReasonModal';
 import { LdapUserModal } from './components/LdapUserModal';
 import { LoginPage } from './components/LoginPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -110,7 +111,7 @@ const MainLayout: React.FC = () => {
         />
 
         <main className="flex-1 transition-all duration-200 px-4 sm:px-6 lg:px-8 py-6 w-full max-w-full overflow-hidden lg:mr-72 pb-20 lg:pb-8">
-          {renderActiveView()}
+          <ErrorBoundary resetKey={`${activeTab}:${selectedRowId ?? ''}`}>{renderActiveView()}</ErrorBoundary>
         </main>
       </div>
 

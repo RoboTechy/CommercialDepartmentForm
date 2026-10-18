@@ -163,7 +163,7 @@ export const Header: React.FC<{ onToggleMobileMenu: () => void; isMobileMenuOpen
                 </div>
                 <div className="hidden sm:flex flex-col leading-tight">
                   <span className="text-xs font-semibold text-slate-200 truncate max-w-[130px]">
-                    {currentUser.displayName.split('(')[0]}
+                    {(currentUser.displayName ?? '').split('(')[0]}
                   </span>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />

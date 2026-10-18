@@ -273,7 +273,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
               </div>
               <div className="p-3 rounded-xl border border-slate-800 bg-slate-950/60 text-right space-y-2">
                 <div className="text-xs font-bold text-slate-200 flex items-center justify-between">
-                  <span>{currentUser.displayName.split('(')[0]}</span>
+                  <span>{(currentUser.displayName ?? '').split('(')[0]}</span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
                     currentUser.isLocalAdmin ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                   }`}>

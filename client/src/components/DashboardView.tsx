@@ -420,7 +420,7 @@ export const DashboardView: React.FC = () => {
               </div>
 
               <div className="flex items-center justify-between mt-3 pt-2 text-xs border-t border-slate-800/80" onClick={(e) => e.stopPropagation()}>
-                <span className="text-[11px] text-slate-500">{row.created_by_display.split('(')[0]}</span>
+                <span className="text-[11px] text-slate-500">{(row.created_by_display ?? '').split('(')[0]}</span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setHistoryDrawerRowId(row.id)}

@@ -35,6 +35,9 @@ function priorityClass(p: PriorityLevel) {
 
 // ---------- فیلتر هر ستون ----------
 // کلیدها: 'id'، 'status' (active/cancelled/returned) یا نام فیلد. متن: شامل‌بودن (بی‌توجه به حروف و نوع رقم)؛ انتخابی: برابری.
+// ارتفاع ثابت هر ردیف جدول (پیکسل) برای پنجره‌ای‌سازی
+const ROW_HEIGHT = 48;
+
 const norm = (v: unknown) => toLatinDigits((v ?? '').toString()).toLowerCase().trim();
 
 export function applyColumnFilters(rows: DbRow[], filters: Record<string, string>): DbRow[] {
@@ -277,10 +280,11 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
   const VIRTUALIZE_OVER = 60;
   const scrollRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
-  const firstRowRef = useRef<HTMLTableRowElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewH, setViewH] = useState(600);
-  const [rowH, setRowH] = useState(46);
+  // ارتفاع هر ردیف ثابت است (به‌صورت style روی tr). قبلاً از اندازه‌گیری اولین ردیف استفاده می‌شد که
+  // اگر ردیف‌ها چند پیکسل متفاوت بودند، بین دو مقدار نوسان می‌کرد و صفحه با خطای حلقه‌ی رندر سفید می‌شد.
+  const rowH = ROW_HEIGHT;
   const rafRef = useRef<number | null>(null);
   const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const top = e.currentTarget.scrollTop;
@@ -289,11 +293,7 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
   };
   useLayoutEffect(() => {
     if (scrollRef.current && scrollRef.current.clientHeight !== viewH) setViewH(scrollRef.current.clientHeight);
-    if (firstRowRef.current) {
-      const h = firstRowRef.current.offsetHeight;
-      if (h > 20 && Math.abs(h - rowH) > 1) setRowH(h);
-    }
-  });
+  }, [viewH]);
   useEffect(() => {
     const onResize = () => scrollRef.current && setViewH(scrollRef.current.clientHeight);
     window.addEventListener('resize', onResize);
@@ -301,8 +301,8 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
   }, []);
   const virtual = rows.length > VIRTUALIZE_OVER;
   const headerH = theadRef.current ? theadRef.current.offsetHeight : 130;
-  const vStart = virtual ? Math.max(0, Math.floor(Math.max(0, scrollTop - headerH) / rowH) - OVERSCAN) : 0;
-  const vEnd = virtual ? Math.min(rows.length, Math.ceil((scrollTop + viewH) / rowH) + OVERSCAN) : rows.length;
+  const vStart = virtual ? Math.min(Math.max(0, rows.length - 1), Math.max(0, Math.floor(Math.max(0, scrollTop - headerH) / rowH) - OVERSCAN)) : 0;
+  const vEnd = virtual ? Math.max(vStart, Math.min(rows.length, Math.ceil((scrollTop + viewH) / rowH) + OVERSCAN)) : rows.length;
   const shownRows = virtual ? rows.slice(vStart, vEnd) : rows;
   const topPad = virtual ? vStart * rowH : 0;
   const bottomPad = virtual ? (rows.length - vEnd) * rowH : 0;
@@ -454,7 +454,7 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
                 const isReturned = Boolean(row.returned_at);
                 const isMarked = marked.includes(row.id);
                 return (
-                  <tr key={row.id} ref={ri === 0 ? firstRowRef : undefined} className={`transition-colors ${isMarked ? 'bg-indigo-500/20 hover:bg-indigo-500/25' : `hover:bg-slate-800/40 ${isCancelled ? 'bg-rose-950/20' : isReturned ? 'bg-amber-950/20' : ''}`}`}>
+                  <tr key={row.id} style={virtual ? { height: ROW_HEIGHT } : undefined} className={`transition-colors ${isMarked ? 'bg-indigo-500/20 hover:bg-indigo-500/25' : `hover:bg-slate-800/40 ${isCancelled ? 'bg-rose-950/20' : isReturned ? 'bg-amber-950/20' : ''}`}`}>
                     <td className={`py-2 px-2 w-8 ${isMarked ? 'border-r-4 border-indigo-400' : ''}`}>
                       <input type="checkbox" checked={isMarked} onChange={() => toggleMark(row.id)} title="علامت‌گذاری این ردیف" className="rounded border-slate-600 bg-slate-900 text-indigo-500 cursor-pointer" />
                     </td>
@@ -606,7 +606,7 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
             <ul className="space-y-1.5">
               {hoverEntries.map((h) => (
                 <li key={h.id} className="leading-relaxed text-slate-300">
-                  <span className="text-slate-400">{h.changed_by_display.split('(')[0]}</span>
+                  <span className="text-slate-400">{(h.changed_by_display ?? '').split('(')[0]}</span>
                   <span className="text-slate-500 mx-1">·</span>
                   <span className="font-mono text-slate-400">{h.changed_at}</span>
                   <div>
