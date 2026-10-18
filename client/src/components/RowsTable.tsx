@@ -4,6 +4,7 @@ import { sections, isPaymentAuthWaived, FieldDef, SectionDef } from '../data/exa
 import { DbRow, PriorityLevel } from '../types';
 import { JalaliDateInput } from './JalaliDateInput';
 import { GROUPS } from '../config';
+import { toLatinDigits } from '../store/exactStore';
 import {
   ExternalLink, History, XCircle, RotateCcw, CheckCircle2, AlertTriangle, Trash2, AlertCircle, ChevronLeft, ChevronDown, Pencil,
 } from 'lucide-react';
@@ -32,10 +33,42 @@ function priorityClass(p: PriorityLevel) {
   }
 }
 
+// ---------- فیلتر هر ستون ----------
+// کلیدها: 'id'، 'status' (active/cancelled/returned) یا نام فیلد. متن: شامل‌بودن (بی‌توجه به حروف و نوع رقم)؛ انتخابی: برابری.
+const norm = (v: unknown) => toLatinDigits((v ?? '').toString()).toLowerCase().trim();
+
+export function applyColumnFilters(rows: DbRow[], filters: Record<string, string>): DbRow[] {
+  const active = Object.entries(filters).filter(([, v]) => v && v.trim() !== '');
+  if (active.length === 0) return rows;
+  const selectFields = new Set<string>();
+  for (const s of sections) for (const f of s.fields) if (f.type === 'select') selectFields.add(f.name as string);
+  return rows.filter((row) =>
+    active.every(([key, val]) => {
+      if (key === 'status') {
+        if (val === 'active') return !row.cancelled_at && !row.returned_at;
+        if (val === 'cancelled') return Boolean(row.cancelled_at);
+        if (val === 'returned') return !row.cancelled_at && Boolean(row.returned_at);
+        return true;
+      }
+      if (key === 'id') return norm(row.id).includes(norm(val));
+      const cell = (row as any)[key];
+      if (selectFields.has(key)) return (cell ?? '').toString() === val;
+      return norm(cell).includes(norm(val));
+    })
+  );
+}
+
 interface HoverState { rowId: number; fieldKey: string; label: string; x: number; y: number }
 interface EditState { rowId: number; fieldKey: string }
 
-export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
+interface RowsTableProps {
+  rows: DbRow[];
+  colFilters: Record<string, string>;
+  setColFilter: (key: string, value: string) => void;
+  clearColFilters: () => void;
+}
+
+export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFilter, clearColFilters }) => {
   const {
     currentUser, isAdmin, isLocalAdmin, canEditSectionForRow, canCancelRow, canReturnToTechOffice,
     updateSection, getRowHistory, quotationCount, notify, setSelectedRowId, setActiveTab, setHistoryDrawerRowId, setCancelModalRowId,
@@ -67,6 +100,25 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
   }, [open, storageKey]);
 
   const toggle = (key: string) => setOpen((o) => (o.includes(key) ? o.filter((k) => k !== key) : [...o, key]));
+
+  // ---------- ردیف‌های علامت‌گذاری‌شده (چک‌باکس ابتدای ردیف) ----------
+  const markKey = currentUser ? `prt_marked_rows_${currentUser.username}` : '';
+  const [marked, setMarked] = useState<number[]>(() => {
+    try {
+      const saved = markKey ? localStorage.getItem(markKey) : null;
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return [];
+  });
+  useEffect(() => {
+    try { if (markKey) localStorage.setItem(markKey, JSON.stringify(marked)); } catch { /* ignore */ }
+  }, [marked, markKey]);
+  const toggleMark = (id: number) => setMarked((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id]));
+  const allMarked = rows.length > 0 && rows.every((r) => marked.includes(r.id));
+  const toggleAllMarks = () =>
+    setMarked((m) => (allMarked ? m.filter((id) => !rows.some((r) => r.id === id)) : Array.from(new Set([...m, ...rows.map((r) => r.id)]))));
+  const markedCount = rows.filter((r) => marked.includes(r.id)).length;
+  const activeFilterCount = Object.values(colFilters).filter((v) => v && v.trim()).length;
 
   // ---------- هاور: تاریخچه‌ی همان فیلد ----------
   const [hover, setHover] = useState<HoverState | null>(null);
@@ -199,9 +251,12 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
   };
 
   const headRow1 = useRef<HTMLTableRowElement>(null);
+  const headRow2 = useRef<HTMLTableRowElement>(null);
   const [h1, setH1] = useState(40);
+  const [h2, setH2] = useState(34);
   useLayoutEffect(() => {
     if (headRow1.current) setH1(headRow1.current.offsetHeight);
+    if (headRow2.current) setH2(headRow2.current.offsetHeight);
   });
 
   // دلیل غیرقابل‌ویرایش بودن یک فیلد (برای پیام وقتی روی آن کلیک می‌شود)
@@ -215,7 +270,7 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
   };
 
   const openSections = sections.filter((s) => open.includes(s.key));
-  const baseCols = 3;
+  const baseCols = 3; // چک‌باکس، ردیف، وضعیت
   const totalCols = baseCols + sections.reduce((n, s) => n + (open.includes(s.key) ? s.fields.length : 1), 0) + 1;
 
   return (
@@ -224,7 +279,17 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
         <span>
           بخش شما باز است؛ بقیه با کلیک روی عنوانشان باز می‌شوند · مقدارهای دارای آیکن <Pencil className="w-2.5 h-2.5 inline text-blue-400" /> با یک کلیک همان‌جا ویرایش می‌شوند · هاور = تاریخچه‌ی فیلد
         </span>
-        <span className="flex gap-2">
+        <span className="flex gap-2 flex-wrap items-center">
+          {markedCount > 0 && (
+            <button type="button" onClick={() => setMarked((m) => m.filter((id) => !rows.some((r) => r.id === id)))} className="px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-indigo-200">
+              {markedCount} ردیف علامت‌دار — برداشتن علامت‌ها
+            </button>
+          )}
+          {activeFilterCount > 0 && (
+            <button type="button" onClick={clearColFilters} className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300">
+              پاک کردن جستجوی ستون‌ها ({activeFilterCount})
+            </button>
+          )}
           <button type="button" onClick={() => setOpen(sections.map((s) => s.key))} className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200">باز کردن همه</button>
           <button type="button" onClick={() => setOpen(defaultOpen)} className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200">فقط بخش من</button>
         </span>
@@ -256,17 +321,75 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
               })}
               <th rowSpan={2} style={{ backgroundColor: '#020617' }} className="sticky top-0 z-20 py-2.5 px-3 text-center align-middle">اقدامات</th>
             </tr>
-            <tr className="border-b border-slate-800 text-slate-400 font-semibold text-[11px]">
-              <th style={{ top: h1, backgroundColor: '#0b1224' }} className="sticky z-10 py-2 px-3">ردیف</th>
-              <th style={{ top: h1, backgroundColor: '#0b1224' }} className="sticky z-10 py-2 px-3">وضعیت</th>
-              <th style={{ top: h1, backgroundColor: '#0b1224' }} className="sticky z-10 py-2 px-3 border-l border-slate-800">ثبت‌کننده</th>
+            <tr ref={headRow2} className="border-b border-slate-800 text-slate-400 font-semibold text-[11px]">
+              <th style={{ top: h1, backgroundColor: '#0b1224' }} className="sticky z-10 py-1.5 px-2 w-8">
+                <input type="checkbox" checked={allMarked} onChange={toggleAllMarks} title="علامت‌گذاری/برداشتن همه‌ی ردیف‌های نمایش‌داده‌شده" className="rounded border-slate-600 bg-slate-900 text-indigo-500 cursor-pointer" />
+              </th>
+              <th style={{ top: h1, backgroundColor: '#0b1224' }} className="sticky z-10 py-1.5 px-2">ردیف</th>
+              <th style={{ top: h1, backgroundColor: '#0b1224' }} className="sticky z-10 py-1.5 px-2 border-l border-slate-800">وضعیت</th>
               {openSections.map((s) =>
                 s.fields.map((f, i) => (
-                  <th key={`${s.key}-${f.name as string}`} style={{ top: h1, backgroundColor: '#0b1224' }} className={`sticky z-10 py-2 px-3 whitespace-nowrap ${i === s.fields.length - 1 ? 'border-l border-slate-800' : ''}`}>
+                  <th key={`${s.key}-${f.name as string}`} style={{ top: h1, backgroundColor: '#0b1224' }} className={`sticky z-10 py-1.5 px-2 whitespace-nowrap ${i === s.fields.length - 1 ? 'border-l border-slate-800' : ''}`}>
                     {f.label}
                   </th>
                 ))
               )}
+            </tr>
+            {/* ردیف جستجوی هر ستون */}
+            <tr className="border-b border-slate-700">
+              <th style={{ top: h1 + h2, backgroundColor: '#070d1c' }} className="sticky z-10 p-1" />
+              <th style={{ top: h1 + h2, backgroundColor: '#070d1c' }} className="sticky z-10 p-1">
+                <input
+                  type="text"
+                  value={colFilters.id || ''}
+                  onChange={(e) => setColFilter('id', e.target.value)}
+                  placeholder="جستجو"
+                  className="w-12 px-1.5 py-1 text-[10px] font-normal bg-slate-950 border border-slate-700 rounded text-slate-200 focus:outline-hidden focus:border-blue-500"
+                />
+              </th>
+              <th style={{ top: h1 + h2, backgroundColor: '#070d1c' }} className="sticky z-10 p-1 border-l border-slate-800">
+                <select
+                  value={colFilters.status || ''}
+                  onChange={(e) => setColFilter('status', e.target.value)}
+                  className="px-1 py-1 text-[10px] font-normal bg-slate-950 border border-slate-700 rounded text-slate-200 focus:outline-hidden focus:border-blue-500"
+                >
+                  <option value="">همه</option>
+                  <option value="active">جاری</option>
+                  <option value="cancelled">لغو شده</option>
+                  <option value="returned">عودت</option>
+                </select>
+              </th>
+              {sections.map((s) => {
+                if (!open.includes(s.key)) {
+                  return <th key={s.key} style={{ top: h1 + h2, backgroundColor: '#070d1c' }} className="sticky z-10 p-1 border-l border-slate-800" />;
+                }
+                return s.fields.map((f, i) => {
+                  const key = f.name as string;
+                  const cls = 'w-full min-w-[70px] px-1.5 py-1 text-[10px] font-normal bg-slate-950 border border-slate-700 rounded text-slate-200 focus:outline-hidden focus:border-blue-500';
+                  return (
+                    <th
+                      key={`f-${s.key}-${key}`}
+                      style={{ top: h1 + h2, backgroundColor: '#070d1c' }}
+                      className={`sticky z-10 p-1 ${i === s.fields.length - 1 ? 'border-l border-slate-800' : ''}`}
+                    >
+                      {f.type === 'select' ? (
+                        <select value={colFilters[key] || ''} onChange={(e) => setColFilter(key, e.target.value)} className={cls}>
+                          <option value="">همه</option>
+                          {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          value={colFilters[key] || ''}
+                          onChange={(e) => setColFilter(key, e.target.value)}
+                          placeholder="جستجو"
+                          className={cls}
+                        />
+                      )}
+                    </th>
+                  );
+                });
+              })}
             </tr>
           </thead>
 
@@ -282,10 +405,14 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
               rows.map((row) => {
                 const isCancelled = Boolean(row.cancelled_at);
                 const isReturned = Boolean(row.returned_at);
+                const isMarked = marked.includes(row.id);
                 return (
-                  <tr key={row.id} className={`hover:bg-slate-800/40 transition-colors ${isCancelled ? 'bg-rose-950/20' : isReturned ? 'bg-amber-950/20' : ''}`}>
-                    <td className="py-2.5 px-3 font-mono font-bold text-slate-400 tabular-nums">{row.id}</td>
-                    <td className="py-2.5 px-3 whitespace-nowrap">
+                  <tr key={row.id} className={`transition-colors ${isMarked ? 'bg-indigo-500/20 hover:bg-indigo-500/25' : `hover:bg-slate-800/40 ${isCancelled ? 'bg-rose-950/20' : isReturned ? 'bg-amber-950/20' : ''}`}`}>
+                    <td className={`py-2 px-2 w-8 ${isMarked ? 'border-r-4 border-indigo-400' : ''}`}>
+                      <input type="checkbox" checked={isMarked} onChange={() => toggleMark(row.id)} title="علامت‌گذاری این ردیف" className="rounded border-slate-600 bg-slate-900 text-indigo-500 cursor-pointer" />
+                    </td>
+                    <td className="py-2 px-2 font-mono font-bold text-slate-400 tabular-nums">{row.id}</td>
+                    <td className="py-2 px-2 whitespace-nowrap border-l border-slate-800">
                       {isCancelled ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30" title={row.cancel_reason}>لغو شده</span>
                       ) : isReturned ? (
@@ -294,7 +421,6 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
                         <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">جاری</span>
                       )}
                     </td>
-                    <td className="py-2.5 px-3 text-slate-300 border-l border-slate-800 whitespace-nowrap">{row.created_by_display.split('(')[0]}</td>
 
                     {sections.map((s) => {
                       if (!open.includes(s.key)) {
@@ -320,7 +446,7 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
                         const editing = edit && edit.rowId === row.id && edit.fieldKey === key;
                         const editable = canEditField(row, s, f);
                         const last = i === s.fields.length - 1;
-                        const base = `py-2.5 px-3 ${last ? 'border-l border-slate-800' : ''}`;
+                        const base = `py-2 px-2 ${last ? 'border-l border-slate-800' : ''}`;
 
                         if (key === 'request_no') {
                           return (
@@ -382,7 +508,7 @@ export const RowsTable: React.FC<{ rows: DbRow[] }> = ({ rows }) => {
                       });
                     })}
 
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                    <td className="py-2 px-2 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
                         <button onClick={() => openRow(row.id)} className="p-1 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded transition-colors" title="مشاهده و ویرایش بخش‌ها"><ExternalLink className="w-3.5 h-3.5" /></button>
                         <button onClick={() => setHistoryDrawerRowId(row.id)} className="p-1 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded transition-colors" title="تاریخچه‌ی کامل این ردیف"><History className="w-3.5 h-3.5" /></button>

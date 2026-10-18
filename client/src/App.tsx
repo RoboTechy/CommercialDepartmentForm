@@ -103,7 +103,7 @@ const MainLayout: React.FC = () => {
       />
 
       {/* Main Workspace Layout */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto">
+      <div className={`flex-1 flex w-full mx-auto ${activeTab === 'dashboard' ? 'max-w-none' : 'max-w-7xl'}`}>
         <Sidebar 
           isOpen={isMobileMenuOpen} 
           onClose={() => setIsMobileMenuOpen(false)} 

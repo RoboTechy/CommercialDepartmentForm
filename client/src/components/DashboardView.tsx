@@ -1,6 +1,6 @@
 import { ENABLE_EXTENDED_WORKFLOW } from '../config';
 import { exportRowsCsv } from '../utils/exportCsv';
-import { RowsTable } from './RowsTable';
+import { RowsTable, applyColumnFilters } from './RowsTable';
 import React from 'react';
 import { useExactDb } from '../context/ExactDatabaseContext';
 import { DbRow, PriorityLevel } from '../types';
@@ -62,7 +62,10 @@ export const DashboardView: React.FC = () => {
     });
   };
 
-  const filteredRows = getFilteredRows();
+  // جستجوی هر ستون (علاوه بر کادر جستجوی کلی و فیلترهای بالای صفحه)
+  const [colFilters, setColFilters] = React.useState<Record<string, string>>({});
+  const setColFilter = (key: string, value: string) => setColFilters((f) => ({ ...f, [key]: value }));
+  const filteredRows = applyColumnFilters(getFilteredRows(), colFilters);
   const stats = getStats();
 
   const handleOpenRow = (id: number) => {
@@ -364,7 +367,7 @@ export const DashboardView: React.FC = () => {
       </div>
 
       {/* Desktop Data Table: ستون‌های بخش کاربر باز، بقیه کشویی؛ ویرایش درجا؛ تاریخچه با هاور */}
-      <RowsTable rows={filteredRows} />
+      <RowsTable rows={filteredRows} colFilters={colFilters} setColFilter={setColFilter} clearColFilters={() => setColFilters({})} />
 
       {/* Mobile Responsive Cards View */}
       <div className="lg:hidden space-y-3">
