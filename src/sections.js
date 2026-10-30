@@ -82,6 +82,19 @@ const sections = [
       { name: 'factory_arrival_date', label: 'تاریخ ورود به کارخانه', type: 'jalali-date' },
     ],
   },
+  {
+    // بخش مستقل: نه جزو ترتیب «تکمیل بخش قبلی» است و نه در «تکمیل‌شده/معطل‌مانده»
+    // بودن ردیف حساب می‌شود (وگرنه همه‌ی ردیف‌های قدیمی ناگهان ناقص می‌شدند)
+    key: 'accounting',
+    title: 'حسابداری',
+    color: 'accounting',
+    group: config.ldap.groups.accounting,
+    canCreateRows: false,
+    independent: true,
+    fields: [
+      { name: 'payment_date', label: 'تاریخ پرداخت', type: 'jalali-date' },
+    ],
+  },
 ];
 
 // اگر «مجری خرید» تهران یا برنا باشد، خرید دیگر توسط بازرگانی سایت انجام
@@ -101,14 +114,18 @@ const SECTION_LABELS = {
   warehouse_1: 'انبار کارفرما-1',
   commercial: 'بازرگانی غدیر',
   warehouse_2: 'انبار کارفرما-2',
+  accounting: 'حسابداری',
 };
 
 // نخستین بخشِ «قبل از sectionKey» که هنوز تکمیل نشده؛ null اگر همه‌ی بخش‌های قبلی کامل باشند.
 // معیار کامل‌بودن همان قاعده‌ی «منتظر کدام بخش» است: همه‌ی فیلدهای غیر-فقط‌خواندنی پر باشند
 // (به‌جز «تاریخ صدور مجوز پرداخت» وقتی مجری خرید تهران/برنا است).
 function incompleteSectionBefore(row, sectionKey) {
+  const target = sections.find((s) => s.key === sectionKey);
+  if (target && target.independent) return null;
   for (const section of sections) {
     if (section.key === sectionKey) return null;
+    if (section.independent) continue;
     const fields = section.fields
       .filter((f) => !f.readOnly)
       .filter((f) => !(f.name === 'payment_auth_issued_date' && isPaymentAuthWaived(row)));
@@ -133,7 +150,7 @@ function findField(fieldKey) {
 }
 
 function allFields() {
-  return sections.flatMap((s) => s.fields.map((f) => ({ ...f, sectionKey: s.key })));
+  return sections.flatMap((s) => s.fields.map((f) => ({ ...f, sectionKey: s.key, independent: Boolean(s.independent) })));
 }
 
 module.exports = { incompleteSectionBefore, SECTION_LABELS, sections, findSection, findField, allFields, requesterDepartments, isPaymentAuthWaived };

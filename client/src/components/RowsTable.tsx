@@ -14,6 +14,7 @@ const SECTION_STYLE: Record<string, { head: string; bg: string }> = {
   tech_operator: { head: 'text-blue-300', bg: '#0c1a3a' },
   warehouse: { head: 'text-amber-300', bg: '#241a09' },
   commercial: { head: 'text-emerald-300', bg: '#08251d' },
+  accounting: { head: 'text-violet-300', bg: '#1a1030' },
 };
 
 const SECTION_TITLE: Record<string, string> = {
@@ -21,6 +22,7 @@ const SECTION_TITLE: Record<string, string> = {
   warehouse_1: 'بخش ۲: انبار کارفرما-1',
   commercial: 'بخش ۳: بازرگانی غدیر',
   warehouse_2: 'بخش ۴: انبار کارفرما-2',
+  accounting: 'بخش ۵: حسابداری',
 };
 
 function priorityClass(p: PriorityLevel) {

@@ -15,6 +15,7 @@ const FIELD_BY_NAME = new Map(ALL_FIELDS.map((f) => [f.name, f]));
 export const DEPARTMENTS = (() => {
   const byColor = new Map<string, { color: string; title: string; fields: FieldDef[] }>();
   for (const section of sections) {
+    if (section.independent) continue;
     if (!byColor.has(section.color)) {
       byColor.set(section.color, { color: section.color, title: section.title, fields: [] });
     }
@@ -32,7 +33,7 @@ export function fieldsForCompletion(row: DbRow, fields: FieldDef[]): FieldDef[] 
   return fields.filter((f) => f.name !== 'payment_auth_issued_date');
 }
 
-const NON_READONLY_FIELDS = ALL_FIELDS.filter((f) => !f.readOnly);
+const NON_READONLY_FIELDS = ALL_FIELDS.filter((f) => !f.readOnly && !sections.find((s) => s.key === f.sectionKey)?.independent);
 
 export function isRowComplete(row: DbRow): boolean {
   return isFieldSetComplete(row, fieldsForCompletion(row, NON_READONLY_FIELDS));
@@ -40,6 +41,7 @@ export function isRowComplete(row: DbRow): boolean {
 
 export function currentBlockingSection(row: DbRow) {
   for (const section of sections) {
+    if (section.independent) continue;
     const fields = fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly));
     if (!fields.every((f) => (row[f.name] || '').toString().trim() !== '')) {
       return section;
@@ -144,12 +146,15 @@ const SECTION_LABELS: Record<string, string> = {
   warehouse_1: 'انبار کارفرما-1',
   commercial: 'بازرگانی غدیر',
   warehouse_2: 'انبار کارفرما-2',
+  accounting: 'حسابداری',
 };
 
 // نخستین بخشِ قبل از sectionKey که هنوز تکمیل نشده (معادل incompleteSectionBefore در src/sections.js)
 export function incompleteSectionBefore(row: DbRow, sectionKey: string): { key: string; label: string; missing: string[] } | null {
+  if (findSection(sectionKey)?.independent) return null;
   for (const section of sections) {
     if (section.key === sectionKey) return null;
+    if (section.independent) continue;
     const fields = fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly));
     const missing = fields.filter((f) => !((row[f.name] ?? '') as string).toString().trim());
     if (missing.length) return { key: section.key, label: SECTION_LABELS[section.key] || section.title, missing: missing.map((f) => f.label) };

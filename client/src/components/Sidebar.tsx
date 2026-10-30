@@ -287,6 +287,8 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                     <span>دپارتمان درخواست‌کننده: <b>{userDept.label}</b> (ثبت و ویرایش درخواست‌های خود)</span>
                   ) : currentUser.groups.includes(GROUPS.warehouse) ? (
                     <span>انبار کارفرما: تکمیل فیلدهای انبار کارفرما-1 و انبار کارفرما-2 + عودت درخواست</span>
+                  ) : currentUser.groups.includes(GROUPS.accounting) ? (
+                    <span>حسابداری: ثبت تاریخ پرداخت</span>
                   ) : currentUser.groups.includes(GROUPS.commercial) ? (
                     <span>بازرگانی غدیر: ثبت ارجاع، مجری خرید و مجوز پرداخت</span>
                   ) : (

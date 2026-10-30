@@ -51,6 +51,8 @@ module.exports = {
       techLead: need('LDAP_GROUP_TECH_LEAD', 'PRT-TechLead'),
       finance: need('LDAP_GROUP_FINANCE', 'PRT-Finance'),
       executive: need('LDAP_GROUP_EXECUTIVE', 'PRT-Executive'),
+      // حسابداری: فقط فیلد «تاریخ پرداخت» (بخش مستقل، خارج از ترتیب و تکمیل ردیف)
+      accounting: need('LDAP_GROUP_ACCOUNTING', 'PRT-Accounting'),
     },
   },
 };

@@ -13,6 +13,8 @@ export const GROUPS = {
   techLead: 'PRT-TechLead',
   finance: 'PRT-Finance',
   executive: 'PRT-Executive',
+  // حسابداری: فقط فیلد «تاریخ پرداخت»
+  accounting: 'PRT-Accounting',
 } as const;
 
 // کاربر برای ورود باید عضو حداقل یکی از این گروه‌ها باشد (مثل سرویس اصلی)
@@ -25,6 +27,7 @@ export const ALLOWED_LOGIN_GROUPS: string[] = [
   GROUPS.admin,
   GROUPS.viewer,
   GROUPS.management,
+  GROUPS.accounting,
 ];
 
 // نشست ورود از لحظه‌ی لاگین (نه آخرین فعالیت) ۲ ساعت معتبر است

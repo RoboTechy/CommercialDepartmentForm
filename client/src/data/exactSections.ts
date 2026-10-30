@@ -15,9 +15,11 @@ export interface FieldDef {
 export interface SectionDef {
   key: string;
   title: string;
-  color: 'tech_operator' | 'warehouse' | 'commercial';
+  color: 'tech_operator' | 'warehouse' | 'commercial' | 'accounting';
   group: string | string[];
   canCreateRows: boolean;
+  // بخش مستقل: خارج از ترتیب «تکمیل بخش قبلی» و از تکمیل‌شده/معطل‌مانده بودن ردیف
+  independent?: boolean;
   fields: FieldDef[];
 }
 
@@ -86,6 +88,17 @@ export const sections: SectionDef[] = [
       { name: 'letter_no', label: 'شماره نامه', type: 'text' },
       { name: 'dispatch_date', label: 'تاریخ ارسال', type: 'jalali-date' },
       { name: 'factory_arrival_date', label: 'تاریخ ورود به کارخانه', type: 'jalali-date' },
+    ],
+  },
+  {
+    key: 'accounting',
+    title: 'حسابداری',
+    color: 'accounting',
+    group: GROUPS.accounting,
+    canCreateRows: false,
+    independent: true,
+    fields: [
+      { name: 'payment_date', label: 'تاریخ پرداخت', type: 'jalali-date' },
     ],
   },
 ];
