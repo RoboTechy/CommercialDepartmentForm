@@ -43,7 +43,7 @@ export const ReturnReasonModal: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
             <p className="text-xs text-slate-400 leading-relaxed">
-              انبار کارفرما می‌تواند در صورت نقص اطلاعات یا مدارک، درخواست را به واحد درخواست‌کننده ({row?.requester_dept}) عودت دهد تا اصلاح شود.
+              انبار کارفرما و بازرگانی می‌توانند در صورت نقص اطلاعات یا مدارک، درخواست را به واحد درخواست‌کننده ({row?.requester_dept}) عودت دهد تا اصلاح شود.
             </p>
 
             <div>

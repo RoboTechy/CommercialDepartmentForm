@@ -86,10 +86,10 @@ function canCancelRow(user, row) {
   return canEditRequesterRow(user, row);
 }
 
-// عودت به درخواست‌کننده: فقط انبار کارفرما (و ادمین) می‌تواند این وضعیت را ثبت/بردارد
+// عودت به درخواست‌کننده: انبار کارفرما و بازرگانی غدیر (و ادمین) می‌تواند این وضعیت را ثبت/بردارد
 function canReturnToTechOffice(user) {
   if (isAdmin(user)) return true;
-  return user.groups.includes(config.ldap.groups.warehouse);
+  return user.groups.includes(config.ldap.groups.warehouse) || user.groups.includes(config.ldap.groups.commercial);
 }
 
 module.exports = {

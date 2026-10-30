@@ -361,7 +361,7 @@ router.post('/rows/:id/uncancel', (req, res) => {
 
 router.post('/rows/:id/return', (req, res) => {
   const user = sessionUser(req);
-  if (!canReturnToTechOffice(user)) return fail(res, 403, 'فقط انبار کارفرما یا ادمین می‌تواند عودت دهد.');
+  if (!canReturnToTechOffice(user)) return fail(res, 403, 'فقط انبار کارفرما، بازرگانی یا ادمین می‌تواند عودت دهد.');
   const row = loadRow(req, res);
   if (!row) return;
   if (row.cancelled_at) return fail(res, 400, 'این درخواست لغو شده است؛ نمی‌توان آن را عودت داد.');
@@ -372,7 +372,7 @@ router.post('/rows/:id/return', (req, res) => {
 
 router.post('/rows/:id/unreturn', (req, res) => {
   const user = sessionUser(req);
-  if (!canReturnToTechOffice(user)) return fail(res, 403, 'فقط انبار کارفرما یا ادمین می‌تواند عودت را بردارد.');
+  if (!canReturnToTechOffice(user)) return fail(res, 403, 'فقط انبار کارفرما، بازرگانی یا ادمین می‌تواند عودت را بردارد.');
   const row = loadRow(req, res);
   if (!row) return;
   if (!row.returned_at) return fail(res, 400, 'این درخواست عودت داده نشده است.');

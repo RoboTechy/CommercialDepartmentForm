@@ -410,7 +410,7 @@ export const RowDetailView: React.FC = () => {
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1">
               <div className="font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-amber-400" />
-                <span>این درخواست توسط انبار کارفرما عودت داده شده است:</span>
+                <span>این درخواست عودت داده شده است:</span>
               </div>
               <p className="pr-5 text-amber-300">دلیل عودت: {row.return_reason || 'نقص در اطلاعات'}</p>
               <p className="pr-5 text-[11px] text-amber-400/80">

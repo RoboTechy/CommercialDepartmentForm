@@ -33,6 +33,7 @@ export interface DbRow {
   referred_to_commercial_date: string;
   purchase_executor: PurchaseExecutor | '';
   payment_auth_issued_date: string;
+  payment_auth_no: string;
 
   // Section 5: accounting (حسابداری، بخش مستقل)
   payment_date: string;

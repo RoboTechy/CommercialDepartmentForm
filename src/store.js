@@ -23,7 +23,7 @@ const DEPARTMENTS = (() => {
     if (!byColor.has(section.color)) {
       byColor.set(section.color, { color: section.color, title: section.title, fields: [] });
     }
-    byColor.get(section.color).fields.push(...section.fields);
+    byColor.get(section.color).fields.push(...section.fields.filter((f) => !f.optional));
   }
   return [...byColor.values()];
 })();
@@ -44,7 +44,7 @@ function fieldsForCompletion(row, fields) {
 // نمی‌شوند، پس نباید در تشخیص «تکمیل‌شده بودن» ردیف شرط باشند - همان
 // قاعده‌ای که برای currentBlockingSection زیر و techOperatorFields در
 // getDashboardStats استفاده می‌شود
-const NON_READONLY_FIELDS = ALL_FIELDS.filter((f) => !f.readOnly && !f.independent);
+const NON_READONLY_FIELDS = ALL_FIELDS.filter((f) => !f.readOnly && !f.optional && !f.independent);
 
 function isRowComplete(row) {
   return isFieldSetComplete(row, fieldsForCompletion(row, NON_READONLY_FIELDS));
@@ -58,7 +58,7 @@ function isRowComplete(row) {
 function currentBlockingSection(row) {
   for (const section of sections) {
     if (section.independent) continue;
-    const fields = fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly));
+    const fields = fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly && !f.optional));
     if (!fields.every((f) => (row[f.name] || '').toString().trim() !== '')) {
       return section;
     }

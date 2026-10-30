@@ -472,7 +472,7 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
 
                     {sections.map((s) => {
                       if (!open.includes(s.key)) {
-                        const need = s.fields.filter((f) => !f.readOnly && !(f.name === 'payment_auth_issued_date' && isPaymentAuthWaived(row)));
+                        const need = s.fields.filter((f) => !f.readOnly && !f.optional && !(f.name === 'payment_auth_issued_date' && isPaymentAuthWaived(row)));
                         const filled = need.filter((f) => (row[f.name] ?? '').toString().trim() !== '').length;
                         const done = filled === need.length;
                         return (

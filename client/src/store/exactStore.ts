@@ -19,7 +19,7 @@ export const DEPARTMENTS = (() => {
     if (!byColor.has(section.color)) {
       byColor.set(section.color, { color: section.color, title: section.title, fields: [] });
     }
-    byColor.get(section.color)!.fields.push(...section.fields);
+    byColor.get(section.color)!.fields.push(...section.fields.filter((f) => !f.optional));
   }
   return [...byColor.values()];
 })();
@@ -33,7 +33,7 @@ export function fieldsForCompletion(row: DbRow, fields: FieldDef[]): FieldDef[] 
   return fields.filter((f) => f.name !== 'payment_auth_issued_date');
 }
 
-const NON_READONLY_FIELDS = ALL_FIELDS.filter((f) => !f.readOnly && !sections.find((s) => s.key === f.sectionKey)?.independent);
+const NON_READONLY_FIELDS = ALL_FIELDS.filter((f) => !f.readOnly && !f.optional && !sections.find((s) => s.key === f.sectionKey)?.independent);
 
 export function isRowComplete(row: DbRow): boolean {
   return isFieldSetComplete(row, fieldsForCompletion(row, NON_READONLY_FIELDS));
@@ -42,7 +42,7 @@ export function isRowComplete(row: DbRow): boolean {
 export function currentBlockingSection(row: DbRow) {
   for (const section of sections) {
     if (section.independent) continue;
-    const fields = fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly));
+    const fields = fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly && !f.optional));
     if (!fields.every((f) => (row[f.name] || '').toString().trim() !== '')) {
       return section;
     }
@@ -155,7 +155,7 @@ export function incompleteSectionBefore(row: DbRow, sectionKey: string): { key: 
   for (const section of sections) {
     if (section.key === sectionKey) return null;
     if (section.independent) continue;
-    const fields = fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly));
+    const fields = fieldsForCompletion(row, section.fields.filter((f) => !f.readOnly && !f.optional));
     const missing = fields.filter((f) => !((row[f.name] ?? '') as string).toString().trim());
     if (missing.length) return { key: section.key, label: SECTION_LABELS[section.key] || section.title, missing: missing.map((f) => f.label) };
   }

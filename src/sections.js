@@ -68,6 +68,8 @@ const sections = [
       { name: 'referred_to_commercial_date', label: 'تاریخ ارجاع به بازرگانی', type: 'jalali-date' },
       { name: 'purchase_executor', label: 'مجری خرید', type: 'select', options: ['سایت', 'تهران', 'برنا'] },
       { name: 'payment_auth_issued_date', label: 'تاریخ صدور مجوز پرداخت', type: 'jalali-date' },
+      // اختیاری: جزو شرط «تکمیل‌شده/ترتیب بخش‌ها» نیست (ردیف‌های قدیمی این شماره را ندارند)
+      { name: 'payment_auth_no', label: 'شماره مجوز پرداخت', type: 'text', optional: true },
     ],
   },
   {
@@ -127,7 +129,7 @@ function incompleteSectionBefore(row, sectionKey) {
     if (section.key === sectionKey) return null;
     if (section.independent) continue;
     const fields = section.fields
-      .filter((f) => !f.readOnly)
+      .filter((f) => !f.readOnly && !f.optional)
       .filter((f) => !(f.name === 'payment_auth_issued_date' && isPaymentAuthWaived(row)));
     const missing = fields.filter((f) => !(row[f.name] || '').toString().trim());
     if (missing.length) {

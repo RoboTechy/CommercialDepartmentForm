@@ -324,7 +324,7 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   const isManagement = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.management)));
   // صفحه‌ی «ردیابی رویدادها»: فقط ادمین‌ها و گروه آی‌تی (تاریخچه‌ی هر ردیف برای همه در دسترس است)
   const canViewAuditLogs = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.it)));
-  const canReturnToTechOffice = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.warehouse)));
+  const canReturnToTechOffice = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.warehouse) || currentUser.groups.includes(GROUPS.commercial)));
 
   const canCreateRows = Boolean(currentUser && (isAdmin || sections.some(s => s.canCreateRows && (
     Array.isArray(s.group) ? s.group.some(g => currentUser.groups.includes(g)) : currentUser.groups.includes(s.group)
