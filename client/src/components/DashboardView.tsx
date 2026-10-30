@@ -157,7 +157,7 @@ export const DashboardView: React.FC = () => {
         </div>
 
         <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs text-amber-400 font-medium">عودت به درخواست‌کننده</span>
+          <span className="text-xs text-amber-400 font-medium">عودت‌شده</span>
           <span className="text-2xl font-bold font-mono text-amber-400 tabular-nums">
             {stats.returnedCount}
           </span>
@@ -287,7 +287,7 @@ export const DashboardView: React.FC = () => {
               <option value="all">همه وضعیت‌ها</option>
               <option value="active">جاری (عادی)</option>
               <option value="cancelled">لغو شده</option>
-              <option value="returned">عودت به درخواست‌کننده</option>
+              <option value="returned">عودت‌شده</option>
             </select>
 
             {/* Requester Dept */}

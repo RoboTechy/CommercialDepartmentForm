@@ -54,6 +54,8 @@ export interface DbRow {
   cancel_reason: string;
 
   returned_at: string;
+  // مقصد عودت: '' = درخواست‌کننده، 'warehouse' = انبار کارفرما
+  returned_to: string;
   returned_by_username: string;
   returned_by_display: string;
   return_reason: string;

@@ -532,10 +532,13 @@ function uncancelRow(rowId, user) {
 // نقص در اطلاعات). ردیف حذف نمی‌شود، در فهرست می‌ماند، رنگش تغییر می‌کند و
 // فقط بخش درخواست‌کننده قابل ویرایش می‌ماند تا مشکل را برطرف کنند. دلیل اختیاری
 // است.
-function returnToTechOffice(rowId, reason, user) {
+function returnToTechOffice(rowId, reason, user, target = 'tech') {
+  const toWarehouse = target === 'warehouse';
+  const targetLabel = toWarehouse ? 'انبار کارفرما' : 'درخواست‌کننده';
   db.run(
-    `UPDATE rows SET returned_at = @returnedAt, returned_by_username = @username, returned_by_display = @display, return_reason = @reason WHERE id = @id`,
+    `UPDATE rows SET returned_at = @returnedAt, returned_by_username = @username, returned_by_display = @display, return_reason = @reason, returned_to = @target WHERE id = @id`,
     {
+      '@target': toWarehouse ? 'warehouse' : '',
       '@id': rowId,
       '@returnedAt': nowJalaliDateTime(),
       '@username': user.username,
@@ -545,12 +548,12 @@ function returnToTechOffice(rowId, reason, user) {
   );
   insertAuditEntries(
     rowId,
-    'warehouse_1',
+    toWarehouse ? 'commercial' : 'warehouse_1',
     [{
       fieldKey: 'return_reason',
       fieldLabel: 'وضعیت درخواست',
       oldValue: 'فعال',
-      newValue: reason ? `عودت به درخواست‌کننده - دلیل: ${reason}` : 'عودت به درخواست‌کننده',
+      newValue: reason ? `عودت به ${targetLabel} - دلیل: ${reason}` : `عودت به ${targetLabel}`,
     }],
     user
   );
@@ -558,13 +561,13 @@ function returnToTechOffice(rowId, reason, user) {
 
 function unreturnFromTechOffice(rowId, user) {
   db.run(
-    `UPDATE rows SET returned_at = '', returned_by_username = '', returned_by_display = '', return_reason = '' WHERE id = @id`,
+    `UPDATE rows SET returned_at = '', returned_by_username = '', returned_by_display = '', return_reason = '', returned_to = '' WHERE id = @id`,
     { '@id': rowId }
   );
   insertAuditEntries(
     rowId,
     'warehouse_1',
-    [{ fieldKey: 'return_reason', fieldLabel: 'وضعیت درخواست', oldValue: 'عودت به درخواست‌کننده', newValue: 'بازگردانده شد (فعال)' }],
+    [{ fieldKey: 'return_reason', fieldLabel: 'وضعیت درخواست', oldValue: 'عودت', newValue: 'بازگردانده شد (فعال)' }],
     user
   );
 }

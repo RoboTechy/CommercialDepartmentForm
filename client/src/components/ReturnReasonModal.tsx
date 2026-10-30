@@ -3,7 +3,8 @@ import { useExactDb } from '../context/ExactDatabaseContext';
 import { X, AlertTriangle } from 'lucide-react';
 
 export const ReturnReasonModal: React.FC = () => {
-  const { returnModalRowId, setReturnModalRowId, returnToTechOffice, getRow } = useExactDb();
+  const { returnModalRowId, returnModalTarget, setReturnModalRowId, returnToTechOffice, getRow } = useExactDb();
+  const toWarehouse = returnModalTarget === 'warehouse';
   const [reason, setReason] = useState('');
 
   if (returnModalRowId === null) return null;
@@ -12,7 +13,7 @@ export const ReturnReasonModal: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason.trim()) return;
-    returnToTechOffice(returnModalRowId, reason.trim());
+    returnToTechOffice(returnModalRowId, reason.trim(), returnModalTarget);
     setReason('');
     setReturnModalRowId(null);
   };
@@ -44,12 +45,14 @@ export const ReturnReasonModal: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
             <p className="text-xs text-slate-400 leading-relaxed">
-              انبار کارفرما و بازرگانی می‌توانند در صورت نقص اطلاعات یا مدارک، درخواست را به واحد درخواست‌کننده ({row?.requester_dept}) عودت دهد تا اصلاح شود.
+              {toWarehouse
+                ? 'بازرگانی می‌تواند در صورت نقص اطلاعات یا مدارک، درخواست را به انبار کارفرما عودت دهد تا اصلاح شود.'
+                : `انبار کارفرما می‌تواند در صورت نقص اطلاعات یا مدارک، درخواست را به واحد درخواست‌کننده (${row?.requester_dept}) عودت دهد تا اصلاح شود.`}
             </p>
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                دلیل عودت به درخواست‌کننده (الزامی):
+                دلیل عودت به {toWarehouse ? 'انبار کارفرما' : 'درخواست‌کننده'} (الزامی):
               </label>
               <textarea
                 rows={3}
@@ -74,7 +77,7 @@ export const ReturnReasonModal: React.FC = () => {
                 type="submit"
                 className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-md shadow-amber-600/30 transition-all active:scale-95"
               >
-                تایید و عودت به درخواست‌کننده
+                تایید و عودت به {toWarehouse ? 'انبار کارفرما' : 'درخواست‌کننده'}
               </button>
             </div>
           </form>

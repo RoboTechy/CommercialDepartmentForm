@@ -143,7 +143,7 @@ ${fieldColumns}
 
   // ستون‌های عودت به درخواست‌کننده - انبار می‌تواند یک درخواست را به این وضعیت
   // برگرداند؛ فقط بخش درخواست‌کننده قابل ویرایش می‌ماند
-  for (const col of ['returned_at', 'returned_by_username', 'returned_by_display', 'return_reason']) {
+  for (const col of ['returned_at', 'returned_by_username', 'returned_by_display', 'return_reason', 'returned_to']) {
     if (!existingColumns.has(col)) {
       sqlDb.run(`ALTER TABLE rows ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`);
     }

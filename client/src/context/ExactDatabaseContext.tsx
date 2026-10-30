@@ -68,6 +68,8 @@ interface ExactDatabaseContextType {
   isLdapModalOpen: boolean;
   cancelModalRowId: number | null;
   returnModalRowId: number | null;
+  returnModalTarget: 'tech' | 'warehouse';
+  openReturnModal: (id: number, target: 'tech' | 'warehouse') => void;
   historyDrawerRowId: number | null;
 
   // Auth & Session
@@ -95,6 +97,8 @@ interface ExactDatabaseContextType {
   sectionLockReason: (row: DbRow, sectionKey: string) => string | null;
   canCancelRow: (row: DbRow) => boolean;
   canReturnToTechOffice: boolean;
+  canReturnToWarehouse: boolean;
+  canLiftWarehouseReturn: boolean;
 
   // DB actions (همه با بک‌اند)
   createRow: (values: Partial<DbRow>) => Promise<{ row: DbRow | null; errors: string[]; isDuplicate: boolean }>;
@@ -105,7 +109,7 @@ interface ExactDatabaseContextType {
   restoreRow: (rowId: number) => Promise<boolean>;
   cancelRow: (rowId: number, reason: string) => Promise<boolean>;
   uncancelRow: (rowId: number) => Promise<boolean>;
-  returnToTechOffice: (rowId: number, reason: string) => Promise<boolean>;
+  returnToTechOffice: (rowId: number, reason: string, target?: 'tech' | 'warehouse') => Promise<boolean>;
   unreturnFromTechOffice: (rowId: number) => Promise<boolean>;
 
   // RFQ & Vendor Management
@@ -187,6 +191,8 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   const [isLdapModalOpen, setIsLdapModalOpen] = useState(false);
   const [cancelModalRowId, setCancelModalRowId] = useState<number | null>(null);
   const [returnModalRowId, setReturnModalRowId] = useState<number | null>(null);
+  const [returnModalTarget, setReturnModalTarget] = useState<'tech' | 'warehouse'>('tech');
+  const openReturnModal = (id: number, target: 'tech' | 'warehouse') => { setReturnModalTarget(target); setReturnModalRowId(id); };
   const [historyDrawerRowId, setHistoryDrawerRowId] = useState<number | null>(null);
 
   const [filters, setFilters] = useState<FilterState>({
@@ -324,7 +330,9 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
   const isManagement = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.management)));
   // صفحه‌ی «ردیابی رویدادها»: فقط ادمین‌ها و گروه آی‌تی (تاریخچه‌ی هر ردیف برای همه در دسترس است)
   const canViewAuditLogs = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.it)));
-  const canReturnToTechOffice = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.warehouse) || currentUser.groups.includes(GROUPS.commercial)));
+  const canReturnToTechOffice = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.warehouse)));
+  const canReturnToWarehouse = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.commercial)));
+  const canLiftWarehouseReturn = Boolean(currentUser && (isAdmin || currentUser.groups.includes(GROUPS.warehouse) || currentUser.groups.includes(GROUPS.commercial)));
 
   const canCreateRows = Boolean(currentUser && (isAdmin || sections.some(s => s.canCreateRows && (
     Array.isArray(s.group) ? s.group.some(g => currentUser.groups.includes(g)) : currentUser.groups.includes(s.group)
@@ -359,7 +367,10 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     if (!currentUser) return false;
     if (sectionLockReason(row, sectionKey)) return false;
     if (row.deleted_at || row.cancelled_at) return false;
-    if (row.returned_at && sectionKey !== 'tech_operator') return false;
+    if (row.returned_at) {
+      const ok = row.returned_to === 'warehouse' ? (sectionKey === 'warehouse_1' || sectionKey === 'warehouse_2') : sectionKey === 'tech_operator';
+      if (!ok) return false;
+    }
     // پیش‌نویس هنوز در فهرست مشترک نیست: فقط سازنده‌اش (یا ادمین) می‌تواند ویرایشش کند
     if (!row.published_at && row.created_by_username !== currentUser.username && !isAdmin) return false;
     return sectionKey === 'tech_operator' ? canEditRequesterRow(row) : canEditSection(sectionKey);
@@ -509,8 +520,8 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     (await act(() => api('POST', `/rows/${rowId}/cancel`, { reason }))).ok;
   const uncancelRow = async (rowId: number): Promise<boolean> =>
     (await act(() => api('POST', `/rows/${rowId}/uncancel`))).ok;
-  const returnToTechOffice = async (rowId: number, reason: string): Promise<boolean> =>
-    (await act(() => api('POST', `/rows/${rowId}/return`, { reason }))).ok;
+  const returnToTechOffice = async (rowId: number, reason: string, target: 'tech' | 'warehouse' = 'tech'): Promise<boolean> =>
+    (await act(() => api('POST', `/rows/${rowId}/return`, { reason, target }))).ok;
   const unreturnFromTechOffice = async (rowId: number): Promise<boolean> =>
     (await act(() => api('POST', `/rows/${rowId}/unreturn`))).ok;
 
@@ -632,10 +643,10 @@ export const ExactDatabaseProvider: React.FC<{ children: ReactNode }> = ({ child
     <ExactDatabaseContext.Provider
       value={{
         rows, auditLogs, vendors, quotations, quotationCount, notify, approvals, currentUser, booting, loading, dataLoaded, toast, dismissToast, refresh,
-        activeTab, selectedRowId, filters, isLdapModalOpen, cancelModalRowId, returnModalRowId, historyDrawerRowId,
+        activeTab, selectedRowId, filters, isLdapModalOpen, cancelModalRowId, returnModalRowId, returnModalTarget, openReturnModal, historyDrawerRowId,
         login, logout, sessionExpiresAt,
         setActiveTab, setSelectedRowId, setFilters, setIsLdapModalOpen, setCancelModalRowId, setReturnModalRowId, setHistoryDrawerRowId,
-        isAdmin, isLocalAdmin, isManagement, canViewAuditLogs, canCreateRows, canEditSectionForRow, sectionLockReason, canCancelRow, canReturnToTechOffice,
+        isAdmin, isLocalAdmin, isManagement, canViewAuditLogs, canCreateRows, canEditSectionForRow, sectionLockReason, canCancelRow, canReturnToTechOffice, canReturnToWarehouse, canLiftWarehouseReturn,
         createRow, updateSection, finalizeDrafts, discardDraft, softDeleteRow, restoreRow,
         cancelRow, uncancelRow, returnToTechOffice, unreturnFromTechOffice,
         addVendor, updateVendor, deleteVendor, addQuotation, selectWinningQuotation, deleteQuotation, getRowQuotations,

@@ -71,10 +71,16 @@ function sectionOrderBlocker(user, row, sectionKey) {
   return incompleteSectionBefore(row, sectionKey);
 }
 
+// وقتی ردیف عودت شده: عودت به درخواست‌کننده → فقط بخش درخواست‌کننده؛ عودت به انبار → فقط بخش‌های انبار
+function sectionEditableWhileReturned(row, sectionKey) {
+  if (row.returned_to === 'warehouse') return sectionKey === 'warehouse_1' || sectionKey === 'warehouse_2';
+  return sectionKey === 'tech_operator';
+}
+
 function canEditSectionForRow(user, row, sectionKey) {
   if (sectionOrderBlocker(user, row, sectionKey)) return false;
   if (row.deleted_at || row.cancelled_at) return false;
-  if (row.returned_at && sectionKey !== 'tech_operator') return false;
+  if (row.returned_at && !sectionEditableWhileReturned(row, sectionKey)) return false;
   return sectionKey === 'tech_operator' ? canEditRequesterRow(user, row) : canEditSection(user, sectionKey);
 }
 
@@ -86,8 +92,20 @@ function canCancelRow(user, row) {
   return canEditRequesterRow(user, row);
 }
 
-// عودت به درخواست‌کننده: انبار کارفرما و بازرگانی غدیر (و ادمین) می‌تواند این وضعیت را ثبت/بردارد
+// عودت به درخواست‌کننده: فقط انبار کارفرما (و ادمین) می‌تواند این وضعیت را ثبت/بردارد
 function canReturnToTechOffice(user) {
+  if (isAdmin(user)) return true;
+  return user.groups.includes(config.ldap.groups.warehouse);
+}
+
+// عودت به انبار کارفرما: بازرگانی غدیر (و ادمین) درخواست را به انبار برمی‌گرداند؛
+// رفع نقص و لغو این عودت را انبار، بازرگانی یا ادمین می‌تواند انجام دهد
+function canReturnToWarehouse(user) {
+  if (isAdmin(user)) return true;
+  return user.groups.includes(config.ldap.groups.commercial);
+}
+
+function canLiftWarehouseReturn(user) {
   if (isAdmin(user)) return true;
   return user.groups.includes(config.ldap.groups.warehouse) || user.groups.includes(config.ldap.groups.commercial);
 }
@@ -104,4 +122,7 @@ module.exports = {
   canCreateRows,
   canCancelRow,
   canReturnToTechOffice,
+  canReturnToWarehouse,
+  canLiftWarehouseReturn,
+  sectionEditableWhileReturned,
 };

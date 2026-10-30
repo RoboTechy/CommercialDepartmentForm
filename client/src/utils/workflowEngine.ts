@@ -121,7 +121,7 @@ export function autoStageFromRow(row: DbRow): WorkflowStageId {
 // مرحله‌ی واقعی = دیرتر از (ذخیره‌شده) و (ناشی از اطلاعات)
 export function inferStageFromRow(row: DbRow): WorkflowStageId {
   // عودت‌شده: برگشته نزد درخواست‌کننده تا نقص را برطرف کند
-  if (row.returned_at) return 'tech_request';
+  if (row.returned_at) return row.returned_to === 'warehouse' ? 'warehouse_review' : 'tech_request';
   const stored: WorkflowStageId = row.workflow_stage && STAGE_ORDER.includes(row.workflow_stage as WorkflowStageId) ? (row.workflow_stage as WorkflowStageId) : 'tech_request';
   const auto = autoStageFromRow(row);
   return STAGE_ORDER.indexOf(stored) >= STAGE_ORDER.indexOf(auto) ? stored : auto;

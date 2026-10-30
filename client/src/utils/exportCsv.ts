@@ -10,7 +10,7 @@ function cell(v: unknown): string {
 
 function statusLabel(r: DbRow): string {
   if (r.cancelled_at) return 'لغو شده';
-  if (r.returned_at) return 'عودت به درخواست‌کننده';
+  if (r.returned_at) return r.returned_to === 'warehouse' ? 'عودت به انبار' : 'عودت به درخواست‌کننده';
   return 'جاری';
 }
 

@@ -20,6 +20,9 @@ const {
   sectionOrderBlocker,
   canCancelRow,
   canReturnToTechOffice,
+  canReturnToWarehouse,
+  canLiftWarehouseReturn,
+  sectionEditableWhileReturned,
 } = require('../middleware');
 
 // API JSON برای رابط کاربری جدید (React). تمام قواعد دسترسی/قفل همین‌جا (سمت سرور)
@@ -62,6 +65,8 @@ function meOf(user) {
       isManagement: isManagement(user),
       canCreateRows: canCreateRows(user),
       canReturnToTechOffice: canReturnToTechOffice(user),
+      canReturnToWarehouse: canReturnToWarehouse(user),
+      canLiftWarehouseReturn: canLiftWarehouseReturn(user),
     },
     overdueDays: config.overdueDays,
     enforceSectionOrder: config.enforceSectionOrder,
@@ -288,8 +293,10 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
   if (!row) return;
   if (!section) return fail(res, 404, 'بخش نامعتبر است.');
   if (row.cancelled_at) return fail(res, 400, 'این درخواست لغو شده است؛ برای ویرایش ابتدا لغو را بردارید.');
-  if (row.returned_at && section.key !== 'tech_operator') {
-    return fail(res, 400, 'این درخواست به درخواست‌کننده عودت داده شده است؛ فقط درخواست‌کننده می‌تواند ویرایش کند.');
+  if (row.returned_at && !sectionEditableWhileReturned(row, section.key)) {
+    return fail(res, 400, row.returned_to === 'warehouse'
+      ? 'این درخواست به انبار کارفرما عودت داده شده است؛ فقط بخش‌های انبار قابل ویرایش هستند.'
+      : 'این درخواست به درخواست‌کننده عودت داده شده است؛ فقط درخواست‌کننده می‌تواند ویرایش کند.');
   }
   if (!canEditSectionForRow(user, row, section.key)) {
     const blocker = sectionOrderBlocker(user, row, section.key);
@@ -365,22 +372,28 @@ router.post('/rows/:id/uncancel', (req, res) => {
 
 router.post('/rows/:id/return', (req, res) => {
   const user = sessionUser(req);
-  if (!canReturnToTechOffice(user)) return fail(res, 403, 'فقط انبار کارفرما، بازرگانی یا ادمین می‌تواند عودت دهد.');
+  const target = req.body.target === 'warehouse' ? 'warehouse' : 'tech';
+  if (target === 'warehouse' ? !canReturnToWarehouse(user) : !canReturnToTechOffice(user)) {
+    return fail(res, 403, target === 'warehouse'
+      ? 'فقط بازرگانی یا ادمین می‌تواند درخواست را به انبار عودت دهد.'
+      : 'فقط انبار کارفرما یا ادمین می‌تواند به درخواست‌کننده عودت دهد.');
+  }
   const row = loadRow(req, res);
   if (!row) return;
   if (row.cancelled_at) return fail(res, 400, 'این درخواست لغو شده است؛ نمی‌توان آن را عودت داد.');
   if (row.returned_at) return fail(res, 400, 'این درخواست از قبل عودت داده شده است.');
   const reason = (req.body.reason || '').toString().trim();
   if (!reason) return fail(res, 400, 'برای عودت درخواست، نوشتن دلیل الزامی است.');
-  store.returnToTechOffice(row.id, reason, user);
+  store.returnToTechOffice(row.id, reason, user, target);
   res.json({ ok: true });
 });
 
 router.post('/rows/:id/unreturn', (req, res) => {
   const user = sessionUser(req);
-  if (!canReturnToTechOffice(user)) return fail(res, 403, 'فقط انبار کارفرما، بازرگانی یا ادمین می‌تواند عودت را بردارد.');
   const row = loadRow(req, res);
   if (!row) return;
+  const allowed = row.returned_to === 'warehouse' ? canLiftWarehouseReturn(user) : canReturnToTechOffice(user);
+  if (!allowed) return fail(res, 403, 'شما مجاز به برداشتن این عودت نیستید.');
   if (!row.returned_at) return fail(res, 400, 'این درخواست عودت داده نشده است.');
   store.unreturnFromTechOffice(row.id, user);
   res.json({ ok: true });

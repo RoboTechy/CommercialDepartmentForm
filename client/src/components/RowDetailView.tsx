@@ -40,6 +40,9 @@ export const RowDetailView: React.FC = () => {
     setHistoryDrawerRowId,
     setCancelModalRowId,
     setReturnModalRowId,
+    openReturnModal,
+    canReturnToWarehouse,
+    canLiftWarehouseReturn,
     uncancelRow,
     unreturnFromTechOffice,
     canCancelRow,
@@ -240,23 +243,38 @@ export const RowDetailView: React.FC = () => {
             )
           )}
 
-          {canReturnToTechOffice && !isCancelled && !isDraft && (
+          {!isCancelled && !isDraft && (
             isReturned ? (
-              <button
-                onClick={() => unreturnFromTechOffice(row.id)}
-                className="px-3 py-1.5 text-xs font-semibold text-emerald-300 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-xl flex items-center gap-1 transition-colors"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>لغو عودت (فعال‌سازی)</span>
-              </button>
+              (row.returned_to === 'warehouse' ? canLiftWarehouseReturn : canReturnToTechOffice) && (
+                <button
+                  onClick={() => unreturnFromTechOffice(row.id)}
+                  className="px-3 py-1.5 text-xs font-semibold text-emerald-300 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-xl flex items-center gap-1 transition-colors"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>لغو عودت (فعال‌سازی)</span>
+                </button>
+              )
             ) : (
-              <button
-                onClick={() => setReturnModalRowId(row.id)}
-                className="px-3 py-1.5 text-xs font-semibold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded-xl flex items-center gap-1 transition-colors"
-              >
-                <AlertTriangle className="w-3.5 h-3.5" />
-                <span>عودت به درخواست‌کننده</span>
-              </button>
+              <>
+                {canReturnToTechOffice && (
+                  <button
+                    onClick={() => openReturnModal(row.id, 'tech')}
+                    className="px-3 py-1.5 text-xs font-semibold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded-xl flex items-center gap-1 transition-colors"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>عودت به درخواست‌کننده</span>
+                  </button>
+                )}
+                {canReturnToWarehouse && (
+                  <button
+                    onClick={() => openReturnModal(row.id, 'warehouse')}
+                    className="px-3 py-1.5 text-xs font-semibold text-amber-300 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 rounded-xl flex items-center gap-1 transition-colors"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>عودت به انبار</span>
+                  </button>
+                )}
+              </>
             )
           )}
         </div>
@@ -411,11 +429,13 @@ export const RowDetailView: React.FC = () => {
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs space-y-1">
               <div className="font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-amber-400" />
-                <span>این درخواست عودت داده شده است:</span>
+                <span>این درخواست به {row.returned_to === 'warehouse' ? 'انبار کارفرما' : 'درخواست‌کننده'} عودت داده شده است:</span>
               </div>
               <p className="pr-5 text-amber-300">دلیل عودت: {row.return_reason || 'نقص در اطلاعات'}</p>
               <p className="pr-5 text-[11px] text-amber-400/80">
-                فقط بخش درخواست‌کننده ({row.requester_dept}) جهت رفع نقص قابل ویرایش است. سایر بخش‌ها قفل هستند.
+                {row.returned_to === 'warehouse'
+                  ? 'فقط بخش‌های انبار کارفرما جهت رفع نقص قابل ویرایش هستند. سایر بخش‌ها قفل هستند.'
+                  : `فقط بخش درخواست‌کننده (${row.requester_dept}) جهت رفع نقص قابل ویرایش است. سایر بخش‌ها قفل هستند.`}
               </p>
             </div>
           )}

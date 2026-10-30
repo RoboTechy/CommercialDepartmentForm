@@ -77,7 +77,7 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
   const {
     currentUser, isAdmin, isLocalAdmin, canEditSectionForRow, canCancelRow, canReturnToTechOffice,
     updateSection, getRowHistory, quotationCount, notify, sectionLockReason, dataLoaded, setSelectedRowId, setActiveTab, setHistoryDrawerRowId, setCancelModalRowId,
-    setReturnModalRowId, uncancelRow, unreturnFromTechOffice, softDeleteRow,
+    openReturnModal, canReturnToWarehouse, canLiftWarehouseReturn, uncancelRow, unreturnFromTechOffice, softDeleteRow,
   } = useExactDb();
 
   // ---------- ستون‌های باز/بسته: پیش‌فرض فقط بخش(های) خود کاربر باز است ----------
@@ -270,7 +270,7 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
     if (field.readOnly) return `«${field.label}» خودکار تعیین می‌شود و قابل تغییر نیست.`;
     if (field.name === 'payment_auth_issued_date' && isPaymentAuthWaived(row)) return `مجری خرید «${row.purchase_executor}» است؛ مجوز پرداخت سایت لازم نیست.`;
     if (row.cancelled_at) return 'این درخواست لغو شده است؛ برای ویرایش ابتدا لغو را بردارید.';
-    if (row.returned_at && section.key !== 'tech_operator') return 'این درخواست به درخواست‌کننده عودت داده شده؛ فقط درخواست‌کننده می‌تواند ویرایش کند.';
+    if (row.returned_at && !canEditSectionForRow(row, section.key) && !sectionLockReason(row, section.key)) return row.returned_to === 'warehouse' ? 'این درخواست به انبار عودت داده شده؛ فقط بخش‌های انبار قابل ویرایش‌اند.' : 'این درخواست به درخواست‌کننده عودت داده شده؛ فقط درخواست‌کننده می‌تواند ویرایش کند.';
     const lock = sectionLockReason(row, section.key);
     if (lock) return lock;
     if (section.key === 'tech_operator') return `این درخواست متعلق به دپارتمان «${row.requester_dept || '—'}» است و فقط همان دپارتمان (یا ادمین) می‌تواند آن را ویرایش کند.`;
@@ -568,11 +568,16 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
                             <button onClick={() => setCancelModalRowId(row.id)} className="p-1 text-rose-400 hover:bg-rose-500/10 rounded" title="لغو درخواست"><XCircle className="w-3.5 h-3.5" /></button>
                           )
                         )}
-                        {canReturnToTechOffice && !isCancelled && (
+                        {!isCancelled && (
                           isReturned ? (
-                            <button onClick={() => unreturnFromTechOffice(row.id)} className="p-1 text-emerald-400 hover:bg-emerald-500/10 rounded" title="لغو عودت"><CheckCircle2 className="w-3.5 h-3.5" /></button>
+                            (row.returned_to === 'warehouse' ? canLiftWarehouseReturn : canReturnToTechOffice) && (
+                              <button onClick={() => unreturnFromTechOffice(row.id)} className="p-1 text-emerald-400 hover:bg-emerald-500/10 rounded" title="لغو عودت"><CheckCircle2 className="w-3.5 h-3.5" /></button>
+                            )
                           ) : (
-                            <button onClick={() => setReturnModalRowId(row.id)} className="p-1 text-amber-400 hover:bg-amber-500/10 rounded" title="عودت به درخواست‌کننده"><AlertTriangle className="w-3.5 h-3.5" /></button>
+                            <>
+                              {canReturnToTechOffice && <button onClick={() => openReturnModal(row.id, 'tech')} className="p-1 text-amber-400 hover:bg-amber-500/10 rounded" title="عودت به درخواست‌کننده"><AlertTriangle className="w-3.5 h-3.5" /></button>}
+                              {canReturnToWarehouse && <button onClick={() => openReturnModal(row.id, 'warehouse')} className="p-1 text-orange-400 hover:bg-orange-500/10 rounded" title="عودت به انبار"><AlertTriangle className="w-3.5 h-3.5" /></button>}
+                            </>
                           )
                         )}
                         {isLocalAdmin && (

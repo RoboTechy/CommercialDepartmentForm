@@ -290,7 +290,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ is
                   ) : currentUser.groups.includes(GROUPS.accounting) ? (
                     <span>حسابداری: ثبت تاریخ پرداخت</span>
                   ) : currentUser.groups.includes(GROUPS.commercial) ? (
-                    <span>بازرگانی غدیر: ثبت ارجاع، مجری خرید، مجوز پرداخت + عودت درخواست</span>
+                    <span>بازرگانی غدیر: ثبت ارجاع، مجری خرید، مجوز پرداخت + عودت به انبار</span>
                   ) : (
                     <span>فقط مشاهده اطلاعات</span>
                   )}
