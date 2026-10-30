@@ -69,7 +69,8 @@ const sections = [
       { name: 'purchase_executor', label: 'مجری خرید', type: 'select', options: ['سایت', 'تهران', 'برنا'] },
       { name: 'payment_auth_issued_date', label: 'تاریخ صدور مجوز پرداخت', type: 'jalali-date' },
       // اختیاری: جزو شرط «تکمیل‌شده/ترتیب بخش‌ها» نیست (ردیف‌های قدیمی این شماره را ندارند)
-      { name: 'payment_auth_no', label: 'شماره مجوز پرداخت', type: 'text', optional: true },
+      { name: 'payment_auth_no', label: 'شماره مجوز پرداخت', type: 'text', digitsOnly: true, optional: true },
+      { name: 'commercial_notes', label: 'توضیحات', type: 'textarea', optional: true },
     ],
   },
   {

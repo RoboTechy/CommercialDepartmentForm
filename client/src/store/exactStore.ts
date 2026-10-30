@@ -118,6 +118,14 @@ export function validateFieldValues(
         value = normalized;
       }
     }
+    if (field.digitsOnly && value) {
+      value = toLatinDigits(value);
+      if (!/^[0-9]+$/.test(value)) {
+        errors.push(`«${field.label}» فقط باید شامل عدد باشد`);
+        flagged.add(field.name);
+        value = '';
+      }
+    }
     if (field.type === 'select' && value && field.options && !field.options.includes(value)) {
       errors.push(`«${field.label}» باید یکی از این مقادیر باشد: ${field.options.join('، ')}`);
       flagged.add(field.name);
@@ -160,4 +168,9 @@ export function incompleteSectionBefore(row: DbRow, sectionKey: string): { key: 
     if (missing.length) return { key: section.key, label: SECTION_LABELS[section.key] || section.title, missing: missing.map((f) => f.label) };
   }
   return null;
+}
+
+// ورودی فیلدهای «فقط عدد» را هنگام تایپ پاکسازی می‌کند
+export function sanitizeFieldInput(field: FieldDef, v: string): string {
+  return field.digitsOnly ? toLatinDigits(v).replace(/[^0-9]/g, '') : v;
 }

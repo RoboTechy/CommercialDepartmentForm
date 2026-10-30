@@ -318,6 +318,10 @@ router.post('/rows/:id/sections/:sectionKey', (req, res) => {
       }
       value = n;
     }
+    if (field.digitsOnly && value && !/^[0-9]+$/.test(value)) {
+      errors.push(`«${field.label}» فقط باید شامل عدد باشد.`);
+      continue;
+    }
     if (field.type === 'select' && value && !field.options.includes(value)) {
       errors.push(`«${field.label}» باید یکی از این مقادیر باشد: ${field.options.join('، ')}`);
       continue;
@@ -366,7 +370,9 @@ router.post('/rows/:id/return', (req, res) => {
   if (!row) return;
   if (row.cancelled_at) return fail(res, 400, 'این درخواست لغو شده است؛ نمی‌توان آن را عودت داد.');
   if (row.returned_at) return fail(res, 400, 'این درخواست از قبل عودت داده شده است.');
-  store.returnToTechOffice(row.id, (req.body.reason || '').toString().trim(), user);
+  const reason = (req.body.reason || '').toString().trim();
+  if (!reason) return fail(res, 400, 'برای عودت درخواست، نوشتن دلیل الزامی است.');
+  store.returnToTechOffice(row.id, reason, user);
   res.json({ ok: true });
 });
 

@@ -12,6 +12,8 @@ export interface FieldDef {
   sectionKey?: string;
   // اختیاری: جزو شرط تکمیل‌شده/ترتیب بخش‌ها نیست
   optional?: boolean;
+  // فقط عدد (ارقام فارسی/عربی به لاتین تبدیل می‌شوند)
+  digitsOnly?: boolean;
 }
 
 export interface SectionDef {
@@ -78,7 +80,8 @@ export const sections: SectionDef[] = [
       { name: 'referred_to_commercial_date', label: 'تاریخ ارجاع به بازرگانی', type: 'jalali-date' },
       { name: 'purchase_executor', label: 'مجری خرید', type: 'select', options: ['سایت', 'تهران', 'برنا'] },
       { name: 'payment_auth_issued_date', label: 'تاریخ صدور مجوز پرداخت', type: 'jalali-date' },
-      { name: 'payment_auth_no', label: 'شماره مجوز پرداخت', type: 'text', optional: true },
+      { name: 'payment_auth_no', label: 'شماره مجوز پرداخت', type: 'text', digitsOnly: true, optional: true },
+      { name: 'commercial_notes', label: 'توضیحات', type: 'textarea', optional: true },
     ],
   },
   {

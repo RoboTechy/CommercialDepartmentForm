@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useExactDb } from '../context/ExactDatabaseContext';
 import { sections, isPaymentAuthWaived, FieldDef } from '../data/exactSections';
 import { WorkflowStepper } from './WorkflowStepper';
+import { sanitizeFieldInput } from '../store/exactStore';
 import { RfqQuotationsView } from './RfqQuotationsView';
 import { MultiLevelApprovalsView } from './MultiLevelApprovalsView';
 import { 
@@ -558,9 +559,10 @@ export const RowDetailView: React.FC = () => {
                       ) : (
                         <input
                           type="text"
+                          inputMode={field.digitsOnly ? 'numeric' : undefined}
                           disabled={!canEdit || field.readOnly}
                           value={val}
-                          onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                          onChange={(e) => handleFieldChange(field.name, sanitizeFieldInput(field, e.target.value))}
                           className={`w-full p-2.5 text-xs rounded-xl border transition-all ${
                             !canEdit || field.readOnly
                               ? 'bg-slate-950/40 text-slate-500 cursor-not-allowed border-slate-800'

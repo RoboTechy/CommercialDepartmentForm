@@ -34,6 +34,7 @@ export interface DbRow {
   purchase_executor: PurchaseExecutor | '';
   payment_auth_issued_date: string;
   payment_auth_no: string;
+  commercial_notes: string;
 
   // Section 5: accounting (حسابداری، بخش مستقل)
   payment_date: string;

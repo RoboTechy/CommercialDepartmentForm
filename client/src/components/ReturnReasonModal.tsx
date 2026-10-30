@@ -11,6 +11,7 @@ export const ReturnReasonModal: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!reason.trim()) return;
     returnToTechOffice(returnModalRowId, reason.trim());
     setReason('');
     setReturnModalRowId(null);
@@ -48,10 +49,11 @@ export const ReturnReasonModal: React.FC = () => {
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                دلیل عودت به درخواست‌کننده (اختیاری):
+                دلیل عودت به درخواست‌کننده (الزامی):
               </label>
               <textarea
                 rows={3}
+                required
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="مثال: نقشه فنی پیوست نشده است، شرح کالا مبهم است..."

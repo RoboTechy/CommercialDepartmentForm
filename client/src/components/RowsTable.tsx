@@ -4,7 +4,7 @@ import { sections, isPaymentAuthWaived, FieldDef, SectionDef } from '../data/exa
 import { DbRow, PriorityLevel } from '../types';
 import { JalaliDateInput } from './JalaliDateInput';
 import { GROUPS } from '../config';
-import { toLatinDigits } from '../store/exactStore';
+import { toLatinDigits, sanitizeFieldInput } from '../store/exactStore';
 import {
   ExternalLink, History, XCircle, RotateCcw, CheckCircle2, AlertTriangle, Trash2, AlertCircle, ChevronLeft, ChevronDown, Pencil,
 } from 'lucide-react';
@@ -243,8 +243,9 @@ export const RowsTable: React.FC<RowsTableProps> = ({ rows, colFilters, setColFi
           <input
             autoFocus
             type="text"
+            inputMode={field.digitsOnly ? 'numeric' : undefined}
             value={draftValue}
-            onChange={(e) => setDraftValue(e.target.value)}
+            onChange={(e) => setDraftValue(sanitizeFieldInput(field, e.target.value))}
             onBlur={() => commitEdit(row, section, field, draftValue)}
             onKeyDown={onKey}
             className={common}
