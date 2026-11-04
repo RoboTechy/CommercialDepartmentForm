@@ -3,6 +3,7 @@
 export const GROUPS = {
   techOperator: 'PRT-Technical',
   civil: 'PRT-Civil',
+  utility: 'PRT-Utility',
   it: 'PRT-IT',
   warehouse: 'PRT-Warehouse',
   commercial: 'PRT-Commercial',
@@ -21,6 +22,7 @@ export const GROUPS = {
 export const ALLOWED_LOGIN_GROUPS: string[] = [
   GROUPS.techOperator,
   GROUPS.civil,
+  GROUPS.utility,
   GROUPS.it,
   GROUPS.warehouse,
   GROUPS.commercial,

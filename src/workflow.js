@@ -6,7 +6,7 @@ const config = require('./config');
 const G = config.ldap.groups;
 
 const STAGES = [
-  { id: 'tech_request', allowedGroups: [G.techOperator, G.civil, G.it, G.techLead, G.admin] },
+  { id: 'tech_request', allowedGroups: [G.techOperator, G.civil, G.it, G.utility, G.techLead, G.admin] },
   { id: 'warehouse_review', allowedGroups: [G.warehouse, G.admin] },
   { id: 'commercial_rfq', allowedGroups: [G.commercial, G.admin] },
   { id: 'financial_approval', allowedGroups: [G.finance, G.executive, G.techLead, G.admin] },
@@ -59,7 +59,7 @@ function labelOf(name) {
 
 function createDefaultApprovals(rowId, priority, estimatedAmount = 0) {
   const list = [
-    { roleKey: 'tech_lead', stepNumber: 1, title: 'تأیید سرپرست واحد متقاضی (دفتر فنی / عمران / آی‌تی)', requiredRoleName: 'سرپرست واحد متقاضی' },
+    { roleKey: 'tech_lead', stepNumber: 1, title: 'تأیید سرپرست واحد متقاضی (دفتر فنی / عمران / آی‌تی / یوتیلیتی)', requiredRoleName: 'سرپرست واحد متقاضی' },
     { roleKey: 'commercial_lead', stepNumber: 2, title: 'تأیید رئیس اداره تدارکات و بازرگانی', requiredRoleName: 'رئیس بازرگانی غدیر' },
     { roleKey: 'finance_lead', stepNumber: 3, title: 'تأیید مدیر مالی و کنترل بودجه', requiredRoleName: 'مدیر مالی و بودجه' },
   ];

@@ -43,6 +43,7 @@ module.exports = {
       // لغو کنند (به sections.js -> requesterDepartments مراجعه کنید)
       civil: need('LDAP_GROUP_CIVIL', 'PRT-Civil'),
       it: need('LDAP_GROUP_IT', 'PRT-IT'),
+      utility: need('LDAP_GROUP_UTILITY', 'PRT-Utility'),
       // دسترسی به گزارش‌های مدیریتی (/reports/management) - آمار
       // تحلیلی/زمان‌بندی برای تصمیم‌گیری، نه یک نقش عملیاتی مثل بقیه
       management: need('LDAP_GROUP_MANAGEMENT', 'PRT-Management'),

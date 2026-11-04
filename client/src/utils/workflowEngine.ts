@@ -32,8 +32,8 @@ export const WORKFLOW_STAGES: StageDefinition[] = [
     bgColor: 'bg-blue-600',
     borderColor: 'border-blue-500',
     description: 'مشخصات اولیه کالا، تعداد، محل مصرف و زمان تحویل به انبار کارفرما',
-    ownerDepartment: 'دفتر فنی / عمران / آی‌تی',
-    allowedGroups: [GROUPS.techOperator, GROUPS.civil, GROUPS.it, GROUPS.techLead, GROUPS.admin],
+    ownerDepartment: 'دفتر فنی / عمران / آی‌تی / یوتیلیتی',
+    allowedGroups: [GROUPS.techOperator, GROUPS.civil, GROUPS.it, GROUPS.utility, GROUPS.techLead, GROUPS.admin],
   },
   {
     id: 'warehouse_review',
@@ -142,7 +142,7 @@ export function createDefaultApprovals(rowId: number, priority: PriorityLevel, e
       rowId,
       roleKey: 'tech_lead',
       stepNumber: 1,
-      title: 'تأیید سرپرست واحد متقاضی (دفتر فنی / عمران / آی‌تی)',
+      title: 'تأیید سرپرست واحد متقاضی (دفتر فنی / عمران / آی‌تی / یوتیلیتی)',
       requiredRoleName: 'سرپرست واحد متقاضی',
       status: 'pending',
     },
@@ -239,7 +239,7 @@ export function formatToman(amount?: number): string {
   return new Intl.NumberFormat('fa-IR').format(amount) + ' تومان';
 }
 
-// عنوان گام اول به دپارتمان واقعی درخواست‌کننده بستگی دارد (دفتر فنی / عمران / آی‌تی)؛ سایر گام‌ها ثابت‌اند
+// عنوان گام اول به دپارتمان واقعی درخواست‌کننده بستگی دارد (دفتر فنی / عمران / آی‌تی / یوتیلیتی)؛ سایر گام‌ها ثابت‌اند
 export function stageDisplayLabel(stage: StageDefinition, dept?: string): string {
   if (stage.id === 'tech_request' && dept) return dept;
   return stage.shortLabel;
