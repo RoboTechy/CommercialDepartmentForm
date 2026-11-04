@@ -99,7 +99,7 @@ export const DashboardView: React.FC = () => {
             فهرست درخواست‌های کالا و گردش کار بازرگانی
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            پیگیری مراحل بین دفتر فنی/عمران/آی‌تی/یوتیلیتی، انبار کارفرما و بازرگانی غدیر
+            پیگیری مراحل بین دفتر فنی/عمران/آی‌تی/تأسیسات، انبار کارفرما و بازرگانی غدیر
           </p>
         </div>
 
@@ -300,7 +300,7 @@ export const DashboardView: React.FC = () => {
               <option value="دفتر فنی">دفتر فنی</option>
               <option value="عمران">عمران</option>
               <option value="آی‌تی">آی‌تی</option>
-              <option value="یوتیلیتی">یوتیلیتی</option>
+              <option value="تأسیسات">تأسیسات</option>
             </select>
 
             {/* Priority */}

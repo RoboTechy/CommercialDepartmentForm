@@ -2,7 +2,7 @@
 
 export type PriorityLevel = 'A++' | 'A+' | 'A' | 'B' | 'C' | 'D';
 export type ItemType = 'استاندارد' | 'ساخت';
-export type RequesterDept = 'دفتر فنی' | 'عمران' | 'آی‌تی' | 'یوتیلیتی';
+export type RequesterDept = 'دفتر فنی' | 'عمران' | 'آی‌تی' | 'تأسیسات';
 export type PurchaseExecutor = 'سایت' | 'تهران' | 'برنا';
 
 // Exact column structure of table `rows`

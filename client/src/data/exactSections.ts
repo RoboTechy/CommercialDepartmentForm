@@ -31,7 +31,7 @@ export const requesterDepartments: { label: RequesterDept; group: string }[] = [
   { label: 'دفتر فنی', group: GROUPS.techOperator },
   { label: 'عمران', group: GROUPS.civil },
   { label: 'آی‌تی', group: GROUPS.it },
-  { label: 'یوتیلیتی', group: GROUPS.utility },
+  { label: 'تأسیسات', group: GROUPS.utility },
 ];
 
 export const sections: SectionDef[] = [

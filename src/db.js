@@ -122,6 +122,8 @@ ${fieldColumns}
   // اگر نسخه‌ی قبلی قبلاً روی این دیتابیس اجرا و ردیف‌هایی با برچسب قدیمی
   // ساخته/مهاجرت شده باشند، اینجا (بی‌ضرر و در هر اجرا) به برچسب جدید اصلاح می‌شوند
   if (existingColumns.has('requester_dept')) {
+    // برچسب موقتی «یوتیلیتی» به «تأسیسات» تغییر کرد (نام گروه AD همان PRT-Utility است)
+    sqlDb.run(`UPDATE rows SET requester_dept = 'تأسیسات' WHERE requester_dept = 'یوتیلیتی'`);
     sqlDb.run(`UPDATE rows SET requester_dept = 'دفتر فنی' WHERE requester_dept = 'بهره‌بردار'`);
   }
 

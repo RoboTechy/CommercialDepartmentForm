@@ -144,7 +144,7 @@ export const DurationReportView: React.FC = () => {
               <option value="دفتر فنی">دفتر فنی</option>
               <option value="عمران">عمران</option>
               <option value="آی‌تی">آی‌تی</option>
-              <option value="یوتیلیتی">یوتیلیتی</option>
+              <option value="تأسیسات">تأسیسات</option>
             </select>
           </div>
 

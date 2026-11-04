@@ -59,7 +59,7 @@ function labelOf(name) {
 
 function createDefaultApprovals(rowId, priority, estimatedAmount = 0) {
   const list = [
-    { roleKey: 'tech_lead', stepNumber: 1, title: 'تأیید سرپرست واحد متقاضی (دفتر فنی / عمران / آی‌تی / یوتیلیتی)', requiredRoleName: 'سرپرست واحد متقاضی' },
+    { roleKey: 'tech_lead', stepNumber: 1, title: 'تأیید سرپرست واحد متقاضی (دفتر فنی / عمران / آی‌تی / تأسیسات)', requiredRoleName: 'سرپرست واحد متقاضی' },
     { roleKey: 'commercial_lead', stepNumber: 2, title: 'تأیید رئیس اداره تدارکات و بازرگانی', requiredRoleName: 'رئیس بازرگانی غدیر' },
     { roleKey: 'finance_lead', stepNumber: 3, title: 'تأیید مدیر مالی و کنترل بودجه', requiredRoleName: 'مدیر مالی و بودجه' },
   ];

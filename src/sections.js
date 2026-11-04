@@ -19,7 +19,7 @@ const requesterDepartments = [
   { label: 'دفتر فنی', group: config.ldap.groups.techOperator },
   { label: 'عمران', group: config.ldap.groups.civil },
   { label: 'آی‌تی', group: config.ldap.groups.it },
-  { label: 'یوتیلیتی', group: config.ldap.groups.utility },
+  { label: 'تأسیسات', group: config.ldap.groups.utility },
 ];
 
 const sections = [
